@@ -9,6 +9,11 @@ namespace FoundationKit {
     template <typename T> struct RemoveReference<T&>  { using Type = T; };
     template <typename T> struct RemoveReference<T&&> { using Type = T; };
 
+    /// @brief Remove array extent from a type.
+    template <typename T>           struct RemoveExtent       { using Type = T; };
+    template <typename T>           struct RemoveExtent<T[]>  { using Type = T; };
+    template <typename T, usize N>  struct RemoveExtent<T[N]> { using Type = T; };
+
     template <typename T>
     using RemoveReferenceT = RemoveReference<T>::Type;
 
@@ -37,6 +42,11 @@ namespace FoundationKit {
         T temp = Move(a);
         a = Move(b);
         b = Move(temp);
+    }
+
+    template <typename T, typename... Args>
+    T* ConstructAt(void* ptr, Args&&... args) noexcept {
+        return ::new (ptr) T(static_cast<Args&&>(args)...);
     }
 
 } // namespace FoundationKit

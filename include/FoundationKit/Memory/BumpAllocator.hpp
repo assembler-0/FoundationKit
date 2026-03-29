@@ -14,7 +14,7 @@ namespace FoundationKit::Memory {
 
         [[nodiscard]] AllocResult Allocate(const usize size, const usize align) noexcept {
             const uptr current_ptr = reinterpret_cast<uptr>(m_current);
-            const uptr aligned_ptr = current_ptr + align - 1 & ~(align - 1);
+            const uptr aligned_ptr = current_ptr + align - 1 & ~(static_cast<uptr>(align) - 1);
             
             if (aligned_ptr + size > reinterpret_cast<uptr>(m_end)) {
                 return AllocResult::failure();

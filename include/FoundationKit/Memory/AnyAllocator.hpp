@@ -3,64 +3,49 @@
 #include <FoundationKit/Memory/Allocator.hpp>
 
 namespace FoundationKit::Memory {
-
-    /// @brief An abstract interface for allocators. 
-    /// This allows passing allocators around without knowing their concrete type.
-    class IAllocatorResource {
-    public:
-        virtual ~IAllocatorResource() = default;
-
-        [[nodiscard]] virtual AllocResult Allocate(usize size, usize align) noexcept = 0;
+    /// @brief Pure virtual interface for memory providers.
+    struct MemoryResource {
+        virtual ~MemoryResource() = default;
+        virtual AllocResult Allocate(usize size, usize align) noexcept = 0;
         virtual void Deallocate(void* ptr, usize size) noexcept = 0;
         virtual bool Owns(void* ptr) const noexcept = 0;
     };
 
-    /// @brief Wraps a concrete IAllocator into a polymorphic IAllocatorResource.
-    /// This usually lives as a static or member variable in a specific context.
-    template <IAllocator A>
-    class AllocatorResource final : public IAllocatorResource {
-    public:
-        explicit constexpr AllocatorResource(A& alloc) noexcept : m_alloc(alloc) {}
+    /// @brief Concrete wrapper for any IAllocator.
+    template <IAllocator Alloc>
+    struct ConcreteResource final : MemoryResource {
+        Alloc& m_alloc;
+        explicit constexpr ConcreteResource(Alloc& alloc) noexcept : m_alloc(alloc) {}
 
-        [[nodiscard]] AllocResult Allocate(usize size, usize align) noexcept override {
-            return m_alloc.Allocate(size, align);
-        }
-
-        void Deallocate(void* ptr, usize size) noexcept override {
-            m_alloc.Deallocate(ptr, size);
-        }
-
-        bool Owns(void* ptr) const noexcept override {
-            return m_alloc.Owns(ptr);
-        }
-
-    private:
-        A& m_alloc;
+        AllocResult Allocate(usize size, usize align) noexcept override { return m_alloc.Allocate(size, align); }
+        void Deallocate(void* ptr, usize size) noexcept override { m_alloc.Deallocate(ptr, size); }
+        bool Owns(void* ptr) const noexcept override { return m_alloc.Owns(ptr); }
     };
 
-    /// @brief A lightweight, non-owning reference to any allocator resource.
-    /// This is the unified way to pass allocators around in FoundationKit.
+    /// @brief A type-erased allocator value-type.
     class AnyAllocator {
     public:
-        constexpr AnyAllocator() noexcept = default;
-        constexpr AnyAllocator(nullptr_t) noexcept {}
-
-        /// @brief Construct from a pointer to an existing resource.
-        explicit constexpr AnyAllocator(IAllocatorResource* res) noexcept : m_resource(res) {}
-
-        /// @brief Helper to wrap a concrete allocator using a temporary resource.
-        /// WARNING: The resource must outlive the AnyAllocator. 
-        /// Use this for global/static allocators or within a controlled scope.
-        template <IAllocator A>
-        static AnyAllocator From(AllocatorResource<A>& resource) noexcept {
-            return AnyAllocator(&resource);
+        /// @brief Static registry for the system-wide default resource.
+        static void SetDefaultResource(MemoryResource* res) noexcept {
+            GetDefaultResourceInternal() = res;
         }
+
+        static MemoryResource* GetDefaultResource() noexcept {
+            return GetDefaultResourceInternal();
+        }
+
+        /// @brief Default constructor: Adopts the system-wide default resource.
+        AnyAllocator() noexcept : m_resource(GetDefaultResource()) {}
+
+        /// @brief Explicitly construct with a specific resource or nullptr.
+        constexpr AnyAllocator(nullptr_t) noexcept {}
+        explicit constexpr AnyAllocator(MemoryResource* res) noexcept : m_resource(res) {}
 
         [[nodiscard]] AllocResult Allocate(const usize size, const usize align) const noexcept {
             return m_resource ? m_resource->Allocate(size, align) : AllocResult::failure();
         }
 
-        void Deallocate(void* ptr, usize size) const noexcept {
+        void Deallocate(void* ptr, const usize size) const noexcept {
             if (m_resource) m_resource->Deallocate(ptr, size);
         }
 
@@ -69,12 +54,18 @@ namespace FoundationKit::Memory {
         }
 
         [[nodiscard]] constexpr bool IsValid() const noexcept { return m_resource != nullptr; }
-        [[nodiscard]] explicit constexpr operator bool() const noexcept { return IsValid(); }
+        [[nodiscard]] constexpr explicit operator bool() const noexcept { return IsValid(); }
+        [[nodiscard]] MemoryResource* GetResource() const noexcept { return m_resource; }
 
     private:
-        IAllocatorResource* m_resource = nullptr;
+        static MemoryResource*& GetDefaultResourceInternal() noexcept {
+            static MemoryResource* s_default = nullptr;
+            return s_default;
+        }
+
+        MemoryResource* m_resource = nullptr;
     };
 
-    static_assert(IAllocator<AnyAllocator>, "FoundationKit: AnyAllocator must satisfy IAllocator concept.");
+    static_assert(IAllocator<AnyAllocator>);
 
 } // namespace FoundationKit::Memory

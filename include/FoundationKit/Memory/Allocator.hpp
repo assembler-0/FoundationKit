@@ -3,8 +3,19 @@
 #include <FoundationKit/Base/Types.hpp>
 #include <FoundationKit/Meta/Concepts.hpp>
 #include <FoundationKit/Base/Utility.hpp>
+#include <FoundationKit/Base/Optional.hpp>
+#include <FoundationKit/Base/Expected.hpp>
 
 namespace FoundationKit::Memory {
+
+    /// @brief Possible memory errors for rich error reporting.
+    enum class MemoryError : u8 {
+        None = 0,
+        OutOfMemory,
+        InvalidAlignment,
+        InvalidSize,
+        NotOwned
+    };
 
     /// @brief Result of an allocation attempt.
     struct AllocResult {
@@ -43,13 +54,27 @@ namespace FoundationKit::Memory {
     };
 
     /// @brief Global helpers for object construction/destruction using an allocator.
-    
+
+    /// @brief Construct an object, returning an Optional pointer.
     template <typename T, IAllocator Alloc, typename... Args>
     [[nodiscard]]
-    T* New(Alloc& alloc, Args&&... args) noexcept {
+    Optional<T*> New(Alloc& alloc, Args&&... args) noexcept {
         AllocResult r = alloc.Allocate(sizeof(T), alignof(T));
-        if (!r) return nullptr;
-        return ::new (r.ptr) T(FoundationKit::Forward<Args>(args)...);
+        if (!r) return NullOpt;
+        
+        T* ptr = FoundationKit::ConstructAt<T>(r.ptr, FoundationKit::Forward<Args>(args)...);
+        return ptr;
+    }
+
+    /// @brief Construct an object, returning an Expected for detailed error reporting.
+    template <typename T, IAllocator Alloc, typename... Args>
+    [[nodiscard]]
+    Expected<T*, MemoryError> TryNew(Alloc& alloc, Args&&... args) noexcept {
+        AllocResult r = alloc.Allocate(sizeof(T), alignof(T));
+        if (!r) return MemoryError::OutOfMemory;
+        
+        T* ptr = FoundationKit::ConstructAt<T>(r.ptr, FoundationKit::Forward<Args>(args)...);
+        return ptr;
     }
 
     template <typename T, IAllocator Alloc>
@@ -61,12 +86,13 @@ namespace FoundationKit::Memory {
 
     template <typename T, IAllocator Alloc>
     [[nodiscard]]
-    T* NewArray(Alloc& alloc, const usize count) noexcept {
+    Optional<T*> NewArray(Alloc& alloc, const usize count) noexcept {
         AllocResult r = alloc.Allocate(sizeof(T) * count, alignof(T));
-        if (!r) return nullptr;
+        if (!r) return NullOpt;
+        
         T* arr = static_cast<T*>(r.ptr);
         for (usize i = 0; i < count; ++i)
-            ::new (arr + i) T{};
+            FoundationKit::ConstructAt<T>(arr + i);
         return arr;
     }
 

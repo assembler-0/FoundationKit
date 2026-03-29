@@ -27,7 +27,7 @@ namespace FoundationKit {
     template <typename T> concept Reference        = LValueReference<T> || RValueReference<T>;
     template <typename T> concept Void             = __is_void(T);
     template <typename T> concept NullPointer      = SameAs<T, decltype(nullptr)>;
-    template <typename T> concept Array            = __is_array(T);
+    template <typename T> concept IsArray          = __is_array(T);
     template <typename T> concept Abstract         = __is_abstract(T);
     template <typename T> concept Final            = __is_final(T);
     template <typename T> concept Empty            = __is_empty(T);
