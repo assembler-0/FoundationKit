@@ -44,7 +44,6 @@
 #  define FOUNDATIONKIT_DIAG_PUSH      _Pragma("GCC diagnostic push")
 #  define FOUNDATIONKIT_DIAG_POP       _Pragma("GCC diagnostic pop")
 #  define FOUNDATIONKIT_DIAG_IGNORE(x) _Pragma(FOUNDATIONKIT_STR(GCC diagnostic ignored x))
-#  define FOUNDATIONKIT_STR(x)         #x
 
 #elif defined(FOUNDATIONKIT_COMPILER_MSVC)
 #  define FOUNDATIONKIT_ALWAYS_INLINE  __forceinline
@@ -59,3 +58,7 @@
 #  define FOUNDATIONKIT_DIAG_POP       __pragma(warning(pop))
 #  define FOUNDATIONKIT_DIAG_IGNORE(x) /* Handle MSVC warnings separately */
 #endif
+
+#define __FOUNDATIONKIT_STR(x)         #x
+#define FOUNDATIONKIT_STR(x)           __FOUNDATIONKIT_STR(x)
+#define FOUNDATIONKIT_PANIC(m)         fk_panic("FoundationKit: " m __FILE_NAME__ ":" FOUNDATIONKIT_STR(__LINE__))

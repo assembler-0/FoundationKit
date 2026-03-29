@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKit/Meta/Concepts.hpp>
+#include <FoundationKit/Memory/PlacementNew.hpp>
 
 namespace FoundationKit {
 
