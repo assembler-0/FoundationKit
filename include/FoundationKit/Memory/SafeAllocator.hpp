@@ -44,7 +44,7 @@ namespace FoundationKit::Memory {
 
             for (usize i = 0; i < CanarySize; ++i) {
                 if (head[i] != 0xDE || tail[i] != 0xAD) {
-                    FOUNDATIONKIT_UNREACHABLE();
+                    FOUNDATIONKIT_PANIC("head[i] != 0xDE || tail[i] != 0xAD");
                 }
             }
 
