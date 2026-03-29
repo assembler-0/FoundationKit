@@ -13,6 +13,8 @@
 #include <FoundationKit/Base/Pair.hpp>
 #include <FoundationKit/Base/Span.hpp>
 #include <FoundationKit/Base/Variant.hpp>
+#include <FoundationKit/Base/Bit.hpp>
+#include <FoundationKit/Base/Algorithm.hpp>
 
 // Structure components
 #include <FoundationKit/Structure/SinglyLinkedList.hpp>
@@ -20,6 +22,7 @@
 #include <FoundationKit/Structure/CircularLinkedList.hpp>
 #include <FoundationKit/Structure/IntrusiveSinglyLinkedList.hpp>
 #include <FoundationKit/Structure/IntrusiveDoublyLinkedList.hpp>
+#include <FoundationKit/Structure/BitSet.hpp>
 
 // Memory components
 #include <FoundationKit/Memory/BumpAllocator.hpp>
@@ -387,4 +390,66 @@ TEST_CASE(Structure_IntrusiveDoublyLinkedList) {
     node = node->next;
     item = ContainerOf<Item, &Item::link>(node);
     ASSERT_EQ(item->value, 3);
+}
+
+TEST_CASE(Base_BitManipulation) {
+    u32 val = 0b00000000000000000000000000001010; // 10
+    ASSERT_EQ(PopCount(val), 2);
+    ASSERT_EQ(CountTrailingZeros(val), 1);
+    ASSERT_EQ(CountLeadingZeros(val), 28);
+    
+    u32 rot = 0x80000001U;
+    ASSERT_EQ(RotateLeft(rot, 1), 0x00000003U);
+    ASSERT_EQ(RotateRight(0x00000003U, 1), rot);
+    
+    ASSERT_TRUE(IsPowerOfTwo(1024U));
+    ASSERT_FALSE(IsPowerOfTwo(1023U));
+}
+
+TEST_CASE(Base_Algorithm) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+    
+    Vector<i32> vec(any_alloc);
+    vec.PushBack(5);
+    vec.PushBack(2);
+    vec.PushBack(9);
+    vec.PushBack(1);
+    vec.PushBack(5);
+    vec.PushBack(6);
+    
+    Sort(vec.begin(), vec.end());
+    
+    ASSERT_EQ(vec[0], 1);
+    ASSERT_EQ(vec[1], 2);
+    ASSERT_EQ(vec[2], 5);
+    ASSERT_EQ(vec[3], 5);
+    ASSERT_EQ(vec[4], 6);
+    ASSERT_EQ(vec[5], 9);
+    
+    ASSERT_TRUE(BinarySearch(vec.begin(), vec.end(), 5));
+    ASSERT_FALSE(BinarySearch(vec.begin(), vec.end(), 10));
+}
+
+TEST_CASE(Structure_BitSet) {
+    BitSet<100> bs;
+    ASSERT_TRUE(bs.None());
+    
+    bs.Set(10);
+    bs.Set(50);
+    bs.Set(99);
+    
+    ASSERT_TRUE(bs.Test(10));
+    ASSERT_TRUE(bs.Test(50));
+    ASSERT_TRUE(bs.Test(99));
+    ASSERT_FALSE(bs.Test(0));
+    ASSERT_EQ(bs.Count(), 3);
+    
+    ASSERT_EQ(bs.FindFirstSet(), 10);
+    bs.Reset(10);
+    ASSERT_EQ(bs.FindFirstSet(), 50);
+    
+    bs.Reset();
+    ASSERT_TRUE(bs.None());
+    ASSERT_EQ(bs.FindFirstUnset(), 0);
 }

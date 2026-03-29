@@ -9,7 +9,9 @@ option(FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW "Provide global operator new/delete ov
 option(FOUNDATIONKIT_BUILD_TESTS "Build test executable" ON)
 
 set(FOUNDATIONKIT_HEADERS
+    Include/FoundationKit/Base/Algorithm.hpp
     Include/FoundationKit/Base/Array.hpp
+    Include/FoundationKit/Base/Bit.hpp
     Include/FoundationKit/Base/Compiler.hpp
     Include/FoundationKit/Base/Expected.hpp
     Include/FoundationKit/Base/NumericLimits.hpp
@@ -39,6 +41,7 @@ set(FOUNDATIONKIT_HEADERS
     Include/FoundationKit/Memory/UniquePtr.hpp
     Include/FoundationKit/Meta/Concepts.hpp
     Include/FoundationKit/Osl/Osl.hpp
+    Include/FoundationKit/Structure/BitSet.hpp
     Include/FoundationKit/Structure/CircularLinkedList.hpp
     Include/FoundationKit/Structure/DoublyLinkedList.hpp
     Include/FoundationKit/Structure/IntrusiveDoublyLinkedList.hpp

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <FoundationKit/Base/Types.hpp>
-#include <FoundationKit/Base/Utility.hpp>
 
 namespace FoundationKit::Structure {
 
@@ -72,7 +71,7 @@ namespace FoundationKit::Structure {
         [[nodiscard]] bool Empty() const noexcept { return m_head.next == &m_head; }
         [[nodiscard]] usize Size() const noexcept { return m_size; }
 
-        [[nodiscard]] IntrusiveDoublyLinkedListNode* Begin() noexcept { return m_head.next; }
+        [[nodiscard]] IntrusiveDoublyLinkedListNode* Begin() const noexcept { return m_head.next; }
         [[nodiscard]] IntrusiveDoublyLinkedListNode* End() noexcept { return &m_head; }
 
     private:
