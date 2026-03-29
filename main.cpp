@@ -1,10 +1,8 @@
-#include <cstdio>
-#define FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW
-#include <FoundationKit/Base/Utility.hpp>
 #include <FoundationKit/Memory/GlobalAllocator.hpp>
 #include <FoundationKit/Memory/UniquePtr.hpp>
 #include <FoundationKit/Memory/SharedPtr.hpp>
 #include <FoundationKit/Memory/StaticAllocator.hpp>
+#include <cstdio>
 
 using namespace FoundationKit;
 using namespace FoundationKit::Memory;

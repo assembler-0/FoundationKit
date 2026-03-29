@@ -2,6 +2,7 @@
 
 #include <FoundationKit/Base/Types.hpp>
 #include <FoundationKit/Meta/Concepts.hpp>
+#include <FoundationKit/Base/Utility.hpp>
 
 namespace FoundationKit::Memory {
 
