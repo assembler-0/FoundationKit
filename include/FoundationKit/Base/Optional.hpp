@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKit/Base/Utility.hpp>
+#include <FoundationKit/Osl/Osl.hpp>
 
 namespace FoundationKit {
 
@@ -111,13 +112,13 @@ namespace FoundationKit {
 
         /// @brief Access value.
         [[nodiscard]] constexpr T& Value() & noexcept {
-            if (!_has_value) FOUNDATIONKIT_UNREACHABLE();
+            if (!_has_value) FOUNDATIONKIT_PANIC("!_has_value");
             return _value;
         }
 
         /// @brief Access value (const).
         [[nodiscard]] constexpr const T& Value() const& noexcept {
-            if (!_has_value) FOUNDATIONKIT_UNREACHABLE();
+            if (!_has_value) FOUNDATIONKIT_PANIC("!_has_value");
             return _value;
         }
 
@@ -184,7 +185,7 @@ namespace FoundationKit {
         [[nodiscard]] constexpr explicit operator bool() const noexcept { return _ptr != nullptr; }
 
         [[nodiscard]] constexpr T& Value() const noexcept {
-            if (!_ptr) FOUNDATIONKIT_UNREACHABLE();
+            if (!_ptr) FOUNDATIONKIT_PANIC("!_ptr");
             return *_ptr;
         }
 
