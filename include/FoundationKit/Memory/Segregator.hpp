@@ -8,7 +8,6 @@
 namespace FoundationKit::Memory {
 
     /// @brief Dispatches allocation requests based on size.
-    /// If size <= Threshold, use SmallAllocator, else use LargeAllocator.
     template <usize Threshold, IAllocator SmallAlloc, IAllocator LargeAlloc>
     class Segregator : SmallAlloc, LargeAlloc {
     public:

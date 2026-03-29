@@ -1,62 +1,74 @@
 #include <cstdio>
+#define FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW
 #include <FoundationKit/Base/Utility.hpp>
-#include <FoundationKit/Memory/BumpAllocator.hpp>
+#include <FoundationKit/Memory/GlobalAllocator.hpp>
 #include <FoundationKit/Memory/UniquePtr.hpp>
-#include <FoundationKit/Memory/SafeAllocator.hpp>
+#include <FoundationKit/Memory/SharedPtr.hpp>
 #include <FoundationKit/Memory/StaticAllocator.hpp>
 
 using namespace FoundationKit;
 using namespace FoundationKit::Memory;
 
-// --- Mock Kernel Heap ---
-
-class MyKernelHeap {
-public:
-    AllocResult Allocate(usize size, usize align) noexcept {
-        void* p = m_backend.Allocate(size, align).ptr;
-        printf("  [KernelHeap] Allocating %zu bytes\n", size);
-        return { p, size };
-    }
-
-    void Deallocate(void* ptr, usize size) noexcept {
-        printf("  [KernelHeap] Deallocating %zu bytes\n", size);
-        m_backend.Deallocate(ptr, size);
-    }
-
-    bool Owns(void* ptr) const noexcept { return m_backend.Owns(ptr); }
-
-private:
-    StaticAllocator<4096> m_backend;
-};
-
-static MyKernelHeap g_heap;
-
-// --- Test Objects ---
-
-struct TestObject {
-    int x;
-    TestObject(int a) : x(a) { printf("    TestObject(%d) Const.\n", x); }
-    ~TestObject() { printf("    TestObject(%d) Dest.\n", x); }
-};
-
-void TestSmartPointers() {
-    printf("Running Smart Pointer & Move Test:\n");
-
-    SafeAllocator<MyKernelHeap> safe_heap(g_heap);
-
-    // MakeUnique uses Perfect Forwarding
-    auto ptr1 = MakeUnique<TestObject>(safe_heap, 100);
-    
-    // Test Move Semantics
-    auto ptr2 = FoundationKit::Move(ptr1);
-    
-    if (!ptr1) printf("    ptr1 is now null (correct)\n");
-    if (ptr2)  printf("    ptr2 owns the object with value %d\n", ptr2->x);
+// --- Mock Kernel malloc/free ---
+void* mock_kmalloc(usize size) {
+    static StaticAllocator<16384> g_heap_backend;
+    void* ptr = g_heap_backend.Allocate(size, 16).ptr;
+    printf("  [kmalloc] Allocated %zu bytes at %p\n", size, ptr);
+    return ptr;
 }
 
+void mock_kfree(void* ptr, usize size) {
+    if (ptr) printf("  [kfree] Deallocated %zu bytes at %p\n", size, ptr);
+}
+
+// --- The Wrapper for FoundationKit ---
+class KernelAllocator {
+public:
+    AllocResult Allocate(usize size, usize align) noexcept {
+        (void)align;
+        return { mock_kmalloc(size), size };
+    }
+    void Deallocate(void* ptr, usize size) noexcept {
+        mock_kfree(ptr, size);
+    }
+    bool Owns(void*) const noexcept { return true; }
+};
+
+static KernelAllocator g_kernel_alloc;
+static AllocatorResource<KernelAllocator> g_kernel_resource(g_kernel_alloc);
+
+// --- Test Objects ---
+struct TestObject {
+    int x;
+    TestObject(int a) : x(a) { printf("    TestObject(%d) Constructed.\n", x); }
+    ~TestObject() { printf("    TestObject(%d) Destructed.\n", x); }
+};
+
 int main() {
-    printf("--- FoundationKit Infrastructure Test ---\n\n");
-    TestSmartPointers();
-    printf("\nDone.\n");
+    printf("--- Global Allocator & new/delete Test ---\n");
+
+    // Initialize the FoundationKit memory system with your kernel allocator.
+    GlobalAllocator::Set(AnyAllocator::From(g_kernel_resource));
+
+    {
+        printf("\n1. Standard 'new' syntax:\n");
+        auto* obj = new TestObject(123);
+        printf("   Object value: %d\n", obj->x);
+        delete obj;
+    }
+
+    {
+        printf("\n2. Defaulting Smart Pointers to Global Allocator:\n");
+        auto ptr = MakeUnique<TestObject>(GlobalAllocator::Get(), 456);
+        printf("   Smart pointer value: %d\n", ptr->x);
+    }
+
+    {
+        printf("\n3. SharedPtr with Global Allocation:\n");
+        auto shared = AllocateShared<TestObject>(GlobalAllocator::Get(), 789);
+        printf("   Shared pointer UseCount: %zu\n", shared.UseCount());
+    }
+
+    printf("\nTest Complete.\n");
     return 0;
 }

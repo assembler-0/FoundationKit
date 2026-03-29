@@ -1,6 +1,8 @@
 #pragma once
 
 #include <FoundationKit/Memory/Allocator.hpp>
+#include <FoundationKit/Memory/BumpAllocator.hpp>
+#include <FoundationKit/Base/Utility.hpp>
 
 namespace FoundationKit::Memory {
 
@@ -26,7 +28,7 @@ namespace FoundationKit::Memory {
             u8* tail = user_ptr + size;
 
             for (usize i = 0; i < CanarySize; ++i) {
-                head[i] = 0xDE; // Deadbeef-ish
+                head[i] = 0xDE;
                 tail[i] = 0xAD;
             }
 

@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 option(FOUNDATIONKIT_MACHINE_WIDTH "Machine width size" 64)
 option(FOUNDATIONKIT_USE_NAMESPACE "Inject namespace into global scope" ON)
+option(FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW "Provide global operator new/delete overloads" ON)
 
 add_executable(FoundationKitTester main.cpp)
 
@@ -16,6 +17,10 @@ target_compile_definitions(FoundationKitTester PRIVATE
 
 if(FOUNDATIONKIT_USE_NAMESPACE)
     target_compile_definitions(FoundationKitTester PRIVATE FOUNDATIONKIT_USE_NAMESPACE)
+endif()
+
+if(FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW)
+    target_compile_definitions(FoundationKitTester PRIVATE FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW)
 endif()
 
 target_compile_options(FoundationKitTester PRIVATE

@@ -40,6 +40,12 @@
 #  define FOUNDATIONKIT_LIKELY(x)      __builtin_expect(!!(x), 1)
 #  define FOUNDATIONKIT_UNLIKELY(x)    __builtin_expect(!!(x), 0)
 #  define FOUNDATIONKIT_UNREACHABLE()  __builtin_unreachable()
+
+#  define FOUNDATIONKIT_DIAG_PUSH      _Pragma("GCC diagnostic push")
+#  define FOUNDATIONKIT_DIAG_POP       _Pragma("GCC diagnostic pop")
+#  define FOUNDATIONKIT_DIAG_IGNORE(x) _Pragma(FOUNDATIONKIT_STR(GCC diagnostic ignored x))
+#  define FOUNDATIONKIT_STR(x)         #x
+
 #elif defined(FOUNDATIONKIT_COMPILER_MSVC)
 #  define FOUNDATIONKIT_ALWAYS_INLINE  __forceinline
 #  define FOUNDATIONKIT_NEVER_INLINE   __declspec(noinline)
@@ -48,4 +54,8 @@
 #  define FOUNDATIONKIT_LIKELY(x)      (x)
 #  define FOUNDATIONKIT_UNLIKELY(x)    (x)
 #  define FOUNDATIONKIT_UNREACHABLE()  __assume(0)
+
+#  define FOUNDATIONKIT_DIAG_PUSH      __pragma(warning(push))
+#  define FOUNDATIONKIT_DIAG_POP       __pragma(warning(pop))
+#  define FOUNDATIONKIT_DIAG_IGNORE(x) /* Handle MSVC warnings separately */
 #endif

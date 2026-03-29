@@ -16,10 +16,11 @@ namespace FoundationKit::Memory {
     };
 
     /// @brief Wraps a concrete IAllocator into a polymorphic IAllocatorResource.
+    /// This usually lives as a static or member variable in a specific context.
     template <IAllocator A>
     class AllocatorResource final : public IAllocatorResource {
     public:
-        explicit AllocatorResource(A& alloc) noexcept : m_alloc(alloc) {}
+        explicit constexpr AllocatorResource(A& alloc) noexcept : m_alloc(alloc) {}
 
         [[nodiscard]] AllocResult Allocate(usize size, usize align) noexcept override {
             return m_alloc.Allocate(size, align);
@@ -37,21 +38,21 @@ namespace FoundationKit::Memory {
         A& m_alloc;
     };
 
-    /// @brief A lightweight, non-owning pointer to any allocator resource.
-    /// Used by generic data structures that don't want to be templated on the allocator type.
+    /// @brief A lightweight, non-owning reference to any allocator resource.
+    /// This is the unified way to pass allocators around in FoundationKit.
     class AnyAllocator {
     public:
         constexpr AnyAllocator() noexcept = default;
-
-        explicit constexpr AnyAllocator(nullptr_t) noexcept {}
+        constexpr AnyAllocator(nullptr_t) noexcept {}
 
         /// @brief Construct from a pointer to an existing resource.
         explicit constexpr AnyAllocator(IAllocatorResource* res) noexcept : m_resource(res) {}
 
-        /// @brief Helper to wrap a concrete allocator (caller must ensure lifetime).
+        /// @brief Helper to wrap a concrete allocator using a temporary resource.
+        /// WARNING: The resource must outlive the AnyAllocator. 
+        /// Use this for global/static allocators or within a controlled scope.
         template <IAllocator A>
-        static AnyAllocator From(A& alloc) noexcept {
-            static AllocatorResource<A> resource(alloc);
+        static AnyAllocator From(AllocatorResource<A>& resource) noexcept {
             return AnyAllocator(&resource);
         }
 
@@ -67,10 +68,13 @@ namespace FoundationKit::Memory {
             return m_resource ? m_resource->Owns(ptr) : false;
         }
 
-        [[nodiscard]] explicit operator bool() const noexcept { return m_resource != nullptr; }
+        [[nodiscard]] constexpr bool IsValid() const noexcept { return m_resource != nullptr; }
+        [[nodiscard]] explicit constexpr operator bool() const noexcept { return IsValid(); }
 
     private:
         IAllocatorResource* m_resource = nullptr;
     };
+
+    static_assert(IAllocator<AnyAllocator>, "FoundationKit: AnyAllocator must satisfy IAllocator concept.");
 
 } // namespace FoundationKit::Memory

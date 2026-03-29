@@ -18,7 +18,7 @@ namespace FoundationKit::Memory {
         explicit constexpr StatsAllocator(A&& alloc) noexcept : A(FoundationKit::Move(alloc)) {}
 
         [[nodiscard]] AllocResult Allocate(usize size, usize align) noexcept {
-            AllocResult res = Underlying::Allocate(size, align);
+            const AllocResult res = Underlying::Allocate(size, align);
             if (res) {
                 m_alloc_count++;
                 m_bytes_allocated += res.size;

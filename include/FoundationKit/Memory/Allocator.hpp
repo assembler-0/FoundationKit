@@ -3,12 +3,6 @@
 #include <FoundationKit/Base/Types.hpp>
 #include <FoundationKit/Meta/Concepts.hpp>
 
-[[nodiscard]] inline void* operator new(FoundationKit::usize, void* ptr) noexcept { return ptr; }
-inline void   operator delete(void*, void*)           noexcept {}
-
-[[nodiscard]] inline void* operator new[](FoundationKit::usize, void* ptr) noexcept { return ptr; }
-inline void   operator delete[](void*, void*)           noexcept {}
-
 namespace FoundationKit::Memory {
 
     /// @brief Result of an allocation attempt.
@@ -66,7 +60,7 @@ namespace FoundationKit::Memory {
 
     template <typename T, IAllocator Alloc>
     [[nodiscard]]
-    T* NewArray(Alloc& alloc, usize count) noexcept {
+    T* NewArray(Alloc& alloc, const usize count) noexcept {
         AllocResult r = alloc.Allocate(sizeof(T) * count, alignof(T));
         if (!r) return nullptr;
         T* arr = static_cast<T*>(r.ptr);
@@ -76,7 +70,7 @@ namespace FoundationKit::Memory {
     }
 
     template <typename T, IAllocator Alloc>
-    void DeleteArray(Alloc& alloc, T* ptr, usize count) noexcept {
+    void DeleteArray(Alloc& alloc, T* ptr, const usize count) noexcept {
         if (!ptr) return;
         for (usize i = count; i-- > 0;)
             ptr[i].~T();
