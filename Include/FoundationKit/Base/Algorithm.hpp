@@ -16,17 +16,107 @@ namespace FoundationKit {
 
     template <typename T>
     constexpr const T& Min(const T& a, const T& b) {
-        return (a < b) ? a : b;
+        return a < b ? a : b;
+    }
+
+    template <typename T>
+    constexpr T Min(InitializerList<T> i_list) {
+        auto it = i_list.begin();
+        T result = *it;
+        for (++it; it != i_list.end(); ++it) {
+            if (*it < result) result = *it;
+        }
+        return result;
     }
 
     template <typename T>
     constexpr const T& Max(const T& a, const T& b) {
-        return (a < b) ? b : a;
+        return a < b ? b : a;
+    }
+
+    template <typename T>
+    constexpr T Max(InitializerList<T> i_list) {
+        auto it = i_list.begin();
+        T result = *it;
+        for (++it; it != i_list.end(); ++it) {
+            if (result < *it) result = *it;
+        }
+        return result;
     }
 
     template <typename T>
     constexpr const T& Clamp(const T& v, const T& lo, const T& hi) {
-        return (v < lo) ? lo : (hi < v) ? hi : v;
+        return v < lo ? lo : hi < v ? hi : v;
+    }
+
+    /// @brief Reverses the order of elements in the range [first, last).
+    template <BidirectionalIterator I>
+    constexpr void Reverse(I first, I last) {
+        if (first == last) return;
+        --last;
+        while (first != last) {
+            FoundationKit::Swap(*first, *last);
+            if (++first == last) break;
+            --last;
+        }
+    }
+
+    /// @brief Rotates the elements in the range [first, last) such that n_first becomes the new first element.
+    template <ForwardIterator I>
+    constexpr I Rotate(I first, I n_first, I last) {
+        if (first == n_first) return last;
+        if (n_first == last) return first;
+
+        I read = n_first;
+        I write = first;
+        I next_read = first; // fallback for forward iterator
+
+        while (read != last) {
+            if (write == next_read) next_read = read;
+            FoundationKit::Swap(*write, *read);
+            ++write;
+            ++read;
+        }
+
+        I ret = write;
+        read = next_read;
+        while (read != last) {
+            if (write == next_read) next_read = read;
+            FoundationKit::Swap(*write, *read);
+            ++write;
+            ++read;
+        }
+        return ret;
+    }
+
+    /// @brief Removes consecutive duplicate elements from the range [first, last).
+    template <ForwardIterator I>
+    constexpr I Unique(I first, I last) {
+        if (first == last) return last;
+        I result = first;
+        while (++first != last) {
+            if (!(*result == *first)) {
+                *++result = FoundationKit::Move(*first);
+            }
+        }
+        return ++result;
+    }
+
+    /// @brief Removes all elements satisfying specific criteria from the range [first, last).
+    template <ForwardIterator I, typename Pred>
+    constexpr I RemoveIf(I first, I last, Pred pred) {
+        I it = first;
+        while (it != last && !pred(*it)) ++it;
+        if (it == last) return it;
+
+        I result = it;
+        while (++it != last) {
+            if (!pred(*it)) {
+                *result = FoundationKit::Move(*it);
+                ++result;
+            }
+        }
+        return result;
     }
 
     namespace Detail {
@@ -47,7 +137,7 @@ namespace FoundationKit {
 
         // --- Heapsort ---
         template <RandomAccessIterator I, typename Comp>
-        constexpr void SiftDown(I first, isize start, isize end, Comp comp) {
+        constexpr void SiftDown(I first, const isize start, const isize end, Comp comp) {
             isize root = start;
             while (root * 2 + 1 <= end) {
                 isize child = root * 2 + 1;
@@ -62,7 +152,7 @@ namespace FoundationKit {
 
         template <RandomAccessIterator I, typename Comp>
         constexpr void HeapSort(I first, I last, Comp comp) {
-            isize count = last - first;
+            const isize count = last - first;
             for (isize start = (count - 2) / 2; start >= 0; --start) {
                 SiftDown(first, start, count - 1, comp);
             }
@@ -105,7 +195,7 @@ namespace FoundationKit {
     template <RandomAccessIterator I, typename Comp = Less>
     constexpr void Sort(I first, I last, Comp comp = Comp()) {
         if (first == last) return;
-        isize n = last - first;
+        const isize n = last - first;
         i32 depth_limit = 0;
         for (isize i = n; i > 1; i >>= 1) depth_limit++;
         Detail::IntroSortRecursive(first, last, depth_limit * 2, comp);
@@ -147,7 +237,7 @@ namespace FoundationKit {
     template <ForwardIterator I, typename T, typename Comp = Less>
     constexpr bool BinarySearch(I first, I last, const T& value, Comp comp = Comp()) {
         first = LowerBound(first, last, value, comp);
-        return (first != last && !comp(value, *first));
+        return first != last && !comp(value, *first);
     }
 
 } // namespace FoundationKit

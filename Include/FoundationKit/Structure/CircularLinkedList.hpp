@@ -18,13 +18,13 @@ namespace FoundationKit::Structure {
             Node* next;
 
             template <typename... Args>
-            Node(Node* n, Args&&... args)
+            explicit Node(Node* n, Args&&... args)
                 : value(FoundationKit::Forward<Args>(args)...), next(n) {}
         };
 
         class Iterator {
         public:
-            Iterator(Node* node, bool is_end) : m_node(node), m_is_end(is_end) {}
+            Iterator(Node* node, const bool is_end) : m_node(node), m_is_end(is_end) {}
 
             T& operator*() const { return m_node->value; }
             T* operator->() const { return &m_node->value; }
@@ -52,7 +52,7 @@ namespace FoundationKit::Structure {
             bool  m_is_end;
         };
 
-        CircularLinkedList(Alloc allocator = Alloc())
+        explicit CircularLinkedList(Alloc allocator = Alloc())
             : m_allocator(FoundationKit::Move(allocator)), m_last(nullptr), m_size(0) {}
 
         ~CircularLinkedList() { Clear(); }
@@ -96,7 +96,7 @@ namespace FoundationKit::Structure {
 
         template <typename... Args>
         bool PushBack(Args&&... args) {
-            bool ok = PushFront(FoundationKit::Forward<Args>(args)...);
+            const bool ok = PushFront(FoundationKit::Forward<Args>(args)...);
             if (ok) {
                 m_last = m_last->next;
             }

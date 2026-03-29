@@ -366,22 +366,22 @@ namespace FoundationKit::Memory {
     [[nodiscard]] Expected<SharedPtr<T>, MemoryError> TryAllocateShared(Alloc alloc, Args&&... args) noexcept {
         using CB = CombinedControlBlock<T, Alloc>;
         AllocResult res = alloc.Allocate(sizeof(CB), alignof(CB));
-        if (!res) return MemoryError::OutOfMemory;
+        if (!res) return static_cast<Expected<SharedPtr<T>, MemoryError>>(MemoryError::OutOfMemory);
 
         CB* cb = ::new (res.ptr) CB(alloc, Forward<Args>(args)...);
-        return SharedPtr<T>(cb->Get(), cb);
+        return static_cast<Expected<SharedPtr<T>, MemoryError>>(SharedPtr<T>(cb->Get(), cb));
     }
 
     template <typename T, IAllocator Alloc>
     [[nodiscard]] Expected<SharedPtr<T[]>, MemoryError> TryAllocateSharedArray(Alloc alloc, usize count) noexcept {
         auto arr_res = NewArray<T>(alloc, count);
-        if (!arr_res) return MemoryError::OutOfMemory;
+        if (!arr_res) return static_cast<Expected<SharedPtr<T>, MemoryError>>(MemoryError::OutOfMemory);
 
         using CB = SeparateArrayControlBlock<T, Alloc>;
         AllocResult cb_res = alloc.Allocate(sizeof(CB), alignof(CB));
         if (!cb_res) {
             DeleteArray(alloc, arr_res.Value(), count);
-            return MemoryError::OutOfMemory;
+            return static_cast<Expected<SharedPtr<T>, MemoryError>>(MemoryError::OutOfMemory);
         }
 
         CB* cb = ::new (cb_res.ptr) CB(arr_res.Value(), count, alloc);

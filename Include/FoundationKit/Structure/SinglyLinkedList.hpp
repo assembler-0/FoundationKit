@@ -18,7 +18,7 @@ namespace FoundationKit::Structure {
             Node* next;
 
             template <typename... Args>
-            Node(Node* n, Args&&... args)
+            explicit Node(Node* n, Args&&... args)
                 : value(FoundationKit::Forward<Args>(args)...), next(n) {}
         };
 
@@ -49,7 +49,7 @@ namespace FoundationKit::Structure {
             Node* m_node;
         };
 
-        SinglyLinkedList(Alloc allocator = Alloc())
+        explicit SinglyLinkedList(Alloc allocator = Alloc())
             : m_allocator(FoundationKit::Move(allocator)), m_head(nullptr), m_size(0) {}
 
         ~SinglyLinkedList() { Clear(); }

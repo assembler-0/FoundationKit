@@ -125,7 +125,7 @@ namespace FoundationKit {
             return Find(view) != static_cast<usize>(-1);
         }
 
-        [[nodiscard]] usize Find(const StringView view, usize offset = 0) const noexcept {
+        [[nodiscard]] usize Find(const StringView view, const usize offset = 0) const noexcept {
             if (offset + view.Size() > m_size) return static_cast<usize>(-1);
             if (view.Empty()) return offset;
 
@@ -139,9 +139,9 @@ namespace FoundationKit {
         }
 
         [[nodiscard]] Expected<String, Memory::MemoryError> SubStr(usize offset, usize count = static_cast<usize>(-1)) const noexcept {
-            if (offset > m_size) return Memory::MemoryError::InvalidSize;
+            if (offset > m_size) return static_cast<Expected<String, Memory::MemoryError>>(Memory::MemoryError::InvalidSize);
             
-            const usize actual_count = (count == static_cast<usize>(-1) || offset + count > m_size) 
+            const usize actual_count = count == static_cast<usize>(-1) || offset + count > m_size
                                        ? m_size - offset 
                                        : count;
             
@@ -190,7 +190,7 @@ namespace FoundationKit {
             if (next_cap < required) next_cap = required;
 
             const Memory::AllocResult res = m_allocator.Allocate(next_cap + 1, alignof(char));
-            if (!res.ok()) return Memory::MemoryError::OutOfMemory;
+            if (!res.ok()) return Expected<void, Memory::MemoryError>(Memory::MemoryError::OutOfMemory);
 
             auto new_ptr = static_cast<char*>(res.ptr);
             const char* old_ptr = CStr();

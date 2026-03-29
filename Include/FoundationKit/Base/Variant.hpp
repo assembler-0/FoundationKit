@@ -84,8 +84,7 @@ namespace FoundationKit {
             requires (SameAs<Detail::DecayT<T>, Ts> || ...)
         Variant &operator=(T &&value) noexcept {
             using U = Detail::DecayT<T>;
-            constexpr usize idx = Detail::TypeIndex<U, Ts...>::Value;
-            if (m_index == idx) {
+            if (constexpr usize idx = Detail::TypeIndex<U, Ts...>::Value; m_index == idx) {
                 *reinterpret_cast<U *>(&m_storage) = FoundationKit::Forward<T>(value);
             } else {
                 Reset();
@@ -129,7 +128,7 @@ namespace FoundationKit {
         alignas(StorageAlign) byte m_storage[StorageSize];
         usize m_index;
 
-        static void Destroy(usize idx, void *storage) {
+        static void Destroy(const usize idx, void *storage) {
             usize current = 0;
             ([&] {
                 if (current++ == idx) {
@@ -138,7 +137,7 @@ namespace FoundationKit {
             }(), ...);
         }
 
-        static void MoveConstruct(usize idx, void *dest, void *src) {
+        static void MoveConstruct(const usize idx, void *dest, void *src) {
             usize current = 0;
             ([&] {
                 if (current++ == idx) {

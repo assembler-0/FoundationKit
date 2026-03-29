@@ -18,13 +18,13 @@ namespace FoundationKit::Structure {
             Memory::MemoryZero(m_words, sizeof(m_words));
         }
 
-        constexpr void Set(usize pos, bool value = true) noexcept {
+        constexpr void Set(const usize pos, const bool value = true) noexcept {
             if (pos >= N) return;
-            if (value) m_words[pos / WordSize] |= (static_cast<usize>(1) << (pos % WordSize));
+            if (value) m_words[pos / WordSize] |= static_cast<usize>(1) << (pos % WordSize);
             else Reset(pos);
         }
 
-        constexpr void Reset(usize pos) noexcept {
+        constexpr void Reset(const usize pos) noexcept {
             if (pos >= N) return;
             m_words[pos / WordSize] &= ~(static_cast<usize>(1) << (pos % WordSize));
         }
@@ -33,14 +33,14 @@ namespace FoundationKit::Structure {
             Memory::MemoryZero(m_words, sizeof(m_words));
         }
 
-        constexpr void Flip(usize pos) noexcept {
+        constexpr void Flip(const usize pos) noexcept {
             if (pos >= N) return;
-            m_words[pos / WordSize] ^= (static_cast<usize>(1) << (pos % WordSize));
+            m_words[pos / WordSize] ^= static_cast<usize>(1) << (pos % WordSize);
         }
 
-        [[nodiscard]] constexpr bool Test(usize pos) const noexcept {
+        [[nodiscard]] constexpr bool Test(const usize pos) const noexcept {
             if (pos >= N) return false;
-            return (m_words[pos / WordSize] & (static_cast<usize>(1) << (pos % WordSize))) != 0;
+            return (m_words[pos / WordSize] & static_cast<usize>(1) << (pos % WordSize)) != 0;
         }
 
         [[nodiscard]] constexpr bool All() const noexcept {
@@ -73,7 +73,7 @@ namespace FoundationKit::Structure {
             return total;
         }
 
-        [[nodiscard]] constexpr usize Size() const noexcept {
+        [[nodiscard]] static constexpr usize Size() noexcept {
             return N;
         }
 
@@ -104,7 +104,7 @@ namespace FoundationKit::Structure {
         }
 
     private:
-        usize m_words[WordCount];
+        usize m_words[WordCount]{};
     };
 
 } // namespace FoundationKit::Structure

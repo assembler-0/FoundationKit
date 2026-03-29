@@ -1,6 +1,5 @@
 #pragma once
 
-#include <FoundationKit/Base/Types.hpp>
 #include <FoundationKit/Base/Utility.hpp>
 
 namespace FoundationKit {
@@ -13,7 +12,7 @@ namespace FoundationKit {
         using ErrorType = E;
 
         /// @brief Default constructor (empty).
-        constexpr Expected() noexcept requires SameAs<T, void> : _has_value(true) {}
+        constexpr Expected() noexcept requires SameAs<T, void> : _value{}, _has_value(true) {}
 
         /// @brief Construct with value (Copy).
         constexpr Expected(const T& value) noexcept : _value(value), _has_value(true) {}
@@ -82,10 +81,10 @@ namespace FoundationKit {
         constexpr Expected() noexcept : _has_value(true) {}
 
         /// @brief Construct with error (Copy).
-        constexpr Expected(const E& error) noexcept : _error(error), _has_value(false) {}
+        explicit constexpr Expected(const E& error) noexcept : _error(error), _has_value(false) {}
 
         /// @brief Construct with error (Move).
-        constexpr Expected(E&& error) noexcept : _error(FoundationKit::Move(error)), _has_value(false) {}
+        explicit constexpr Expected(E&& error) noexcept : _error(FoundationKit::Move(error)), _has_value(false) {}
 
         ~Expected() noexcept {
             if (!_has_value) _error.~E();

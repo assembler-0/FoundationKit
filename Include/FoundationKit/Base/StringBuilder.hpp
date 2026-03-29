@@ -16,7 +16,7 @@ namespace FoundationKit {
 
             usize i = 0;
             while (value > 0) {
-                buffer[i++] = static_cast<char>('0' + (value % 10));
+                buffer[i++] = static_cast<char>('0' + value % 10);
                 value /= 10;
             }
 
@@ -41,13 +41,13 @@ namespace FoundationKit {
                 // Handle Min() case by using unsigned math
                 u64 uval = static_cast<u64>(-(value + 1)) + 1;
                 while (uval > 0) {
-                    buffer[i++] = static_cast<char>('0' + (uval % 10));
+                    buffer[i++] = static_cast<char>('0' + uval % 10);
                     uval /= 10;
                 }
             } else {
                 u64 uval = static_cast<u64>(value);
                 while (uval > 0) {
-                    buffer[i++] = static_cast<char>('0' + (uval % 10));
+                    buffer[i++] = static_cast<char>('0' + uval % 10);
                     uval /= 10;
                 }
             }
@@ -68,14 +68,15 @@ namespace FoundationKit {
         explicit StringBuilder(Memory::AnyAllocator allocator = Memory::AnyAllocator())
             : m_buffer(Move(allocator)) {}
 
-        StringBuilder& Append(StringView view) {
+        StringBuilder& Append(const StringView view) {
             m_buffer.Append(view);
             return *this;
         }
 
-        StringBuilder& Append(char c) {
-            char buf[2] = {c, '\0'};
+        StringBuilder& Append(const char c) {
+            const char buf[2] = {c, '\0'};
             m_buffer.Append(StringView(buf, 1));
+
             return *this;
         }
 
@@ -90,7 +91,7 @@ namespace FoundationKit {
         }
 
         template <typename... Args>
-        StringBuilder& Format(StringView fmt, Args&&... args) {
+        StringBuilder& Format(const StringView fmt, Args&&... args) {
             usize arg_index = 0;
             const char* data = fmt.Data();
             const usize size = fmt.Size();

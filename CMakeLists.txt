@@ -14,6 +14,7 @@ set(FOUNDATIONKIT_HEADERS
     Include/FoundationKit/Base/Bit.hpp
     Include/FoundationKit/Base/Compiler.hpp
     Include/FoundationKit/Base/Expected.hpp
+    Include/FoundationKit/Base/Hash.hpp
     Include/FoundationKit/Base/NumericLimits.hpp
     Include/FoundationKit/Base/Optional.hpp
     Include/FoundationKit/Base/Pair.hpp
@@ -44,6 +45,7 @@ set(FOUNDATIONKIT_HEADERS
     Include/FoundationKit/Structure/BitSet.hpp
     Include/FoundationKit/Structure/CircularLinkedList.hpp
     Include/FoundationKit/Structure/DoublyLinkedList.hpp
+    Include/FoundationKit/Structure/HashMap.hpp
     Include/FoundationKit/Structure/IntrusiveDoublyLinkedList.hpp
     Include/FoundationKit/Structure/IntrusiveSinglyLinkedList.hpp
     Include/FoundationKit/Structure/SinglyLinkedList.hpp

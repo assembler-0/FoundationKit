@@ -38,12 +38,12 @@ namespace FoundationKit::Memory {
         AnyAllocator() noexcept : m_resource(GetDefaultResource()) {}
 
         /// @brief Explicitly construct with a specific resource or nullptr.
-        constexpr AnyAllocator(nullptr_t) noexcept {}
+        explicit constexpr AnyAllocator(nullptr_t) noexcept {}
         explicit constexpr AnyAllocator(MemoryResource* res) noexcept : m_resource(res) {}
 
         [[nodiscard]] AllocResult Allocate(const usize size, const usize align) const noexcept {
             FK_BUG_ON(!m_resource, "AnyAllocator: attempting to allocate from null resource");
-            return m_resource ? m_resource->Allocate(size, align) : AllocResult::failure();
+            return m_resource->Allocate(size, align);
         }
 
         void Deallocate(void* ptr, const usize size) const noexcept {

@@ -15,6 +15,7 @@
 #include <FoundationKit/Base/Variant.hpp>
 #include <FoundationKit/Base/Bit.hpp>
 #include <FoundationKit/Base/Algorithm.hpp>
+#include <FoundationKit/Base/Hash.hpp>
 
 // Structure components
 #include <FoundationKit/Structure/SinglyLinkedList.hpp>
@@ -23,6 +24,7 @@
 #include <FoundationKit/Structure/IntrusiveSinglyLinkedList.hpp>
 #include <FoundationKit/Structure/IntrusiveDoublyLinkedList.hpp>
 #include <FoundationKit/Structure/BitSet.hpp>
+#include <FoundationKit/Structure/HashMap.hpp>
 
 // Memory components
 #include <FoundationKit/Memory/BumpAllocator.hpp>
@@ -72,7 +74,7 @@ TEST_CASE(Base_Vector) {
     Vector<i32> vec(any_alloc);
     for (i32 i = 0; i < 50; ++i) {
         auto res = vec.PushBack(i * 2);
-        ASSERT_TRUE(res.HasValue());
+        ASSERT_TRUE(res);
     }
     
     ASSERT_EQ(vec.Size(), 50);
@@ -122,8 +124,8 @@ TEST_CASE(Base_Optional_Expected) {
     ASSERT_EQ(*opt_ref, 200);
     
     auto func = [](const bool fail) -> Expected<i32, const char*> {
-        if (fail) return "Error";
-        return 100;
+        if (fail) return Expected<i32, const char *>("Error");
+        return Expected<i32, const char *>(100);
     };
     
     auto res1 = func(false);
@@ -153,7 +155,7 @@ TEST_CASE(Memory_SmartPointers) {
     
     dtor_count = 0;
     {
-        auto res = TryAllocateShared<Guard>(any_alloc);
+        auto res = static_cast<Expected<SharedPtr<Guard>, MemoryError>>(TryAllocateShared<Guard>(any_alloc));
         ASSERT_TRUE(res.HasValue());
         auto sptr1 = Move(res.Value());
         {
@@ -452,4 +454,77 @@ TEST_CASE(Structure_BitSet) {
     bs.Reset();
     ASSERT_TRUE(bs.None());
     ASSERT_EQ(bs.FindFirstUnset(), 0);
+}
+
+TEST_CASE(Base_Algorithm_Manipulation) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+    
+    Vector<i32> vec(any_alloc);
+    vec.PushBack(1);
+    vec.PushBack(2);
+    vec.PushBack(3);
+    vec.PushBack(4);
+    
+    Reverse(vec.begin(), vec.end());
+    ASSERT_EQ(vec[0], 4);
+    ASSERT_EQ(vec[3], 1);
+    
+    Rotate(vec.begin(), vec.begin() + 1, vec.end());
+    // [4,3,2,1] rotate by 1 -> [3,2,1,4]
+    ASSERT_EQ(vec[0], 3);
+    ASSERT_EQ(vec[3], 4);
+    
+    vec.Clear();
+    vec.PushBack(1);
+    vec.PushBack(1);
+    vec.PushBack(2);
+    vec.PushBack(2);
+    vec.PushBack(3);
+    
+    auto it = Unique(vec.begin(), vec.end());
+    ASSERT_EQ(it - vec.begin(), 3);
+    ASSERT_EQ(vec[0], 1);
+    ASSERT_EQ(vec[1], 2);
+    ASSERT_EQ(vec[2], 3);
+    
+    vec.Clear();
+    for (i32 i = 1; i <= 10; ++i) vec.PushBack(i);
+    auto it2 = RemoveIf(vec.begin(), vec.end(), [](i32 x) { return x % 2 == 0; });
+    ASSERT_EQ(it2 - vec.begin(), 5);
+    ASSERT_EQ(vec[0], 1);
+    ASSERT_EQ(vec[1], 3);
+}
+
+TEST_CASE(Base_MinMax_InitializerList) {
+    ASSERT_EQ(Min({5, 2, 9, 1, 7}), 1);
+    ASSERT_EQ(Max({5, 2, 9, 1, 7}), 9);
+    ASSERT_EQ(Clamp(10, 1, 5), 5);
+}
+
+TEST_CASE(Structure_HashMap) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+    
+    HashMap<i32, const char*> map(any_alloc);
+    ASSERT_TRUE(map.Insert(1, "One"));
+    ASSERT_TRUE(map.Insert(2, "Two"));
+    ASSERT_TRUE(map.Insert(100, "Hundred"));
+    
+    auto val1 = map.Get(1);
+    ASSERT_TRUE(val1.HasValue());
+    ASSERT_EQ(StringCompare(*val1, "One"), 0);
+    
+    auto val2 = map.Get(5);
+    ASSERT_FALSE(val2.HasValue());
+    
+    ASSERT_TRUE(map.Remove(2));
+    ASSERT_FALSE(map.Get(2).HasValue());
+    ASSERT_EQ(map.Size(), 2);
+    
+    // Test Rehash
+    for (i32 i = 1000; i < 1050; ++i) {
+        ASSERT_TRUE(map.Insert(i, "Value"));
+    }
+    ASSERT_TRUE(map.Size() > 50);
 }

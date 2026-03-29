@@ -2,51 +2,41 @@
 
 #include <FoundationKit/Base/Types.hpp>
 #include <FoundationKit/Base/Utility.hpp>
-#include <FoundationKit/Base/Optional.hpp>
-#include <FoundationKit/Base/Expected.hpp>
 #include <FoundationKit/Meta/Concepts.hpp>
 #include <FoundationKit/Memory/Allocator.hpp>
 #include <FoundationKit/Memory/AnyAllocator.hpp>
-#include <FoundationKit/Memory/Operations.hpp>
-#include <FoundationKit/Memory/UniquePtr.hpp>
 
 namespace FoundationKit {
 
-    /// @brief A dynamic array container that uses an allocator for memory management.
+    /// @brief A dynamic array that can grow in size.
     /// @tparam T The type of elements.
-    /// @tparam Alloc The allocator type, must satisfy IAllocator.
+    /// @tparam Alloc The allocator to use.
     template <typename T, Memory::IAllocator Alloc = Memory::AnyAllocator>
     class Vector {
     public:
-        using ValueType      = T;
-        using SizeType       = usize;
-        using Reference      = T&;
-        using ConstReference = const T&;
-        using Pointer        = T*;
-        using ConstPointer   = const T*;
-        using Iterator       = T*;
-        using ConstIterator  = const T*;
+        using SizeType = usize;
+        using Iterator = T*;
+        using ConstIterator = const T*;
 
-        /// @brief Construct a vector with a specific allocator.
-        explicit Vector(Alloc allocator) noexcept 
-            : m_allocator(FoundationKit::Move(allocator)), m_size(0), m_capacity(0) {}
+        explicit Vector(Alloc allocator = Alloc())
+            : m_allocator(FoundationKit::Move(allocator)), m_data(nullptr), m_size(0), m_capacity(0) {}
 
-        /// @brief Default constructor using the default AnyAllocator.
-        Vector() noexcept 
-            : m_allocator(), m_size(0), m_capacity(0) {}
-
-        ~Vector() noexcept {
+        ~Vector() {
             Clear();
+            if (m_data) {
+                m_allocator.Deallocate(m_data, m_capacity * sizeof(T));
+            }
         }
 
         Vector(const Vector&) = delete;
         Vector& operator=(const Vector&) = delete;
 
-        Vector(Vector&& other) noexcept 
+        Vector(Vector&& other) noexcept
             : m_allocator(FoundationKit::Move(other.m_allocator)), 
-              m_storage(FoundationKit::Move(other.m_storage)), 
+              m_data(other.m_data), 
               m_size(other.m_size), 
               m_capacity(other.m_capacity) {
+            other.m_data = nullptr;
             other.m_size = 0;
             other.m_capacity = 0;
         }
@@ -54,142 +44,107 @@ namespace FoundationKit {
         Vector& operator=(Vector&& other) noexcept {
             if (this != &other) {
                 Clear();
+                if (m_data) m_allocator.Deallocate(m_data, m_capacity * sizeof(T));
+                
                 m_allocator = FoundationKit::Move(other.m_allocator);
-                m_storage = FoundationKit::Move(other.m_storage);
+                m_data = other.m_data;
                 m_size = other.m_size;
                 m_capacity = other.m_capacity;
+                
+                other.m_data = nullptr;
                 other.m_size = 0;
                 other.m_capacity = 0;
             }
             return *this;
         }
 
-        Expected<void, Memory::MemoryError> PushBack(const T& value) noexcept {
-            if (auto res = EnsureCapacity(m_size + 1); !res) return res;
-            
-            FoundationKit::ConstructAt<T>(Data() + m_size, value);
-            m_size++;
-            return {};
-        }
-
         template <typename... Args>
-        Expected<void, Memory::MemoryError> EmplaceBack(Args&&... args) noexcept {
-            if (auto res = EnsureCapacity(m_size + 1); !res) return res;
-
-            FoundationKit::ConstructAt<T>(Data() + m_size, FoundationKit::Forward<Args>(args)...);
+        bool PushBack(Args&&... args) {
+            if (m_size == m_capacity) {
+                if (!Reserve(m_capacity == 0 ? 8 : m_capacity * 2)) return false;
+            }
+            FoundationKit::ConstructAt<T>(&m_data[m_size], FoundationKit::Forward<Args>(args)...);
             m_size++;
-            return {};
+            return true;
         }
 
-        void PopBack() noexcept {
+        void PopBack() {
             if (m_size > 0) {
                 m_size--;
-                Data()[m_size].~T();
+                m_data[m_size].~T();
             }
         }
 
-        void Clear() noexcept {
-            for (usize i = 0; i < m_size; ++i) {
-                Data()[i].~T();
+        bool Reserve(SizeType new_capacity) {
+            if (new_capacity <= m_capacity) return true;
+
+            auto res = m_allocator.Allocate(new_capacity * sizeof(T), alignof(T));
+            if (!res.ok()) return false;
+
+            T* new_data = static_cast<T*>(res.ptr);
+            for (SizeType i = 0; i < m_size; ++i) {
+                FoundationKit::ConstructAt<T>(&new_data[i], FoundationKit::Move(m_data[i]));
+                m_data[i].~T();
+            }
+
+            if (m_data) {
+                m_allocator.Deallocate(m_data, m_capacity * sizeof(T));
+            }
+
+            m_data = new_data;
+            m_capacity = new_capacity;
+            return true;
+        }
+
+        bool Resize(SizeType new_size) {
+            if (new_size < m_size) {
+                for (SizeType i = new_size; i < m_size; ++i) {
+                    m_data[i].~T();
+                }
+                m_size = new_size;
+                return true;
+            }
+
+            if (new_size > m_capacity) {
+                if (!Reserve(new_size)) return false;
+            }
+
+            for (SizeType i = m_size; i < new_size; ++i) {
+                FoundationKit::ConstructAt<T>(&m_data[i]);
+            }
+            m_size = new_size;
+            return true;
+        }
+
+        void Clear() {
+            for (SizeType i = 0; i < m_size; ++i) {
+                m_data[i].~T();
             }
             m_size = 0;
         }
 
-        Expected<void, Memory::MemoryError> Reserve(const SizeType new_capacity) noexcept {
-            if (new_capacity <= m_capacity) return {};
+        [[nodiscard]] T& operator[](SizeType index) { return m_data[index]; }
+        [[nodiscard]] const T& operator[](SizeType index) const { return m_data[index]; }
 
-            const usize bytes = new_capacity * sizeof(T);
-            Memory::AllocResult result = m_allocator.Allocate(bytes, alignof(T));
-            if (!result.ok()) return Expected<void, Memory::MemoryError>(Memory::MemoryError::OutOfMemory);
+        [[nodiscard]] T& Front() { return m_data[0]; }
+        [[nodiscard]] const T& Front() const { return m_data[0]; }
+        [[nodiscard]] T& Back() { return m_data[m_size - 1]; }
+        [[nodiscard]] const T& Back() const { return m_data[m_size - 1]; }
 
-            T* new_ptr = static_cast<T*>(result.ptr);
-            T* old_ptr = Data();
-            
-            if constexpr (TriviallyCopyable<T>) {
-                Memory::MemoryCopy(new_ptr, old_ptr, m_size * sizeof(T));
-            } else {
-                for (usize i = 0; i < m_size; ++i) {
-                    FoundationKit::ConstructAt<T>(new_ptr + i, FoundationKit::Move(old_ptr[i]));
-                    old_ptr[i].~T();
-                }
-            }
+        [[nodiscard]] SizeType Size() const { return m_size; }
+        [[nodiscard]] SizeType Capacity() const { return m_capacity; }
+        [[nodiscard]] bool Empty() const { return m_size == 0; }
 
-            m_storage = Memory::UniquePtr<u8[]>(reinterpret_cast<u8*>(new_ptr), bytes, Memory::AnyAllocator(m_allocator));
-            m_capacity = new_capacity;
-            
-            return {};
-        }
-
-        [[nodiscard]] Optional<Reference> At(SizeType index) noexcept {
-            if (index >= m_size) return NullOpt;
-            return Data()[index];
-        }
-
-        [[nodiscard]] Optional<ConstReference> At(SizeType index) const noexcept {
-            if (index >= m_size) return NullOpt;
-            return Data()[index];
-        }
-
-        [[nodiscard]] Reference operator[](SizeType index) noexcept { 
-            FK_BUG_ON(index >= m_size, "Vector: index out of bounds");
-            return Data()[index]; 
-        }
-        
-        [[nodiscard]] ConstReference operator[](SizeType index) const noexcept { 
-            FK_BUG_ON(index >= m_size, "Vector: index out of bounds");
-            return Data()[index]; 
-        }
-
-        [[nodiscard]] Reference Front() noexcept { 
-            FK_BUG_ON(m_size == 0, "Vector: calling Front() on empty vector");
-            return Data()[0]; 
-        }
-        
-        [[nodiscard]] ConstReference Front() const noexcept { 
-            FK_BUG_ON(m_size == 0, "Vector: calling Front() on empty vector");
-            return Data()[0]; 
-        }
-
-        [[nodiscard]] Reference Back() noexcept { 
-            FK_BUG_ON(m_size == 0, "Vector: calling Back() on empty vector");
-            return Data()[m_size - 1]; 
-        }
-        
-        [[nodiscard]] ConstReference Back() const noexcept { 
-            FK_BUG_ON(m_size == 0, "Vector: calling Back() on empty vector");
-            return Data()[m_size - 1]; 
-        }
-
-        [[nodiscard]] Pointer Data() noexcept { return reinterpret_cast<T*>(m_storage.Get()); }
-        [[nodiscard]] ConstPointer Data() const noexcept { return reinterpret_cast<const T*>(m_storage.Get()); }
-
-        [[nodiscard]] Iterator Begin() noexcept { return Data(); }
-        [[nodiscard]] ConstIterator Begin() const noexcept { return Data(); }
-
-        [[nodiscard]] Iterator End() noexcept { return Data() + m_size; }
-        [[nodiscard]] ConstIterator End() const noexcept { return Data() + m_size; }
-
-        [[nodiscard]] Iterator begin() noexcept { return Begin(); }
-        [[nodiscard]] ConstIterator begin() const noexcept { return Begin(); }
-        [[nodiscard]] Iterator end() noexcept { return End(); }
-        [[nodiscard]] ConstIterator end() const noexcept { return End(); }
-
-        [[nodiscard]] SizeType Size() const noexcept { return m_size; }
-        [[nodiscard]] SizeType Capacity() const noexcept { return m_capacity; }
-        [[nodiscard]] bool Empty() const noexcept { return m_size == 0; }
+        Iterator begin() { return m_data; }
+        Iterator end() { return m_data + m_size; }
+        ConstIterator begin() const { return m_data; }
+        ConstIterator end() const { return m_data + m_size; }
 
     private:
-        Expected<void, Memory::MemoryError> EnsureCapacity(const SizeType required) noexcept {
-            if (required <= m_capacity) return {};
-            SizeType next_capacity = m_capacity == 0 ? 8 : m_capacity * 2;
-            while (next_capacity < required) next_capacity *= 2;
-            return Reserve(next_capacity);
-        }
-
-        Alloc        m_allocator;
-        Memory::UniquePtr<u8[]> m_storage;
-        usize        m_size;
-        usize        m_capacity;
+        Alloc    m_allocator;
+        T*       m_data;
+        SizeType m_size;
+        SizeType m_capacity;
     };
 
 } // namespace FoundationKit

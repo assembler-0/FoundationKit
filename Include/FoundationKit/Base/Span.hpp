@@ -54,22 +54,22 @@ namespace FoundationKit {
         [[nodiscard]] constexpr Iterator begin() const noexcept { return m_data; }
         [[nodiscard]] constexpr Iterator end() const noexcept { return m_data + m_size; }
 
-        [[nodiscard]] constexpr Span<T> SubSpan(SizeType offset, SizeType count = static_cast<usize>(-1)) const noexcept {
+        [[nodiscard]] constexpr Span SubSpan(SizeType offset, SizeType count = static_cast<usize>(-1)) const noexcept {
             FK_BUG_ON(offset > m_size, "Span: offset out of bounds");
             const SizeType actual_count = (count == static_cast<usize>(-1) || offset + count > m_size) 
                                           ? m_size - offset 
                                           : count;
-            return Span<T>(m_data + offset, actual_count);
+            return Span(m_data + offset, actual_count);
         }
 
-        [[nodiscard]] constexpr Span<T> First(SizeType count) const noexcept {
+        [[nodiscard]] constexpr Span First(SizeType count) const noexcept {
             FK_BUG_ON(count > m_size, "Span: count out of bounds");
-            return Span<T>(m_data, count);
+            return Span(m_data, count);
         }
 
-        [[nodiscard]] constexpr Span<T> Last(SizeType count) const noexcept {
+        [[nodiscard]] constexpr Span Last(SizeType count) const noexcept {
             FK_BUG_ON(count > m_size, "Span: count out of bounds");
-            return Span<T>(m_data + (m_size - count), count);
+            return Span(m_data + (m_size - count), count);
         }
 
     private:

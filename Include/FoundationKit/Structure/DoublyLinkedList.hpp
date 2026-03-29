@@ -61,7 +61,7 @@ namespace FoundationKit::Structure {
             Node* m_node;
         };
 
-        DoublyLinkedList(Alloc allocator = Alloc())
+        explicit DoublyLinkedList(Alloc allocator = Alloc())
             : m_allocator(FoundationKit::Move(allocator)), m_head(nullptr), m_tail(nullptr), m_size(0) {}
 
         ~DoublyLinkedList() { Clear(); }

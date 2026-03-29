@@ -60,8 +60,8 @@
 #endif
 
 #define FOUNDATIONKIT_GLOBAL
-#define __FOUNDATIONKIT_STR(x)         #x
-#define FOUNDATIONKIT_STR(x)           __FOUNDATIONKIT_STR(x)
+#define FOUNDATIONKIT_STR_(x)         #x
+#define FOUNDATIONKIT_STR(x)           FOUNDATIONKIT_STR_(x)
 
 /// @brief Asserts that a condition is true, otherwise triggers a fatal OSL bug.
 #define FK_BUG_ON(condition, msg)                                                               \

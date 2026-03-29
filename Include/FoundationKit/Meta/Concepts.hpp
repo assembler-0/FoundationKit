@@ -14,7 +14,7 @@ namespace FoundationKit {
     };
 
     template <typename T>
-    using Unqualified = typename RemoveCvRef<T>::Type;
+    using Unqualified = RemoveCvRef<T>::Type;
 
     template <typename From, typename To>
     concept ConvertibleTo = __is_convertible_to(From, To);

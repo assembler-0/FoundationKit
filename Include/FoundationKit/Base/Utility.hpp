@@ -51,3 +51,36 @@ namespace FoundationKit {
     }
 
 } // namespace FoundationKit
+
+/// @brief Support for initializer lists in freestanding.
+namespace std {
+    template <class T>
+    class initializer_list {
+    public:
+        using value_type      = T;
+        using reference       = const T&;
+        using const_reference = const T&;
+        using size_type       = FoundationKit::usize;
+        using iterator        = const T*;
+        using const_iterator  = const T*;
+
+        constexpr initializer_list() noexcept : m_begin(nullptr), m_size(0) {}
+
+        constexpr size_type size()  const noexcept { return m_size; }
+        constexpr iterator  begin() const noexcept { return m_begin; }
+        constexpr iterator  end()   const noexcept { return m_begin + m_size; }
+
+    private:
+        // Compiler expects these exact member names and layout for {} to work.
+        iterator  m_begin;
+        size_type m_size;
+
+        constexpr initializer_list(iterator begin, size_type size) noexcept
+            : m_begin(begin), m_size(size) {}
+    };
+}
+
+namespace FoundationKit {
+    template <typename T>
+    using InitializerList = std::initializer_list<T>;
+}
