@@ -3,9 +3,15 @@
 #include <ostream>
 #include <print>
 
-void fk_panic(const char* msg) {
-    std::print("{}", msg);
-    exit(1);
+extern "C" {
+    void FoundationKitOslBug(const char* msg) {
+        std::print("{}", msg);
+        exit(1);
+    }
+    bool FoundationKitOslIsCpuFeaturesEnabled() { return true; }
+    void FoundationKitOslLog(const char* msg) {
+        std::print("{}", msg);
+    }
 }
 
 int main() {

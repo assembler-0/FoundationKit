@@ -3,6 +3,7 @@
 #include <FoundationKit/Memory/Allocator.hpp>
 #include <FoundationKit/Memory/BumpAllocator.hpp>
 #include <FoundationKit/Base/Utility.hpp>
+#include <FoundationKit/Osl/Osl.hpp>
 
 namespace FoundationKit::Memory {
 
@@ -43,9 +44,7 @@ namespace FoundationKit::Memory {
             const u8* tail = user_ptr + size;
 
             for (usize i = 0; i < CanarySize; ++i) {
-                if (head[i] != 0xDE || tail[i] != 0xAD) {
-                    FOUNDATIONKIT_PANIC("head[i] != 0xDE || tail[i] != 0xAD");
-                }
+                FK_BUG_ON(head[i] != 0xDE || tail[i] != 0xAD, "Memory corruption detected: canary mismatch");
             }
 
             Underlying::Deallocate(head, size + CanarySize * 2);

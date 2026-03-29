@@ -61,4 +61,17 @@
 
 #define __FOUNDATIONKIT_STR(x)         #x
 #define FOUNDATIONKIT_STR(x)           __FOUNDATIONKIT_STR(x)
-#define FOUNDATIONKIT_PANIC(m)         fk_panic("FoundationKit: " m __FILE_NAME__ ":" FOUNDATIONKIT_STR(__LINE__))
+
+namespace FoundationKit::Osl {
+    extern "C" [[noreturn]] void FoundationKitOslBug(const char* msg);
+}
+
+/// @brief Asserts that a condition is true, otherwise triggers a fatal OSL bug.
+#define FK_BUG_ON(condition, msg)                                                               \
+    do {                                                                                        \
+        if (!!(condition)) [[unlikely]] {                                                       \
+            ::FoundationKit::Osl::FoundationKitOslBug("FK Bug: " msg " (" #condition ") at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__)); \
+        }                                                                                       \
+    } while (0)
+
+#define FOUNDATIONKIT_PANIC(m)         ::FoundationKit::Osl::FoundationKitOslBug("FK Panic: " m " at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__))

@@ -2,7 +2,6 @@
 
 #include <FoundationKit/Base/Types.hpp>
 #include <FoundationKit/Base/Utility.hpp>
-#include <FoundationKit/Base/Optional.hpp>
 
 namespace FoundationKit {
 
@@ -40,12 +39,12 @@ namespace FoundationKit {
         [[nodiscard]] constexpr explicit operator bool() const noexcept { return _has_value; }
 
         [[nodiscard]] constexpr T& Value() & noexcept {
-            if (!_has_value) FOUNDATIONKIT_PANIC("!_has_value");
+            FK_BUG_ON(!_has_value, "Expected: access to value while error is present");
             return _value;
         }
 
         [[nodiscard]] constexpr const T& Value() const& noexcept {
-            if (!_has_value) FOUNDATIONKIT_PANIC("!_has_value");
+            FK_BUG_ON(!_has_value, "Expected: access to value while error is present");
             return _value;
         }
 
@@ -56,12 +55,12 @@ namespace FoundationKit {
         [[nodiscard]] constexpr const T& operator*() const& noexcept { return Value(); }
 
         [[nodiscard]] constexpr E& Error() & noexcept {
-            if (_has_value) FOUNDATIONKIT_PANIC("_has_value");
+            FK_BUG_ON(_has_value, "Expected: access to error while value is present");
             return _error;
         }
 
         [[nodiscard]] constexpr const E& Error() const& noexcept {
-            if (_has_value) FOUNDATIONKIT_PANIC("_has_value");
+            FK_BUG_ON(_has_value, "Expected: access to error while value is present");
             return _error;
         }
 
@@ -96,16 +95,16 @@ namespace FoundationKit {
         [[nodiscard]] constexpr explicit operator bool() const noexcept { return _has_value; }
 
         constexpr void Value() const noexcept {
-            if (!_has_value) FOUNDATIONKIT_PANIC("!_has_value");
+            FK_BUG_ON(!_has_value, "Expected<void>: access to value while error is present");
         }
 
         [[nodiscard]] constexpr E& Error() & noexcept {
-            if (_has_value) FOUNDATIONKIT_PANIC("_has_value");
+            FK_BUG_ON(_has_value, "Expected<void>: access to error while value is present");
             return _error;
         }
 
         [[nodiscard]] constexpr const E& Error() const& noexcept {
-            if (_has_value) FOUNDATIONKIT_PANIC("_has_value");
+            FK_BUG_ON(_has_value, "Expected<void>: access to error while value is present");
             return _error;
         }
 
