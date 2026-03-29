@@ -59,19 +59,14 @@
 #  define FOUNDATIONKIT_DIAG_IGNORE(x) /* Handle MSVC warnings separately */
 #endif
 
+#define FOUNDATIONKIT_GLOBAL
 #define __FOUNDATIONKIT_STR(x)         #x
 #define FOUNDATIONKIT_STR(x)           __FOUNDATIONKIT_STR(x)
-
-namespace FoundationKit::Osl {
-    extern "C" [[noreturn]] void FoundationKitOslBug(const char* msg);
-}
 
 /// @brief Asserts that a condition is true, otherwise triggers a fatal OSL bug.
 #define FK_BUG_ON(condition, msg)                                                               \
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKit::Osl::FoundationKitOslBug("FK Bug: " msg " (" #condition ") at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__)); \
+            ::FoundationKit::Osl::FoundationKitOslBug("FoundationKit (bug): " msg " (" #condition ") at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__)); \
         }                                                                                       \
     } while (0)
-
-#define FOUNDATIONKIT_PANIC(m)         ::FoundationKit::Osl::FoundationKitOslBug("FK Panic: " m " at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__))

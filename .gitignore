@@ -1,3 +1,4 @@
 .p/
-*build*
+cmake-build*
 .idea
+build/

@@ -56,8 +56,17 @@ namespace FoundationKit::Memory {
         }
 
         [[nodiscard]] T* Get() const noexcept { return m_ptr; }
-        [[nodiscard]] T& operator*()  const noexcept { return *m_ptr; }
-        [[nodiscard]] T* operator->() const noexcept { return m_ptr; }
+        
+        [[nodiscard]] T& operator*() const noexcept { 
+            FK_BUG_ON(!m_ptr, "UniquePtr: dereferencing null pointer");
+            return *m_ptr; 
+        }
+        
+        [[nodiscard]] T* operator->() const noexcept { 
+            FK_BUG_ON(!m_ptr, "UniquePtr: access via null pointer");
+            return m_ptr; 
+        }
+        
         [[nodiscard]] explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
         [[nodiscard]] const Alloc& GetAllocator() const noexcept { return m_alloc; }
@@ -121,7 +130,13 @@ namespace FoundationKit::Memory {
         }
 
         [[nodiscard]] T* Get() const noexcept { return m_ptr; }
-        [[nodiscard]] T& operator[](usize index) const noexcept { return m_ptr[index]; }
+        
+        [[nodiscard]] T& operator[](usize index) const noexcept { 
+            FK_BUG_ON(!m_ptr, "UniquePtr[]: access via null pointer");
+            FK_BUG_ON(index >= m_count, "UniquePtr[]: index out of bounds");
+            return m_ptr[index]; 
+        }
+        
         [[nodiscard]] explicit operator bool() const noexcept { return m_ptr != nullptr; }
         [[nodiscard]] usize Size() const noexcept { return m_count; }
 

@@ -25,7 +25,10 @@ namespace FoundationKit {
         [[nodiscard]] constexpr SizeType Size() const noexcept { return m_size; }
         [[nodiscard]] constexpr bool Empty() const noexcept { return m_size == 0; }
 
-        [[nodiscard]] constexpr char operator[](const SizeType index) const noexcept { return m_data[index]; }
+        [[nodiscard]] constexpr char operator[](const SizeType index) const noexcept {
+            FK_BUG_ON(index >= m_size, "StringView: index out of bounds");
+            return m_data[index];
+        }
 
         [[nodiscard]] constexpr const char* Begin() const noexcept { return m_data; }
         [[nodiscard]] constexpr const char* End() const noexcept { return m_data + m_size; }

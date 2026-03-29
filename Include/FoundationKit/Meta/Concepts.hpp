@@ -7,6 +7,15 @@ namespace FoundationKit {
     template <typename T, typename U>
     concept SameAs = __is_same(T, U);
 
+    /// @brief Remove const, volatile, and reference qualifiers.
+    template <typename T>
+    struct RemoveCvRef {
+        using Type = __remove_cvref(T);
+    };
+
+    template <typename T>
+    using Unqualified = typename RemoveCvRef<T>::Type;
+
     template <typename From, typename To>
     concept ConvertibleTo = __is_convertible_to(From, To);
 
@@ -49,9 +58,6 @@ namespace FoundationKit {
     template <typename T> concept Const          = __is_const(T);
     template <typename T> concept Volatile       = __is_volatile(T);
     template <typename T> concept ConstVolatile  = Const<T> && Volatile<T>;
-
-    template <typename T>
-    concept Unqualified = !Const<T> && !Volatile<T> && !Reference<T>;
 
     template <typename T>
     concept ObjectType = !Reference<T> && !Void<T> && !__is_function(T);

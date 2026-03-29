@@ -42,11 +42,16 @@ namespace FoundationKit::Memory {
         explicit constexpr AnyAllocator(MemoryResource* res) noexcept : m_resource(res) {}
 
         [[nodiscard]] AllocResult Allocate(const usize size, const usize align) const noexcept {
+            FK_BUG_ON(!m_resource, "AnyAllocator: attempting to allocate from null resource");
             return m_resource ? m_resource->Allocate(size, align) : AllocResult::failure();
         }
 
         void Deallocate(void* ptr, const usize size) const noexcept {
-            if (m_resource) m_resource->Deallocate(ptr, size);
+            if (m_resource) {
+                m_resource->Deallocate(ptr, size);
+            } else {
+                FK_BUG_ON(ptr != nullptr, "AnyAllocator: attempting to deallocate non-null pointer from null resource");
+            }
         }
 
         [[nodiscard]] bool Owns(void* ptr) const noexcept {

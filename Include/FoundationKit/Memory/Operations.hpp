@@ -8,7 +8,16 @@ namespace FoundationKit::Memory {
     /// @brief Copy memory from 'src' to 'dest'.
     /// @note Does not handle overlapping buffers. Use MemoryMove if buffers overlap.
     FOUNDATIONKIT_ALWAYS_INLINE void* MemoryCopy(void* dest, const void* src, usize size) noexcept {
-        if (!dest || !src || size == 0) return dest;
+        if (size == 0) return dest;
+        FK_BUG_ON(!dest || !src, "MemoryCopy: null pointer provided with non-zero size");
+        
+        if (dest && src) {
+            const auto d = reinterpret_cast<uptr>(dest);
+            const auto s = reinterpret_cast<uptr>(src);
+            FK_BUG_ON((d < s + size) && (s < d + size), "MemoryCopy: overlapping buffers detected");
+        }
+
+        if (!dest || !src) return dest;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {
@@ -25,7 +34,9 @@ namespace FoundationKit::Memory {
 
     /// @brief Move memory from 'src' to 'dest', handling overlaps.
     FOUNDATIONKIT_ALWAYS_INLINE void* MemoryMove(void* dest, const void* src, usize size) noexcept {
-        if (!dest || !src || size == 0) return dest;
+        if (size == 0) return dest;
+        FK_BUG_ON(!dest || !src, "MemoryMove: null pointer provided with non-zero size");
+        if (!dest || !src) return dest;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {
@@ -48,7 +59,9 @@ namespace FoundationKit::Memory {
 
     /// @brief Set memory in 'dest' to 'value'.
     FOUNDATIONKIT_ALWAYS_INLINE void* MemorySet(void* dest, byte value, usize size) noexcept {
-        if (!dest || size == 0) return dest;
+        if (size == 0) return dest;
+        FK_BUG_ON(!dest, "MemorySet: null pointer provided with non-zero size");
+        if (!dest) return dest;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {
@@ -65,7 +78,9 @@ namespace FoundationKit::Memory {
     /// @brief Compare memory between 'lhs' and 'rhs'.
     /// @return Negative if lhs < rhs, positive if lhs > rhs, zero if equal.
     FOUNDATIONKIT_ALWAYS_INLINE i32 MemoryCompare(const void* lhs, const void* rhs, usize size) noexcept {
-        if (!lhs || !rhs || size == 0) return 0;
+        if (size == 0) return 0;
+        FK_BUG_ON(!lhs || !rhs, "MemoryCompare: null pointer provided with non-zero size");
+        if (!lhs || !rhs) return 0;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {

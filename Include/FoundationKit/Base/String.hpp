@@ -111,6 +111,74 @@ namespace FoundationKit {
             return {CStr(), m_size};
         }
 
+        [[nodiscard]] bool StartsWith(const StringView view) const noexcept {
+            if (view.Size() > m_size) return false;
+            return Memory::MemoryCompare(CStr(), view.Data(), view.Size()) == 0;
+        }
+
+        [[nodiscard]] bool EndsWith(const StringView view) const noexcept {
+            if (view.Size() > m_size) return false;
+            return Memory::MemoryCompare(CStr() + (m_size - view.Size()), view.Data(), view.Size()) == 0;
+        }
+
+        [[nodiscard]] bool Contains(const StringView view) const noexcept {
+            return Find(view) != static_cast<usize>(-1);
+        }
+
+        [[nodiscard]] usize Find(const StringView view, usize offset = 0) const noexcept {
+            if (offset + view.Size() > m_size) return static_cast<usize>(-1);
+            if (view.Empty()) return offset;
+
+            const char* buffer = CStr();
+            for (usize i = offset; i <= m_size - view.Size(); ++i) {
+                if (Memory::MemoryCompare(buffer + i, view.Data(), view.Size()) == 0) {
+                    return i;
+                }
+            }
+            return static_cast<usize>(-1);
+        }
+
+        [[nodiscard]] Expected<String, Memory::MemoryError> SubStr(usize offset, usize count = static_cast<usize>(-1)) const noexcept {
+            if (offset > m_size) return Memory::MemoryError::InvalidSize;
+            
+            const usize actual_count = (count == static_cast<usize>(-1) || offset + count > m_size) 
+                                       ? m_size - offset 
+                                       : count;
+            
+            String result(m_allocator);
+            if (auto res = result.Append(StringView(CStr() + offset, actual_count)); !res) return res.Error();
+            return result;
+        }
+
+        void Trim() noexcept {
+            if (m_size == 0) return;
+
+            const char* buffer = CStr();
+            usize start = 0;
+            while (start < m_size && (buffer[start] == ' ' || buffer[start] == '\t' || buffer[start] == '\n' || buffer[start] == '\r')) {
+                start++;
+            }
+
+            if (start == m_size) {
+                Clear();
+                return;
+            }
+
+            usize end = m_size - 1;
+            while (end > start && (buffer[end] == ' ' || buffer[end] == '\t' || buffer[end] == '\n' || buffer[end] == '\r')) {
+                end--;
+            }
+
+            const usize new_size = end - start + 1;
+            if (start > 0) {
+                Memory::MemoryMove(m_is_heap ? m_data.heap.Get() : m_data.sso, buffer + start, new_size);
+            }
+            
+            m_size = new_size;
+            char* write_buffer = m_is_heap ? m_data.heap.Get() : m_data.sso;
+            write_buffer[m_size] = '\0';
+        }
+
     private:
         Expected<void, Memory::MemoryError> EnsureCapacity(const SizeType required) noexcept {
             if (required <= SsoCapacity && !m_is_heap) return {};

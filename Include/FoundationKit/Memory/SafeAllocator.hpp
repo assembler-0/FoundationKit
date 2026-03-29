@@ -19,7 +19,13 @@ namespace FoundationKit::Memory {
         explicit constexpr SafeAllocator(A&& alloc) noexcept : A(FoundationKit::Move(alloc)) {}
 
         [[nodiscard]] AllocResult Allocate(const usize size, usize align) noexcept {
+            FK_BUG_ON(align == 0 || (align & (align - 1)) != 0, "SafeAllocator: alignment must be a power of two");
+            
             usize total_size = size + CanarySize * 2;
+            
+            // Paranoid check for overflow in total_size calculation
+            FK_BUG_ON(total_size < size, "SafeAllocator: total size calculation overflow");
+            
             const AllocResult res = Underlying::Allocate(total_size, align);
             
             if (!res) return res;
@@ -43,6 +49,9 @@ namespace FoundationKit::Memory {
             u8* head = user_ptr - CanarySize;
             const u8* tail = user_ptr + size;
 
+            // Check if pointer is aligned correctly before proceeding
+            FK_BUG_ON(reinterpret_cast<uptr>(ptr) < CanarySize, "SafeAllocator: invalid pointer (underflow risk)");
+
             for (usize i = 0; i < CanarySize; ++i) {
                 FK_BUG_ON(head[i] != 0xDE || tail[i] != 0xAD, "Memory corruption detected: canary mismatch");
             }
@@ -52,6 +61,7 @@ namespace FoundationKit::Memory {
 
         [[nodiscard]] constexpr bool Owns(void* ptr) const noexcept {
             if (!ptr) return false;
+            if (reinterpret_cast<uptr>(ptr) < CanarySize) return false;
             return Underlying::Owns(static_cast<u8*>(ptr) - CanarySize);
         }
     };

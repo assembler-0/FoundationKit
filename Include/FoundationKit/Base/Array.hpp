@@ -37,11 +37,13 @@ namespace FoundationKit {
 
         /// @brief Unsafe access operator.
         [[nodiscard]] constexpr Reference operator[](SizeType index) noexcept {
+            FK_BUG_ON(index >= N, "FixedArray: index out of bounds");
             return DataBuffer[index];
         }
 
         /// @brief Unsafe access operator (const).
         [[nodiscard]] constexpr ConstReference operator[](SizeType index) const noexcept {
+            FK_BUG_ON(index >= N, "FixedArray: index out of bounds");
             return DataBuffer[index];
         }
 

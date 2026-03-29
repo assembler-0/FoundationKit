@@ -59,6 +59,7 @@ namespace FoundationKit::Memory {
     template <typename T, IAllocator Alloc, typename... Args>
     [[nodiscard]]
     Optional<T*> New(Alloc& alloc, Args&&... args) noexcept {
+        FK_BUG_ON(sizeof(T) == 0, "Memory: attempting to allocate 0 bytes for type");
         AllocResult r = alloc.Allocate(sizeof(T), alignof(T));
         if (!r) return NullOpt;
         
@@ -70,6 +71,7 @@ namespace FoundationKit::Memory {
     template <typename T, IAllocator Alloc, typename... Args>
     [[nodiscard]]
     Expected<T*, MemoryError> TryNew(Alloc& alloc, Args&&... args) noexcept {
+        FK_BUG_ON(sizeof(T) == 0, "Memory: attempting to allocate 0 bytes for type");
         AllocResult r = alloc.Allocate(sizeof(T), alignof(T));
         if (!r) return MemoryError::OutOfMemory;
         
@@ -87,6 +89,7 @@ namespace FoundationKit::Memory {
     template <typename T, IAllocator Alloc>
     [[nodiscard]]
     Optional<T*> NewArray(Alloc& alloc, const usize count) noexcept {
+        FK_BUG_ON(count == 0, "Memory: attempting to allocate array with 0 count");
         AllocResult r = alloc.Allocate(sizeof(T) * count, alignof(T));
         if (!r) return NullOpt;
         
@@ -99,6 +102,7 @@ namespace FoundationKit::Memory {
     template <typename T, IAllocator Alloc>
     void DeleteArray(Alloc& alloc, T* ptr, const usize count) noexcept {
         if (!ptr) return;
+        FK_BUG_ON(count == 0 && ptr != nullptr, "Memory: attempting to delete array with 0 count");
         for (usize i = count; i-- > 0;)
             ptr[i].~T();
         alloc.Deallocate(ptr, sizeof(T) * count);

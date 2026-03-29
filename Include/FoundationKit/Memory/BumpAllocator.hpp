@@ -10,12 +10,20 @@ namespace FoundationKit::Memory {
         constexpr BumpAllocator() noexcept = default;
         
         constexpr BumpAllocator(void* start, const usize size) noexcept
-            : m_start(static_cast<u8*>(start)), m_current(m_start), m_end(m_start + size) {}
+            : m_start(static_cast<u8*>(start)), m_current(m_start), m_end(m_start + size) {
+            FK_BUG_ON(start == nullptr && size > 0, "BumpAllocator: null start with non-zero size");
+        }
 
         [[nodiscard]] AllocResult Allocate(const usize size, const usize align) noexcept {
-            const uptr current_ptr = reinterpret_cast<uptr>(m_current);
-            const uptr aligned_ptr = current_ptr + align - 1 & ~(static_cast<uptr>(align) - 1);
+            FK_BUG_ON(align == 0 || (align & (align - 1)) != 0, "BumpAllocator: alignment must be a power of two");
             
+            const uptr current_ptr = reinterpret_cast<uptr>(m_current);
+            const uptr aligned_ptr = (current_ptr + align - 1) & ~(static_cast<uptr>(align) - 1);
+            
+            // Paranoid check for overflow in aligned_ptr + size
+            FK_BUG_ON(aligned_ptr < current_ptr, "BumpAllocator: alignment overflow");
+            FK_BUG_ON(aligned_ptr + size < aligned_ptr, "BumpAllocator: allocation size overflow");
+
             if (aligned_ptr + size > reinterpret_cast<uptr>(m_end)) {
                 return AllocResult::failure();
             }

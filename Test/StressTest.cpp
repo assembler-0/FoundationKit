@@ -5,24 +5,46 @@
 #include <FoundationKit/Base/Vector.hpp>
 #include <FoundationKit/Base/String.hpp>
 #include <FoundationKit/Base/StringView.hpp>
+#include <FoundationKit/Base/StringBuilder.hpp>
 #include <FoundationKit/Base/Optional.hpp>
 #include <FoundationKit/Base/Expected.hpp>
 #include <FoundationKit/Base/Utility.hpp>
 #include <FoundationKit/Base/NumericLimits.hpp>
+#include <FoundationKit/Base/Pair.hpp>
+#include <FoundationKit/Base/Span.hpp>
+#include <FoundationKit/Base/Variant.hpp>
+
+// Structure components
+#include <FoundationKit/Structure/SinglyLinkedList.hpp>
+#include <FoundationKit/Structure/DoublyLinkedList.hpp>
+#include <FoundationKit/Structure/CircularLinkedList.hpp>
+#include <FoundationKit/Structure/IntrusiveSinglyLinkedList.hpp>
+#include <FoundationKit/Structure/IntrusiveDoublyLinkedList.hpp>
 
 // Memory components
 #include <FoundationKit/Memory/BumpAllocator.hpp>
 #include <FoundationKit/Memory/AnyAllocator.hpp>
 #include <FoundationKit/Memory/UniquePtr.hpp>
 #include <FoundationKit/Memory/SharedPtr.hpp>
+#include <FoundationKit/Memory/PoolAllocator.hpp>
 
 using namespace FoundationKit;
 using namespace FoundationKit::Memory;
+using namespace FoundationKit::Structure;
 
 // Global test allocator
 static byte g_test_buffer[128 * 1024]; // 128KB should be enough
 static BumpAllocator g_test_alloc(g_test_buffer, sizeof(g_test_buffer));
 static ConcreteResource g_test_resource(g_test_alloc);
+
+// Forward declare for Variant test
+struct Complex {
+    static i32 dtor_called;
+    i32 val;
+    Complex(i32 v) : val(v) {}
+    ~Complex() { dtor_called++; }
+};
+i32 Complex::dtor_called = 0;
 
 TEST_CASE(Base_FixedArray) {
     FixedArray arr = {10, 20, 30, 40, 50};
@@ -168,4 +190,201 @@ TEST_CASE(Memory_Allocators) {
     
     g_test_alloc.DeallocateAll();
     ASSERT_EQ(g_test_alloc.Remaining(), sizeof(g_test_buffer));
+}
+
+TEST_CASE(Base_StringBuilder) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+    
+    StringBuilder sb(any_alloc);
+    sb.Append("Answer: ").Append(42).Append(", Hex: ").Append("deadbeef");
+    auto str = Move(sb).Build();
+    ASSERT_EQ(StringCompare(StringView(str), "Answer: 42, Hex: deadbeef"), 0);
+
+    StringBuilder sb2(any_alloc);
+    sb2.Format("User: {}, ID: {}, Score: {}", "Assembler", 1337, 99);
+    auto str2 = Move(sb2).Build();
+    ASSERT_EQ(StringCompare(StringView(str2), "User: Assembler, ID: 1337, Score: 99"), 0);
+
+    // Test with signed/unsigned/negative
+    StringBuilder sb3(any_alloc);
+    sb3.Format("Values: {}, {}, {}", -123, 0, 456789);
+    ASSERT_EQ(StringCompare(sb3.View(), "Values: -123, 0, 456789"), 0);
+}
+
+TEST_CASE(Base_StringOps) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+
+    String str(any_alloc);
+    str.Append("  Hello FoundationKit  ");
+    
+    ASSERT_TRUE(str.Contains("Foundation"));
+    ASSERT_TRUE(str.StartsWith("  Hello"));
+    ASSERT_TRUE(str.EndsWith("Kit  "));
+    
+    str.Trim();
+    ASSERT_EQ(StringCompare(StringView(str), "Hello FoundationKit"), 0);
+    ASSERT_EQ(str.Size(), 19);
+
+    auto res_sub = str.SubStr(6, 10);
+    ASSERT_TRUE(res_sub.HasValue());
+    ASSERT_EQ(StringCompare(StringView(res_sub.Value()), "Foundation"), 0);
+
+    ASSERT_EQ(str.Find("Kit"), 16);
+    ASSERT_EQ(str.Find("Missing"), static_cast<usize>(-1));
+}
+
+TEST_CASE(Base_PairSpan) {
+    Pair<i32, const char*> p1(1, "One");
+    ASSERT_EQ(p1.first, 1);
+    ASSERT_EQ(StringCompare(p1.second, "One"), 0);
+
+    auto p2 = MakePair(10.5f, true);
+    ASSERT_EQ(p2.first, 10.5f);
+    ASSERT_TRUE(p2.second);
+
+    i32 raw_arr[] = {1, 2, 3, 4, 5};
+    Span<i32> span(raw_arr);
+    ASSERT_EQ(span.Size(), 5);
+    ASSERT_EQ(span[2], 3);
+    
+    auto sub = span.SubSpan(1, 3);
+    ASSERT_EQ(sub.Size(), 3);
+    ASSERT_EQ(sub[0], 2);
+    ASSERT_EQ(sub[2], 4);
+}
+
+TEST_CASE(Base_Variant) {
+    Variant<i32, f32, const char*> v;
+    ASSERT_FALSE(v.IsValid());
+
+    v = 42;
+    ASSERT_TRUE(v.Is<i32>());
+    ASSERT_EQ(*v.GetIf<i32>(), 42);
+
+    v = 3.14f;
+    ASSERT_TRUE(v.Is<f32>());
+    ASSERT_EQ(*v.GetIf<f32>(), 3.14f);
+
+    v = "Hello";
+    ASSERT_TRUE(v.Is<const char*>());
+    ASSERT_EQ(StringCompare(*v.GetIf<const char*>(), "Hello"), 0);
+
+    Complex::dtor_called = 0;
+    {
+        Variant<i32, Complex> v2 = Complex(10);
+        ASSERT_TRUE(v2.Is<Complex>());
+        v2 = 20; // Should trigger Complex dtor
+    }
+    ASSERT_EQ(Complex::dtor_called, 2); // 1 for temp in assignment, 1 for Reset when assigning 20
+}
+
+TEST_CASE(Memory_PoolAllocator) {
+    byte pool_buffer[1024];
+    PoolAllocator<64, 8> pool;
+    pool.Initialize(pool_buffer, sizeof(pool_buffer));
+
+    auto res1 = pool.Allocate(64, 8);
+    ASSERT_TRUE(res1.ok());
+    ASSERT_TRUE(pool.Owns(res1.ptr));
+
+    auto res2 = pool.Allocate(64, 8);
+    ASSERT_TRUE(res2.ok());
+    ASSERT_NE(res1.ptr, res2.ptr);
+
+    pool.Deallocate(res1.ptr, 64);
+    auto res3 = pool.Allocate(64, 8);
+    ASSERT_EQ(res3.ptr, res1.ptr); // Should reuse
+
+    // Exhaust pool
+    for (int i = 0; i < 14; ++i) { // 1024 / 64 = 16. Already have 2 (one reused).
+        pool.Allocate(64, 8);
+    }
+    auto res_fail = pool.Allocate(64, 8);
+    ASSERT_FALSE(res_fail.ok());
+}
+
+TEST_CASE(Structure_SinglyLinkedList) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+    
+    SinglyLinkedList<i32> list(any_alloc);
+    for (i32 i = 0; i < 10; ++i) {
+        ASSERT_TRUE(list.PushFront(i));
+    }
+    ASSERT_EQ(list.Size(), 10);
+    ASSERT_EQ(list.Front(), 9);
+    
+    i32 val = 9;
+    for (auto& item : list) {
+        ASSERT_EQ(item, val--);
+    }
+    
+    list.PopFront();
+    ASSERT_EQ(list.Size(), 9);
+    ASSERT_EQ(list.Front(), 8);
+}
+
+TEST_CASE(Structure_DoublyLinkedList) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+    
+    DoublyLinkedList<i32> list(any_alloc);
+    for (i32 i = 0; i < 5; ++i) {
+        ASSERT_TRUE(list.PushBack(i));
+    }
+    ASSERT_EQ(list.Size(), 5);
+    ASSERT_EQ(list.Front(), 0);
+    ASSERT_EQ(list.Back(), 4);
+    
+    list.PopBack();
+    ASSERT_EQ(list.Size(), 4);
+    ASSERT_EQ(list.Back(), 3);
+}
+
+TEST_CASE(Structure_CircularLinkedList) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc(&g_test_resource);
+    
+    CircularLinkedList<i32> list(any_alloc);
+    list.PushBack(1);
+    list.PushBack(2);
+    list.PushBack(3);
+    
+    ASSERT_EQ(list.Size(), 3);
+    ASSERT_EQ(list.Front(), 1);
+    ASSERT_EQ(list.Back(), 3);
+    
+    list.Rotate();
+    ASSERT_EQ(list.Front(), 2);
+    ASSERT_EQ(list.Back(), 1);
+}
+
+TEST_CASE(Structure_IntrusiveDoublyLinkedList) {
+    struct Item {
+        IntrusiveDoublyLinkedListNode link;
+        i32 value;
+        Item(i32 v) : value(v) {}
+    };
+    
+    IntrusiveDoublyLinkedList list;
+    Item i1(1), i2(2), i3(3);
+    
+    list.PushBack(&i1.link);
+    list.PushBack(&i2.link);
+    list.PushBack(&i3.link);
+    
+    ASSERT_EQ(list.Size(), 3);
+    
+    auto* node = list.Begin();
+    auto* item = ContainerOf<Item, &Item::link>(node);
+    ASSERT_EQ(item->value, 1);
+    
+    list.Remove(&i2.link);
+    ASSERT_EQ(list.Size(), 2);
+    
+    node = node->next;
+    item = ContainerOf<Item, &Item::link>(node);
+    ASSERT_EQ(item->value, 3);
 }

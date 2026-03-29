@@ -1,0 +1,84 @@
+#pragma once
+
+#include <FoundationKit/Base/Types.hpp>
+#include <FoundationKit/Meta/Concepts.hpp>
+
+namespace FoundationKit {
+
+    /// @brief A non-owning view over a contiguous sequence of objects.
+    /// @tparam T Type of the elements in the span.
+    template <typename T>
+    class Span {
+    public:
+        using ElementType     = T;
+        using ValueType       = Unqualified<T>;
+        using SizeType        = usize;
+        using Pointer         = T*;
+        using ConstPointer    = const T*;
+        using Reference       = T&;
+        using ConstReference  = const T&;
+        using Iterator        = T*;
+        using ConstIterator   = const T*;
+
+        constexpr Span() noexcept : m_data(nullptr), m_size(0) {}
+
+        constexpr Span(Pointer ptr, SizeType count) noexcept
+            : m_data(ptr), m_size(count) {}
+
+        constexpr Span(Pointer first, Pointer last) noexcept
+            : m_data(first), m_size(static_cast<SizeType>(last - first)) {}
+
+        template <usize N>
+        constexpr Span(T (&arr)[N]) noexcept
+            : m_data(arr), m_size(N) {}
+
+        [[nodiscard]] constexpr Pointer Data() const noexcept { return m_data; }
+        [[nodiscard]] constexpr SizeType Size() const noexcept { return m_size; }
+        [[nodiscard]] constexpr bool Empty() const noexcept { return m_size == 0; }
+
+        [[nodiscard]] constexpr Reference operator[](SizeType index) const noexcept {
+            FK_BUG_ON(index >= m_size, "Span: index out of bounds");
+            return m_data[index];
+        }
+
+        [[nodiscard]] constexpr Reference Front() const noexcept {
+            FK_BUG_ON(m_size == 0, "Span: front() called on empty span");
+            return m_data[0];
+        }
+
+        [[nodiscard]] constexpr Reference Back() const noexcept {
+            FK_BUG_ON(m_size == 0, "Span: back() called on empty span");
+            return m_data[m_size - 1];
+        }
+
+        [[nodiscard]] constexpr Iterator begin() const noexcept { return m_data; }
+        [[nodiscard]] constexpr Iterator end() const noexcept { return m_data + m_size; }
+
+        [[nodiscard]] constexpr Span<T> SubSpan(SizeType offset, SizeType count = static_cast<usize>(-1)) const noexcept {
+            FK_BUG_ON(offset > m_size, "Span: offset out of bounds");
+            const SizeType actual_count = (count == static_cast<usize>(-1) || offset + count > m_size) 
+                                          ? m_size - offset 
+                                          : count;
+            return Span<T>(m_data + offset, actual_count);
+        }
+
+        [[nodiscard]] constexpr Span<T> First(SizeType count) const noexcept {
+            FK_BUG_ON(count > m_size, "Span: count out of bounds");
+            return Span<T>(m_data, count);
+        }
+
+        [[nodiscard]] constexpr Span<T> Last(SizeType count) const noexcept {
+            FK_BUG_ON(count > m_size, "Span: count out of bounds");
+            return Span<T>(m_data + (m_size - count), count);
+        }
+
+    private:
+        Pointer  m_data;
+        SizeType m_size;
+    };
+
+    /// @brief Deduction guide for Span from arrays.
+    template <typename T, usize N>
+    Span(T (&)[N]) -> Span<T>;
+
+} // namespace FoundationKit

@@ -130,14 +130,35 @@ namespace FoundationKit {
             return Data()[index];
         }
 
-        [[nodiscard]] Reference operator[](SizeType index) noexcept { return Data()[index]; }
-        [[nodiscard]] ConstReference operator[](SizeType index) const noexcept { return Data()[index]; }
+        [[nodiscard]] Reference operator[](SizeType index) noexcept { 
+            FK_BUG_ON(index >= m_size, "Vector: index out of bounds");
+            return Data()[index]; 
+        }
+        
+        [[nodiscard]] ConstReference operator[](SizeType index) const noexcept { 
+            FK_BUG_ON(index >= m_size, "Vector: index out of bounds");
+            return Data()[index]; 
+        }
 
-        [[nodiscard]] Reference Front() noexcept { return Data()[0]; }
-        [[nodiscard]] ConstReference Front() const noexcept { return Data()[0]; }
+        [[nodiscard]] Reference Front() noexcept { 
+            FK_BUG_ON(m_size == 0, "Vector: calling Front() on empty vector");
+            return Data()[0]; 
+        }
+        
+        [[nodiscard]] ConstReference Front() const noexcept { 
+            FK_BUG_ON(m_size == 0, "Vector: calling Front() on empty vector");
+            return Data()[0]; 
+        }
 
-        [[nodiscard]] Reference Back() noexcept { return Data()[m_size - 1]; }
-        [[nodiscard]] ConstReference Back() const noexcept { return Data()[m_size - 1]; }
+        [[nodiscard]] Reference Back() noexcept { 
+            FK_BUG_ON(m_size == 0, "Vector: calling Back() on empty vector");
+            return Data()[m_size - 1]; 
+        }
+        
+        [[nodiscard]] ConstReference Back() const noexcept { 
+            FK_BUG_ON(m_size == 0, "Vector: calling Back() on empty vector");
+            return Data()[m_size - 1]; 
+        }
 
         [[nodiscard]] Pointer Data() noexcept { return reinterpret_cast<T*>(m_storage.Get()); }
         [[nodiscard]] ConstPointer Data() const noexcept { return reinterpret_cast<const T*>(m_storage.Get()); }

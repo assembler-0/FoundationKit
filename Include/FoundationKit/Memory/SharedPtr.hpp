@@ -157,8 +157,17 @@ namespace FoundationKit::Memory {
         }
 
         [[nodiscard]] T* Get() const noexcept { return m_ptr; }
-        [[nodiscard]] T& operator*()  const noexcept { return *m_ptr; }
-        [[nodiscard]] T* operator->() const noexcept { return m_ptr; }
+        
+        [[nodiscard]] T& operator*() const noexcept { 
+            FK_BUG_ON(!m_ptr, "SharedPtr: dereferencing null pointer");
+            return *m_ptr; 
+        }
+        
+        [[nodiscard]] T* operator->() const noexcept { 
+            FK_BUG_ON(!m_ptr, "SharedPtr: access via null pointer");
+            return m_ptr; 
+        }
+        
         [[nodiscard]] explicit operator bool() const noexcept { return m_ptr != nullptr; }
         [[nodiscard]] usize UseCount() const noexcept { return m_control ? m_control->use_count : 0; }
 
@@ -323,7 +332,12 @@ namespace FoundationKit::Memory {
         }
 
         [[nodiscard]] T* Get() const noexcept { return m_ptr; }
-        [[nodiscard]] T& operator[](usize index) const noexcept { return m_ptr[index]; }
+        
+        [[nodiscard]] T& operator[](usize index) const noexcept { 
+            FK_BUG_ON(!m_ptr, "SharedPtr[]: access via null pointer");
+            return m_ptr[index]; 
+        }
+        
         [[nodiscard]] explicit operator bool() const noexcept { return m_ptr != nullptr; }
         [[nodiscard]] usize UseCount() const noexcept { return m_control ? m_control->use_count : 0; }
 
