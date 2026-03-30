@@ -1,5 +1,7 @@
 #pragma once
 
+#include <FoundationKit/Base/CompilerBuiltins.hpp>
+
 /// @section basic compiler, platform width detection
 
 #if !defined(FOUNDATIONKIT_COMPILER_GCC)   && \
@@ -37,9 +39,9 @@
 #  define FOUNDATIONKIT_NEVER_INLINE   __attribute__((noinline))
 #  define FOUNDATIONKIT_PACKED         __attribute__((packed))
 #  define FOUNDATIONKIT_NORETURN       __attribute__((noreturn))
-#  define FOUNDATIONKIT_LIKELY(x)      __builtin_expect(!!(x), 1)
-#  define FOUNDATIONKIT_UNLIKELY(x)    __builtin_expect(!!(x), 0)
-#  define FOUNDATIONKIT_UNREACHABLE()  __builtin_unreachable()
+#  define FOUNDATIONKIT_LIKELY(x)      ::FoundationKit::Base::CompilerBuiltins::Expect(!!(x), true)
+#  define FOUNDATIONKIT_UNLIKELY(x)    ::FoundationKit::Base::CompilerBuiltins::Expect(!!(x), false)
+#  define FOUNDATIONKIT_UNREACHABLE()  ::FoundationKit::Base::CompilerBuiltins::Unreachable()
 
 #  define FOUNDATIONKIT_DIAG_PUSH      _Pragma("GCC diagnostic push")
 #  define FOUNDATIONKIT_DIAG_POP       _Pragma("GCC diagnostic pop")
@@ -60,7 +62,7 @@
 #endif
 
 #define FOUNDATIONKIT_GLOBAL
-#define FOUNDATIONKIT_STR_(x)         #x
+#define FOUNDATIONKIT_STR_(x)          #x
 #define FOUNDATIONKIT_STR(x)           FOUNDATIONKIT_STR_(x)
 
 /// @brief Asserts that a condition is true, otherwise triggers a fatal OSL bug.
@@ -68,5 +70,13 @@
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
             ::FoundationKit::Osl::FoundationKitOslBug("FoundationKit (bug): " msg " (" #condition ") at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__)); \
+        }                                                                                       \
+    } while (0)
+
+/// @brief Asserts that a condition is true, otherwise warns host OS.
+#define FK_WARN_ON(condition, msg)                                                              \
+    do {                                                                                        \
+        if (!!(condition)) [[unlikely]] {                                                       \
+            ::FoundationKit::Osl::FoundationKitOslLog("FoundationKit (warn): " msg " (" #condition ") at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__)); \
         }                                                                                       \
     } while (0)

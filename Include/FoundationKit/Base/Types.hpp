@@ -59,7 +59,7 @@ namespace FoundationKit {
     }
 
 #define FOUNDATIONKIT_OFFSET_OF(Type, member) \
-    (static_cast<FoundationKit::usize>(__builtin_offsetof(Type, member)))
+    (static_cast<FoundationKit::usize>(FOUNDATIONKIT_BUILTIN_OFFSET_OF(Type, member)))
 
 } // namespace FoundationKit
 

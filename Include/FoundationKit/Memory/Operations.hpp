@@ -11,24 +11,22 @@ namespace FoundationKit::Memory {
         if (size == 0) return dest;
         FK_BUG_ON(!dest || !src, "MemoryCopy: null pointer provided with non-zero size");
         
-        if (dest && src) {
+        if (src) {
             const auto d = reinterpret_cast<uptr>(dest);
             const auto s = reinterpret_cast<uptr>(src);
-            FK_BUG_ON((d < s + size) && (s < d + size), "MemoryCopy: overlapping buffers detected");
+            FK_BUG_ON(d < s + size && s < d + size, "MemoryCopy: overlapping buffers detected");
         }
-
-        if (!dest || !src) return dest;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {
-            __builtin_memcpy(dest, src, size);
+            Base::CompilerBuiltins::MemCpy(dest, src, size);
             return dest;
         }
 #endif
 
         auto* d = static_cast<byte*>(dest);
         const auto* s = static_cast<const byte*>(src);
-        while (size--) *d++ = *s++;
+        while (size-- && s) *d++ = *s++;
         return dest;
     }
 
@@ -36,18 +34,17 @@ namespace FoundationKit::Memory {
     FOUNDATIONKIT_ALWAYS_INLINE void* MemoryMove(void* dest, const void* src, usize size) noexcept {
         if (size == 0) return dest;
         FK_BUG_ON(!dest || !src, "MemoryMove: null pointer provided with non-zero size");
-        if (!dest || !src) return dest;
+        if (!src) return dest;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {
-            __builtin_memmove(dest, src, size);
+            Base::CompilerBuiltins::MemMove(dest, src, size);
             return dest;
         }
 #endif
 
         auto* d = static_cast<byte*>(dest);
-        const auto* s = static_cast<const byte*>(src);
-        if (d < s) {
+        if (const auto* s = static_cast<const byte*>(src); d < s) {
             while (size--) *d++ = *s++;
         } else if (d > s) {
             d += size;
@@ -58,14 +55,13 @@ namespace FoundationKit::Memory {
     }
 
     /// @brief Set memory in 'dest' to 'value'.
-    FOUNDATIONKIT_ALWAYS_INLINE void* MemorySet(void* dest, byte value, usize size) noexcept {
+    FOUNDATIONKIT_ALWAYS_INLINE void* MemorySet(void* dest, const byte value, usize size) noexcept {
         if (size == 0) return dest;
         FK_BUG_ON(!dest, "MemorySet: null pointer provided with non-zero size");
-        if (!dest) return dest;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {
-            __builtin_memset(dest, value, size);
+            Base::CompilerBuiltins::MemSet(dest, value, size);
             return dest;
         }
 #endif
@@ -80,11 +76,10 @@ namespace FoundationKit::Memory {
     FOUNDATIONKIT_ALWAYS_INLINE i32 MemoryCompare(const void* lhs, const void* rhs, usize size) noexcept {
         if (size == 0) return 0;
         FK_BUG_ON(!lhs || !rhs, "MemoryCompare: null pointer provided with non-zero size");
-        if (!lhs || !rhs) return 0;
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
         if (Osl::FoundationKitOslIsCpuFeaturesEnabled()) {
-            return __builtin_memcmp(lhs, rhs, size);
+            return Base::CompilerBuiltins::MemCmp(lhs, rhs, size);
         }
 #endif
 
@@ -98,7 +93,7 @@ namespace FoundationKit::Memory {
     }
 
     /// @brief Zero out memory in 'dest'.
-    FOUNDATIONKIT_ALWAYS_INLINE void* MemoryZero(void* dest, usize size) noexcept {
+    FOUNDATIONKIT_ALWAYS_INLINE void* MemoryZero(void* dest, const usize size) noexcept {
         return MemorySet(dest, 0, size);
     }
 

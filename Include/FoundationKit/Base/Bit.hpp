@@ -8,7 +8,7 @@ namespace FoundationKit {
     template<typename To, typename From>
         requires (sizeof(To) == sizeof(From) && TriviallyCopyable<To> && TriviallyCopyable<From>)
     [[nodiscard]] constexpr To BitCast(const From &from) noexcept {
-        return __builtin_bit_cast(To, from);
+        return Base::CompilerBuiltins::BitCast<To, From>(from);
     }
 
     /// @brief Count number of consecutive zero bits starting from most significant bit.
@@ -16,27 +16,27 @@ namespace FoundationKit {
     [[nodiscard]] constexpr i32 CountLeadingZeros(T value) noexcept {
         if (value == 0) return static_cast<i32>(sizeof(T) * 8);
         if constexpr (sizeof(T) <= sizeof(unsigned int)) return
-                __builtin_clz(static_cast<unsigned int>(value)) -
+                Base::CompilerBuiltins::CountLeadingZeros(static_cast<unsigned int>(value)) -
                     static_cast<i32>(sizeof(unsigned int) - sizeof(T)) * 8;
-        else if constexpr (sizeof(T) == sizeof(unsigned long)) return __builtin_clzl(value);
-        else return __builtin_clzll(value);
+        else if constexpr (sizeof(T) == sizeof(unsigned long)) return Base::CompilerBuiltins::CountLeadingZerosL(value);
+        else return Base::CompilerBuiltins::CountLeadingZerosLL(value);
     }
 
     /// @brief Count number of consecutive zero bits starting from least significant bit.
     template<Unsigned T>
     [[nodiscard]] constexpr i32 CountTrailingZeros(T value) noexcept {
         if (value == 0) return static_cast<i32>(sizeof(T) * 8);
-        if constexpr (sizeof(T) <= sizeof(unsigned int)) return __builtin_ctz(static_cast<unsigned int>(value));
-        else if constexpr (sizeof(T) == sizeof(unsigned long)) return __builtin_ctzl(value);
-        else return __builtin_ctzll(value);
+        if constexpr (sizeof(T) <= sizeof(unsigned int)) return Base::CompilerBuiltins::CountTrailingZeros(static_cast<unsigned int>(value));
+        else if constexpr (sizeof(T) == sizeof(unsigned long)) return Base::CompilerBuiltins::CountTrailingZerosL(value);
+        else return Base::CompilerBuiltins::CountTrailingZerosLL(value);
     }
 
     /// @brief Count the number of set bits (population count).
     template<Unsigned T>
     [[nodiscard]] constexpr i32 PopCount(T value) noexcept {
-        if constexpr (sizeof(T) <= sizeof(unsigned int)) return __builtin_popcount(static_cast<unsigned int>(value));
-        else if constexpr (sizeof(T) == sizeof(unsigned long)) return __builtin_popcountl(value);
-        else return __builtin_popcountll(value);
+        if constexpr (sizeof(T) <= sizeof(unsigned int)) return Base::CompilerBuiltins::PopCount(static_cast<unsigned int>(value));
+        else if constexpr (sizeof(T) == sizeof(unsigned long)) return Base::CompilerBuiltins::PopCountL(value);
+        else return Base::CompilerBuiltins::PopCountLL(value);
     }
 
     /// @brief Check if value is a power of two.
