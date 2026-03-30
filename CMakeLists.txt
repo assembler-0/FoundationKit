@@ -3,7 +3,7 @@ project(FoundationKit CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 
-option(FOUNDATIONKIT_MACHINE_WIDTH "Machine width size" 64)
+set(FOUNDATIONKIT_MACHINE_WIDTH 64 CACHE STRING "Machine width size (32 or 64)")
 option(FOUNDATIONKIT_USE_NAMESPACE "Inject namespace into global scope" ON)
 option(FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW "Provide global operator new/delete overloads" ON)
 option(FOUNDATIONKIT_BUILD_TESTS "Build test executable" ON)
@@ -42,6 +42,7 @@ set(FOUNDATIONKIT_HEADERS
     Include/FoundationKit/Memory/UniquePtr.hpp
     Include/FoundationKit/Meta/Concepts.hpp
     Include/FoundationKit/Osl/Osl.hpp
+    Include/FoundationKit/Std/initializer_list
     Include/FoundationKit/Structure/BitSet.hpp
     Include/FoundationKit/Structure/CircularLinkedList.hpp
     Include/FoundationKit/Structure/DoublyLinkedList.hpp
@@ -68,9 +69,10 @@ if(FOUNDATIONKIT_IMPLEMENT_GLOBAL_NEW)
 endif()
 
 target_compile_options(FoundationKit INTERFACE
-    -fno-rtti
-    -fno-exceptions
-    -Wall -Wextra -Wpedantic
+        -fno-rtti
+        -fno-exceptions
+        -fno-builtin
+        -Wall -Wextra -Wpedantic
 )
 
 if(FOUNDATIONKIT_BUILD_TESTS)
@@ -80,4 +82,10 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/StressTest.cpp
     )
     target_link_libraries(FoundationKitTester PRIVATE FoundationKit)
+
+    # Freestanding test binary (verification of redefinition resistance and placement)
+    add_executable(FoundationKitFreestandingTest Test/FreestandingTest.cpp)
+    target_link_libraries(FoundationKitFreestandingTest PRIVATE FoundationKit)
+    target_compile_options(FoundationKitFreestandingTest PRIVATE -ffreestanding -fno-stack-protector)
+    target_compile_definitions(FoundationKitFreestandingTest PRIVATE FOUNDATIONKIT_FREESTANDING)
 endif()

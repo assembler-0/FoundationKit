@@ -15,13 +15,11 @@
 #include <FoundationKit/Base/Variant.hpp>
 #include <FoundationKit/Base/Bit.hpp>
 #include <FoundationKit/Base/Algorithm.hpp>
-#include <FoundationKit/Base/Hash.hpp>
 
 // Structure components
 #include <FoundationKit/Structure/SinglyLinkedList.hpp>
 #include <FoundationKit/Structure/DoublyLinkedList.hpp>
 #include <FoundationKit/Structure/CircularLinkedList.hpp>
-#include <FoundationKit/Structure/IntrusiveSinglyLinkedList.hpp>
 #include <FoundationKit/Structure/IntrusiveDoublyLinkedList.hpp>
 #include <FoundationKit/Structure/BitSet.hpp>
 #include <FoundationKit/Structure/HashMap.hpp>
@@ -373,7 +371,7 @@ TEST_CASE(Structure_IntrusiveDoublyLinkedList) {
         Item(i32 v) : value(v) {}
     };
     
-    IntrusiveDoublyLinkedList list;
+    FoundationKit::Structure::IntrusiveDoublyLinkedList list;
     Item i1(1), i2(2), i3(3);
     
     list.PushBack(&i1.link);
