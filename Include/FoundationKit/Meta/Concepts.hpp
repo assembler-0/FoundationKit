@@ -166,6 +166,9 @@ namespace FoundationKit {
     template <typename F, typename T>
     concept Relation = Predicate<F, T, T>;
 
+    template <typename T>
+    T&& DeclVal() noexcept;
+
     template <typename I>
     concept Iterator = requires(I it) {
         { *it };
@@ -173,11 +176,22 @@ namespace FoundationKit {
     };
 
     template <typename I>
-    concept ForwardIterator = Iterator<I> &&
+    using IterValue = Unqualified<decltype(*DeclVal<I>())>;
+
+    template <typename I>
+    concept InputIterator = Iterator<I> && EqualityComparable<I>;
+
+    template <typename I, typename T>
+    concept OutputIterator = Iterator<I> && requires(I it, T&& val) {
+        { *it = static_cast<T&&>(val) };
+    };
+
+    template <typename I>
+    concept ForwardIterator = InputIterator<I> &&
         DefaultConstructible<I> &&
-        EqualityComparable<I> &&
         requires(I it) {
             { it++ } -> SameAs<I>;
+            { *it++ };
         };
 
     template <typename I>
@@ -208,6 +222,21 @@ namespace FoundationKit {
         { r.begin() } -> ForwardIterator;
         { r.end()   } -> SameAs<decltype(r.begin())>;
     };
+
+    template <typename T>
+    struct MakeUnsigned;
+
+    template <> struct MakeUnsigned<i8>   { using Type = u8; };
+    template <> struct MakeUnsigned<u8>   { using Type = u8; };
+    template <> struct MakeUnsigned<i16>  { using Type = u16; };
+    template <> struct MakeUnsigned<u16>  { using Type = u16; };
+    template <> struct MakeUnsigned<i32>  { using Type = u32; };
+    template <> struct MakeUnsigned<u32>  { using Type = u32; };
+    template <> struct MakeUnsigned<i64>  { using Type = u64; };
+    template <> struct MakeUnsigned<u64>  { using Type = u64; };
+
+    template <typename T>
+    using MakeUnsignedT = typename MakeUnsigned<T>::Type;
 
     template <typename T, usize N>
     concept FitsInBytes = sizeof(T) <= N;

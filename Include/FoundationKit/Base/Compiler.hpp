@@ -69,7 +69,7 @@
 #define FK_BUG_ON(condition, msg)                                                               \
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKit::Osl::FoundationKitOslBug("FoundationKit (bug): " msg " (" #condition ") at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__)); \
+            ::FoundationKit::Osl::FoundationKitOslBug("FoundationKit (bug): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKIT_STR(__LINE__)); \
         }                                                                                       \
     } while (0)
 
@@ -77,6 +77,6 @@
 #define FK_WARN_ON(condition, msg)                                                              \
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKit::Osl::FoundationKitOslLog("FoundationKit (warn): " msg " (" #condition ") at " __FILE__ ":" FOUNDATIONKIT_STR(__LINE__)); \
+            ::FoundationKit::Osl::FoundationKitOslLog("FoundationKit (warn): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKIT_STR(__LINE__)); \
         }                                                                                       \
     } while (0)

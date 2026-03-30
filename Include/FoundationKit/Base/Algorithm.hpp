@@ -14,9 +14,107 @@ namespace FoundationKit {
         }
     };
 
+    struct Plus {
+        template <typename T, typename U>
+        constexpr auto operator()(const T& lhs, const U& rhs) const {
+            return lhs + rhs;
+        }
+    };
+
+    template <InputIterator I, typename T>
+    constexpr I Find(I first, I last, const T& value) {
+        for (; first != last; ++first) {
+            if (*first == value) return first;
+        }
+        return last;
+    }
+
+    template <InputIterator I, typename Pred>
+    constexpr I FindIf(I first, I last, Pred pred) {
+        for (; first != last; ++first) {
+            if (pred(*first)) return first;
+        }
+        return last;
+    }
+
+    template <InputIterator I, typename Pred>
+    constexpr bool AllOf(I first, I last, Pred pred) {
+        for (; first != last; ++first) {
+            if (!pred(*first)) return false;
+        }
+        return true;
+    }
+
+    template <InputIterator I, typename Pred>
+    constexpr bool AnyOf(I first, I last, Pred pred) {
+        return FindIf(first, last, pred) != last;
+    }
+
+    template <InputIterator I, typename Pred>
+    constexpr bool NoneOf(I first, I last, Pred pred) {
+        return FindIf(first, last, pred) == last;
+    }
+
+    template <InputIterator I, typename Func>
+    constexpr Func ForEach(I first, I last, Func f) {
+        for (; first != last; ++first) f(*first);
+        return f;
+    }
+
+    template <InputIterator I, typename O, typename Func>
+    requires OutputIterator<O, IterValue<I>>
+    constexpr O Transform(I first, I last, O result, Func f) {
+        for (; first != last; ++first, (void)++result) {
+            *result = f(*first);
+        }
+        return result;
+    }
+
+    template <InputIterator I, typename T, typename BinaryOp = Plus>
+    constexpr T Accumulate(I first, I last, T init, BinaryOp op = BinaryOp()) {
+        for (; first != last; ++first) {
+            init = op(init, *first);
+        }
+        return init;
+    }
+
+    template <InputIterator I, typename O>
+    requires OutputIterator<O, IterValue<I>>
+    constexpr O Copy(I first, I last, O result) {
+        for (; first != last; ++first, (void)++result) {
+            *result = *first;
+        }
+        return result;
+    }
+
+    template <ForwardIterator I, typename T>
+    constexpr void Fill(I first, I last, const T& value) {
+        for (; first != last; ++first) {
+            *first = value;
+        }
+    }
+
+    template <InputIterator I, typename T>
+    constexpr isize Count(I first, I last, const T& value) {
+        isize n = 0;
+        for (; first != last; ++first) {
+            if (*first == value) ++n;
+        }
+        return n;
+    }
+
+    template <InputIterator I, typename Pred>
+    constexpr isize CountIf(I first, I last, Pred pred) {
+        isize n = 0;
+        for (; first != last; ++first) {
+            if (pred(*first)) ++n;
+        }
+        return n;
+    }
+
     template <typename T>
     constexpr const T& Min(const T& a, const T& b) {
-        return a < b ? a : b;
+    return a < b ? a : b;
     }
 
     template <typename T>

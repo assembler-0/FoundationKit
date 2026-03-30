@@ -12,8 +12,10 @@ set(FOUNDATIONKIT_HEADERS
     Include/FoundationKit/Base/Algorithm.hpp
     Include/FoundationKit/Base/Array.hpp
     Include/FoundationKit/Base/Bit.hpp
+    Include/FoundationKit/Base/CommandLine.hpp
     Include/FoundationKit/Base/Compiler.hpp
     Include/FoundationKit/Base/Expected.hpp
+    Include/FoundationKit/Base/Format.hpp
     Include/FoundationKit/Base/Hash.hpp
     Include/FoundationKit/Base/NumericLimits.hpp
     Include/FoundationKit/Base/Optional.hpp

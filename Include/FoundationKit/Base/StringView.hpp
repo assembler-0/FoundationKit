@@ -41,6 +41,76 @@ namespace FoundationKit {
             return true;
         }
 
+        [[nodiscard]] constexpr bool operator==(const char* other) const noexcept {
+            return *this == StringView(other);
+        }
+
+        [[nodiscard]] constexpr bool StartsWith(const StringView other) const noexcept {
+            if (other.m_size > m_size) return false;
+            for (usize i = 0; i < other.m_size; ++i) {
+                if (m_data[i] != other.m_data[i]) return false;
+            }
+            return true;
+        }
+
+        [[nodiscard]] constexpr bool EndsWith(const StringView other) const noexcept {
+            if (other.m_size > m_size) return false;
+            for (usize i = 0; i < other.m_size; ++i) {
+                if (m_data[m_size - other.m_size + i] != other.m_data[i]) return false;
+            }
+            return true;
+        }
+
+        [[nodiscard]] constexpr StringView SubView(const SizeType offset, SizeType count = static_cast<usize>(-1)) const noexcept {
+            if (offset > m_size) return StringView();
+            const SizeType actual_count = (count == static_cast<usize>(-1) || offset + count > m_size) 
+                                          ? m_size - offset 
+                                          : count;
+            return StringView(m_data + offset, actual_count);
+        }
+
+        [[nodiscard]] constexpr usize Find(const char c, const usize offset = 0) const noexcept {
+            for (usize i = offset; i < m_size; ++i) {
+                if (m_data[i] == c) return i;
+            }
+            return static_cast<usize>(-1);
+        }
+
+        [[nodiscard]] constexpr usize Find(const StringView other, const usize offset = 0) const noexcept {
+            if (other.m_size > m_size - offset) return static_cast<usize>(-1);
+            if (other.m_size == 0) return offset;
+
+            for (usize i = offset; i <= m_size - other.m_size; ++i) {
+                bool match = true;
+                for (usize j = 0; j < other.m_size; ++j) {
+                    if (m_data[i + j] != other.m_data[j]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) return i;
+            }
+            return static_cast<usize>(-1);
+        }
+
+        [[nodiscard]] constexpr StringView Trim() const noexcept {
+            if (m_size == 0) return *this;
+
+            usize start = 0;
+            while (start < m_size && (m_data[start] == ' ' || m_data[start] == '\t' || m_data[start] == '\n' || m_data[start] == '\r')) {
+                start++;
+            }
+
+            if (start == m_size) return StringView();
+
+            usize end = m_size - 1;
+            while (end > start && (m_data[end] == ' ' || m_data[end] == '\t' || m_data[end] == '\n' || m_data[end] == '\r')) {
+                end--;
+            }
+
+            return StringView(m_data + start, end - start + 1);
+        }
+
     private:
         const char* m_data;
         SizeType    m_size;

@@ -3,64 +3,9 @@
 #include <FoundationKit/Base/String.hpp>
 #include <FoundationKit/Base/StringView.hpp>
 #include <FoundationKit/Base/NumericLimits.hpp>
+#include <FoundationKit/Base/Format.hpp>
 
 namespace FoundationKit {
-
-    namespace Detail {
-        template <Unsigned T>
-        constexpr usize UnsignedToChars(T value, char* buffer) {
-            if (value == 0) {
-                buffer[0] = '0';
-                return 1;
-            }
-
-            usize i = 0;
-            while (value > 0) {
-                buffer[i++] = static_cast<char>('0' + value % 10);
-                value /= 10;
-            }
-
-            for (usize j = 0; j < i / 2; ++j) {
-                Swap(buffer[j], buffer[i - j - 1]);
-            }
-
-            return i;
-        }
-
-        template <Signed T>
-        constexpr usize SignedToChars(T value, char* buffer) {
-            if (value == 0) {
-                buffer[0] = '0';
-                return 1;
-            }
-
-            usize i = 0;
-            bool negative = false;
-            if (value < 0) {
-                negative = true;
-                // Handle Min() case by using unsigned math
-                u64 uval = static_cast<u64>(-(value + 1)) + 1;
-                while (uval > 0) {
-                    buffer[i++] = static_cast<char>('0' + uval % 10);
-                    uval /= 10;
-                }
-            } else {
-                u64 uval = static_cast<u64>(value);
-                while (uval > 0) {
-                    buffer[i++] = static_cast<char>('0' + uval % 10);
-                    uval /= 10;
-                }
-            }
-
-            if (negative) buffer[i++] = '-';
-
-            for (usize j = 0; j < i / 2; ++j) {
-                Swap(buffer[j], buffer[i - j - 1]);
-            }
-
-            return i;
-        }
-    }
 
     /// @brief Efficiently build strings with {} formatting.
     class StringBuilder {
@@ -76,17 +21,12 @@ namespace FoundationKit {
         StringBuilder& Append(const char c) {
             const char buf[2] = {c, '\0'};
             m_buffer.Append(StringView(buf, 1));
-
             return *this;
         }
 
-        template <Integral T>
-        StringBuilder& Append(T value) {
-            char buf[32];
-            usize len;
-            if constexpr (Signed<T>) len = Detail::SignedToChars(value, buf);
-            else len = Detail::UnsignedToChars(value, buf);
-            m_buffer.Append(StringView(buf, len));
+        template <typename T>
+        StringBuilder& Append(const T& value) {
+            Formatter<Unqualified<T>>().Format(*this, value);
             return *this;
         }
 
@@ -131,6 +71,47 @@ namespace FoundationKit {
 
     private:
         String<> m_buffer;
+    };
+
+    // Specializations for basic types
+
+    template <>
+    struct Formatter<char> {
+        void Format(StringBuilder& sb, char value) {
+            sb.Append(value);
+        }
+    };
+
+    template <>
+    struct Formatter<StringView> {
+        void Format(StringBuilder& sb, StringView value) {
+            sb.Append(value);
+        }
+    };
+
+    template <usize N>
+    struct Formatter<char[N]> {
+        void Format(StringBuilder& sb, const char* value) {
+            sb.Append(StringView(value));
+        }
+    };
+
+    template <>
+    struct Formatter<const char*> {
+        void Format(StringBuilder& sb, const char* value) {
+            sb.Append(StringView(value));
+        }
+    };
+
+    template <Integral T>
+    struct Formatter<T> {
+        void Format(StringBuilder& sb, T value) {
+            char buf[64];
+            usize len;
+            if constexpr (Signed<T>) len = Detail::SignedToChars(value, buf);
+            else len = Detail::UnsignedToChars(value, buf);
+            sb.Append(StringView(buf, len));
+        }
     };
 
 } // namespace FoundationKit

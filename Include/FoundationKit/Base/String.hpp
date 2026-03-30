@@ -4,6 +4,7 @@
 #include <FoundationKit/Base/Utility.hpp>
 #include <FoundationKit/Base/Expected.hpp>
 #include <FoundationKit/Base/StringView.hpp>
+#include <FoundationKit/Base/Vector.hpp>
 #include <FoundationKit/Memory/Allocator.hpp>
 #include <FoundationKit/Memory/AnyAllocator.hpp>
 #include <FoundationKit/Memory/Operations.hpp>
@@ -147,6 +148,27 @@ namespace FoundationKit {
             
             String result(m_allocator);
             if (auto res = result.Append(StringView(CStr() + offset, actual_count)); !res) return res.Error();
+            return result;
+        }
+
+        [[nodiscard]] Expected<Vector<String<Alloc>>, Memory::MemoryError> Split(char delimiter) const noexcept {
+            Vector<String<Alloc>> result(m_allocator);
+            StringView view = static_cast<StringView>(*this);
+            usize start = 0;
+            
+            for (usize i = 0; i < view.Size(); ++i) {
+                if (view[i] == delimiter) {
+                    auto sub = SubStr(start, i - start);
+                    if (!sub) return sub.Error();
+                    if (!result.PushBack(FoundationKit::Move(sub.Value()))) return Memory::MemoryError::OutOfMemory;
+                    start = i + 1;
+                }
+            }
+
+            auto sub = SubStr(start);
+            if (!sub) return sub.Error();
+            if (!result.PushBack(FoundationKit::Move(sub.Value()))) return Memory::MemoryError::OutOfMemory;
+
             return result;
         }
 

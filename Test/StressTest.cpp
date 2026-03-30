@@ -15,6 +15,7 @@
 #include <FoundationKit/Base/Variant.hpp>
 #include <FoundationKit/Base/Bit.hpp>
 #include <FoundationKit/Base/Algorithm.hpp>
+#include <FoundationKit/Base/CommandLine.hpp>
 
 // Structure components
 #include <FoundationKit/Structure/SinglyLinkedList.hpp>
@@ -525,4 +526,78 @@ TEST_CASE(Structure_HashMap) {
         ASSERT_TRUE(map.Insert(i, "Value"));
     }
     ASSERT_TRUE(map.Size() > 50);
+}
+
+TEST_CASE(Base_Extended_Suite) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator::SetDefaultResource(&g_test_resource);
+    AnyAllocator any_alloc(&g_test_resource);
+
+    // 1. CommandLine Parsing
+    CommandLine cmd("kernel.bin debug log_level=3 --force root=/dev/sda1");
+    ASSERT_TRUE(cmd.HasFlag("debug"));
+    ASSERT_TRUE(cmd.HasFlag("--force"));
+    ASSERT_FALSE(cmd.HasFlag("missing"));
+    
+    auto level = cmd.GetOption("log_level");
+    ASSERT_TRUE(level.HasValue());
+    ASSERT_EQ(StringCompare(*level, "3"), 0);
+    
+    auto root = cmd.GetOption("root");
+    ASSERT_TRUE(root.HasValue());
+    ASSERT_EQ(StringCompare(*root, "/dev/sda1"), 0);
+    
+    ASSERT_EQ(cmd.ArgumentCount(), 5);
+    ASSERT_EQ(StringCompare(*cmd.GetArgument(0), "kernel.bin"), 0);
+
+    // 2. String::Split
+    String csv(any_alloc);
+    csv.Append("one,two,three,four");
+    auto parts_res = csv.Split(',');
+    ASSERT_TRUE(parts_res.HasValue());
+    auto& parts = *parts_res;
+    ASSERT_EQ(parts.Size(), 4);
+    ASSERT_EQ(StringCompare(StringView(parts[0]), "one"), 0);
+    ASSERT_EQ(StringCompare(StringView(parts[1]), "two"), 0);
+    ASSERT_EQ(StringCompare(StringView(parts[2]), "three"), 0);
+    ASSERT_EQ(StringCompare(StringView(parts[3]), "four"), 0);
+
+    // 3. Extended Algorithms
+    Vector<i32> vec(any_alloc);
+    for (i32 i = 1; i <= 5; ++i) vec.PushBack(i);
+
+    // AnyOf/AllOf/NoneOf
+    ASSERT_TRUE(AnyOf(vec.begin(), vec.end(), [](i32 x) { return x == 3; }));
+    ASSERT_TRUE(AllOf(vec.begin(), vec.end(), [](i32 x) { return x > 0; }));
+    ASSERT_TRUE(NoneOf(vec.begin(), vec.end(), [](i32 x) { return x > 10; }));
+
+    // Find/FindIf
+    auto it_find = Find(vec.begin(), vec.end(), 4);
+    ASSERT_NE(it_find, vec.end());
+    ASSERT_EQ(*it_find, 4);
+
+    auto it_find_if = FindIf(vec.begin(), vec.end(), [](i32 x) { return x % 2 == 0 && x > 2; });
+    ASSERT_NE(it_find_if, vec.end());
+    ASSERT_EQ(*it_find_if, 4);
+
+    // Accumulate
+    i32 sum = Accumulate(vec.begin(), vec.end(), 0);
+    ASSERT_EQ(sum, 15);
+
+    // Transform
+    Vector<i32> squared(any_alloc);
+    squared.Resize(vec.Size());
+    Transform(vec.begin(), vec.end(), squared.begin(), [](i32 x) { return x * x; });
+    ASSERT_EQ(squared[0], 1);
+    ASSERT_EQ(squared[4], 25);
+
+    // Count/CountIf
+    vec.PushBack(3);
+    ASSERT_EQ(Count(vec.begin(), vec.end(), 3), 2);
+    ASSERT_EQ(CountIf(vec.begin(), vec.end(), [](i32 x) { return x % 2 != 0; }), 4); // 1, 3, 5, 3
+
+    // 4. Formatting Extensions
+    StringBuilder sb(any_alloc);
+    sb.Format("Base10: {}, Base16: {}, Char: {}, String: {}", 255, "FF", 'A', StringView("Test"));
+    ASSERT_EQ(StringCompare(sb.View(), "Base10: 255, Base16: FF, Char: A, String: Test"), 0);
 }
