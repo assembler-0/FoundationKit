@@ -78,16 +78,15 @@ target_compile_options(FoundationKit INTERFACE
 )
 
 if(FOUNDATIONKIT_BUILD_TESTS)
+    # Freestanding test binary: No host dependencies, just logic verification.
     add_executable(FoundationKitTester 
         Test/main.cpp 
         Test/TestFramework.cpp
         Test/StressTest.cpp
     )
     target_link_libraries(FoundationKitTester PRIVATE FoundationKit)
-
-    # Freestanding test binary (verification of redefinition resistance and placement)
-    add_executable(FoundationKitFreestandingTest Test/FreestandingTest.cpp)
-    target_link_libraries(FoundationKitFreestandingTest PRIVATE FoundationKit)
-    target_compile_options(FoundationKitFreestandingTest PRIVATE -ffreestanding -fno-stack-protector)
-    target_compile_definitions(FoundationKitFreestandingTest PRIVATE FOUNDATIONKIT_FREESTANDING)
+    
+    # Force freestanding mode for the test runner
+    target_compile_options(FoundationKitTester PRIVATE -nostdinc -ffreestanding -fno-stack-protector)
+    target_compile_definitions(FoundationKitTester PRIVATE FOUNDATIONKIT_FREESTANDING)
 endif()

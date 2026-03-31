@@ -1,19 +1,21 @@
 #include <Test/TestFramework.hpp>
 #include <FoundationKit/Osl/Osl.hpp>
-#include <ostream>
-#include <print>
 
 extern "C" {
-    void FoundationKitOslBug(const char* msg) {
-        std::print("{}", msg);
-        exit(1);
+    [[noreturn]] void FoundationKitOslBug(const char*) {
+        int dummy = 0;
+        while (true) {
+            FoundationKit::Base::CompilerBuiltins::DoNotOptimize(dummy);
+        }
     }
-    bool FoundationKitOslIsCpuFeaturesEnabled() { return true; }
-    void FoundationKitOslLog(const char* msg) {
-        std::print("{}", msg);
-    }
-}
 
-int main() {
-    return FoundationKit::Test::TestRegistry::RunAll();
+    bool FoundationKitOslIsCpuFeaturesEnabled() {
+        return true; 
+    }
+
+    void FoundationKitOslLog(const char*) {}
+
+    int main() {
+        return FoundationKit::Test::TestRegistry::RunAll();
+    }
 }

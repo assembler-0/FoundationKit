@@ -2,7 +2,6 @@
 
 #include <FoundationKit/Base/Types.hpp>
 
-// Standard C++ compiler-specific guards
 #if (defined(__has_include) && __has_include(<initializer_list>)) && !defined(FOUNDATIONKIT_FREESTANDING)
 #  include <initializer_list>
 #else
@@ -15,7 +14,6 @@
 #define _GLIBCXX_INITIALIZER_LIST
 #define _STD_INITIALIZER_LIST_H
 
-/// @brief Support for initializer lists in freestanding.
 namespace std {
     template <class T>
     class initializer_list {
@@ -34,7 +32,6 @@ namespace std {
         constexpr iterator  end()   const noexcept { return m_begin + m_size; }
 
     private:
-        // Compiler expects these exact member names and layout for {} to work.
         iterator  m_begin;
         size_type m_size;
 

@@ -32,6 +32,12 @@
 
 #endif
 
+#if !defined(FOUNDATIONKIT_FREESTANDING)
+#  if defined(__STDC_HOSTED__) && (__STDC_HOSTED__ == 0)
+#    define FOUNDATIONKIT_FREESTANDING 1
+#  endif
+#endif
+
 /// @section compiler attributes
 
 #if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)

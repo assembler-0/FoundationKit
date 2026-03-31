@@ -138,4 +138,14 @@ namespace FoundationKit::Base::CompilerBuiltins {
         if (!condition) Unreachable();
     }
 
+    /// @brief Prevents the compiler from optimizing away 'value'.
+    template <typename T>
+    inline void DoNotOptimize(T& value) noexcept {
+#if defined(FOUNDATIONKIT_COMPILER_GCC) || defined(FOUNDATIONKIT_COMPILER_CLANG)
+        __asm__ volatile("" : : "g"(value) : "memory");
+#else
+        static_cast<void>(value);
+#endif
+    }
+
 } // namespace FoundationKit::Base::CompilerBuiltins
