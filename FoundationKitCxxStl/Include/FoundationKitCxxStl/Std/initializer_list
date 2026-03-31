@@ -1,0 +1,43 @@
+#pragma once
+
+#include <FoundationKitCxxStl/Base/Types.hpp>
+
+#if (defined(__has_include) && __has_include(<initializer_list>)) && !defined(FOUNDATIONKITCXXSTL_FREESTANDING)
+#  include <initializer_list>
+#else
+
+#if !defined(_INITIALIZER_LIST) && !defined(_LIBCPP_INITIALIZER_LIST) && \
+    !defined(_GLIBCXX_INITIALIZER_LIST) && !defined(_STD_INITIALIZER_LIST_H)
+
+#define _INITIALIZER_LIST
+#define _LIBCPP_INITIALIZER_LIST
+#define _GLIBCXX_INITIALIZER_LIST
+#define _STD_INITIALIZER_LIST_H
+
+namespace std {
+    template <class T>
+    class initializer_list {
+    public:
+        using value_type      = T;
+        using reference       = const T&;
+        using const_reference = const T&;
+        using size_type       = FoundationKitCxxStl::usize;
+        using iterator        = const T*;
+        using const_iterator  = const T*;
+
+        constexpr initializer_list() noexcept : m_begin(nullptr), m_size(0) {}
+
+        [[nodiscard]] constexpr size_type size()  const noexcept { return m_size; }
+        constexpr iterator  begin() const noexcept { return m_begin; }
+        constexpr iterator  end()   const noexcept { return m_begin + m_size; }
+
+    private:
+        iterator  m_begin;
+        size_type m_size;
+
+        constexpr initializer_list(iterator begin, size_type size) noexcept
+            : m_begin(begin), m_size(size) {}
+    };
+}
+#endif
+#endif

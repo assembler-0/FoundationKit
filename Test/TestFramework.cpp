@@ -1,6 +1,6 @@
 #include <Test/TestFramework.hpp>
 
-namespace FoundationKit::Test {
+namespace FoundationKitCxxStl::Test {
 
     TestCase* TestRegistry::s_first = nullptr;
     bool TestRegistry::s_current_test_failed = false;
@@ -28,4 +28,4 @@ namespace FoundationKit::Test {
 
     void TestRegistry::ReportFailure(const char*, const char*, usize) noexcept {}
 
-} // namespace FoundationKit::Test
+} // namespace FoundationKitCxxStl::Test

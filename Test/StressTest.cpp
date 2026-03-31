@@ -1,40 +1,40 @@
 #include <Test/TestFramework.hpp>
 
 // Base components
-#include <FoundationKit/Base/Array.hpp>
-#include <FoundationKit/Base/Vector.hpp>
-#include <FoundationKit/Base/String.hpp>
-#include <FoundationKit/Base/StringView.hpp>
-#include <FoundationKit/Base/StringBuilder.hpp>
-#include <FoundationKit/Base/Optional.hpp>
-#include <FoundationKit/Base/Expected.hpp>
-#include <FoundationKit/Base/Utility.hpp>
-#include <FoundationKit/Base/NumericLimits.hpp>
-#include <FoundationKit/Base/Pair.hpp>
-#include <FoundationKit/Base/Span.hpp>
-#include <FoundationKit/Base/Variant.hpp>
-#include <FoundationKit/Base/Bit.hpp>
-#include <FoundationKit/Base/Algorithm.hpp>
-#include <FoundationKit/Base/CommandLine.hpp>
+#include <FoundationKitCxxStl/Base/Array.hpp>
+#include <FoundationKitCxxStl/Base/Vector.hpp>
+#include <FoundationKitCxxStl/Base/String.hpp>
+#include <FoundationKitCxxStl/Base/StringView.hpp>
+#include <FoundationKitCxxStl/Base/StringBuilder.hpp>
+#include <FoundationKitCxxStl/Base/Optional.hpp>
+#include <FoundationKitCxxStl/Base/Expected.hpp>
+#include <FoundationKitCxxStl/Base/Utility.hpp>
+#include <FoundationKitCxxStl/Base/NumericLimits.hpp>
+#include <FoundationKitCxxStl/Base/Pair.hpp>
+#include <FoundationKitCxxStl/Base/Span.hpp>
+#include <FoundationKitCxxStl/Base/Variant.hpp>
+#include <FoundationKitCxxStl/Base/Bit.hpp>
+#include <FoundationKitCxxStl/Base/Algorithm.hpp>
+#include <FoundationKitCxxStl/Base/CommandLine.hpp>
 
 // Structure components
-#include <FoundationKit/Structure/SinglyLinkedList.hpp>
-#include <FoundationKit/Structure/DoublyLinkedList.hpp>
-#include <FoundationKit/Structure/CircularLinkedList.hpp>
-#include <FoundationKit/Structure/IntrusiveDoublyLinkedList.hpp>
-#include <FoundationKit/Structure/BitSet.hpp>
-#include <FoundationKit/Structure/HashMap.hpp>
+#include <FoundationKitCxxStl/Structure/SinglyLinkedList.hpp>
+#include <FoundationKitCxxStl/Structure/DoublyLinkedList.hpp>
+#include <FoundationKitCxxStl/Structure/CircularLinkedList.hpp>
+#include <FoundationKitCxxStl/Structure/IntrusiveDoublyLinkedList.hpp>
+#include <FoundationKitCxxStl/Structure/BitSet.hpp>
+#include <FoundationKitCxxStl/Structure/HashMap.hpp>
 
 // Memory components
-#include <FoundationKit/Memory/BumpAllocator.hpp>
-#include <FoundationKit/Memory/AnyAllocator.hpp>
-#include <FoundationKit/Memory/UniquePtr.hpp>
-#include <FoundationKit/Memory/SharedPtr.hpp>
-#include <FoundationKit/Memory/PoolAllocator.hpp>
+#include <FoundationKitCxxStl/Memory/BumpAllocator.hpp>
+#include <FoundationKitCxxStl/Memory/AnyAllocator.hpp>
+#include <FoundationKitCxxStl/Memory/UniquePtr.hpp>
+#include <FoundationKitCxxStl/Memory/SharedPtr.hpp>
+#include <FoundationKitCxxStl/Memory/PoolAllocator.hpp>
 
-using namespace FoundationKit;
-using namespace FoundationKit::Memory;
-using namespace FoundationKit::Structure;
+using namespace FoundationKitCxxStl;
+using namespace FoundationKitCxxStl::Memory;
+using namespace FoundationKitCxxStl::Structure;
 
 // Global test allocator
 static byte g_test_buffer[128 * 1024]; // 128KB should be enough
@@ -93,11 +93,11 @@ TEST_CASE(Base_String) {
     String str(any_alloc);
     auto res1 = str.Append("Foundation");
     ASSERT_TRUE(res1.HasValue());
-    auto res2 = str.Append("Kit");
+    auto res2 = str.Append("KitCxxStl");
     ASSERT_TRUE(res2.HasValue());
     
-    ASSERT_EQ(str.Size(), 13);
-    ASSERT_EQ(StringCompare(StringView(str), "FoundationKit"), 0);
+    ASSERT_EQ(str.Size(), 19);
+    ASSERT_EQ(StringCompare(StringView(str), "FoundationKitCxxStl"), 0);
     
     // Test SSO to Heap transition
     String long_str(any_alloc);
@@ -221,15 +221,15 @@ TEST_CASE(Base_StringOps) {
     AnyAllocator any_alloc(&g_test_resource);
 
     String str(any_alloc);
-    str.Append("  Hello FoundationKit  ");
+    str.Append("  Hello FoundationKitCxxStl  ");
     
     ASSERT_TRUE(str.Contains("Foundation"));
     ASSERT_TRUE(str.StartsWith("  Hello"));
-    ASSERT_TRUE(str.EndsWith("Kit  "));
+    ASSERT_TRUE(str.EndsWith("Stl  "));
     
     str.Trim();
-    ASSERT_EQ(StringCompare(StringView(str), "Hello FoundationKit"), 0);
-    ASSERT_EQ(str.Size(), 19);
+    ASSERT_EQ(StringCompare(StringView(str), "Hello FoundationKitCxxStl"), 0);
+    ASSERT_EQ(str.Size(), 25);
 
     auto res_sub = str.SubStr(6, 10);
     ASSERT_TRUE(res_sub.HasValue());
@@ -372,7 +372,7 @@ TEST_CASE(Structure_IntrusiveDoublyLinkedList) {
         Item(i32 v) : value(v) {}
     };
     
-    FoundationKit::Structure::IntrusiveDoublyLinkedList list;
+    FoundationKitCxxStl::Structure::IntrusiveDoublyLinkedList list;
     Item i1(1), i2(2), i3(3);
     
     list.PushBack(&i1.link);
