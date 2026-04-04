@@ -22,6 +22,8 @@
 #include <FoundationKitMemory/UniquePtr.hpp>
 #include <FoundationKitMemory/BuddyAllocator.hpp>
 #include <FoundationKitCxxStl/Sync/TicketLock.hpp>
+#include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
+#include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;
@@ -890,6 +892,7 @@ TEST_CASE(Memory_AllocatorLocking_ConceptValidation) {
     static_assert(AllocatorLockPolicy<Sync::Mutex>);
     static_assert(AllocatorLockPolicy<Sync::SharedSpinLock>);
     static_assert(AllocatorLockPolicy<Sync::TicketLock>);
+    static_assert(AllocatorLockPolicy<Sync::InterruptSafeTicketLock>);
     
     // Verify default lock selection
     static_assert(SameAs<DefaultAllocatorLockType<PoolAllocator<256>>, Sync::NullLock>);
@@ -897,5 +900,5 @@ TEST_CASE(Memory_AllocatorLocking_ConceptValidation) {
     // Verify SelectAllocatorLock trait
     static_assert(SameAs<SelectAllocatorLockType<true, false>, Sync::NullLock>);
     static_assert(SameAs<SelectAllocatorLockType<false, true>, Sync::Mutex>);
-    static_assert(SameAs<SelectAllocatorLockType<false, false>, Sync::SpinLock>);
+    static_assert(SameAs<SelectAllocatorLockType<false, false>, Sync::InterruptSafeTicketLock>);
 }

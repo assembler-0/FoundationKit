@@ -1,13 +1,39 @@
-# FoundationKitCxxStl - Header-only C++ Template Library for OSDev
+# FoundationKit
 
-> The project tries to mimic the C++23 STL functionalities but is made for freestanding environments (i.e. your kernel/OS!)
+FoundationKit is a modular C++23 systems framework designed specifically for operating system development. It provides the essential building blocks for kernel-space environments, ranging from a modern STL implementation to low-level memory primitives and ABI support.
 
-## Integrating into your project
-As this is a Header-only library, it is trivial to get things going.
-- Clone, download the repo, move `Include/FoundationKitCxxStl` to your desired destination
-- Check compile options, compile flags in [CMakeLists.txt](CMakeLists.txt)
-- Apply those options to your build system (prebuilt coming soon)
-- Profit
+> Use this in your kernel/OS!
 
-## Licensing
-The project is licensed under the MIT license, see [LICENSE](LICENSE) for more details
+## Repository Structure
+
+The project is organized as a monorepo. Each component resides in its own directory and follows a standardized internal structure:
+
+* **`Include/[Component]/`**: Public headers (primarily header-only templates).
+* **`Src/`**: Implementation files (where applicable).
+* **`CMakeLists.txt`**: Defines the specific library target and source declarations.
+
+### Components
+
+| Component               | Description                                                 | Documentation                       |
+|:------------------------|:------------------------------------------------------------|:------------------------------------|
+| **FoundationKitCxxStl** | A kernel-ready, C++23 compliant Standard Template Library.  | `Documentation/FoundationKitCxxStl` |
+| **FoundationKitMemory** | Core memory management primitives and allocators.           | `Documentation/FoundationKitMemory` |
+| **FoundationKitOsl**    | Operating System Layer for fundamental system abstractions. | `Documentation/FoundationKitOsl`    |
+| **FoundationKitCxxAbi** | Low-level C++ ABI support (exception handling, RTTI, etc.). | `Documentation/FoundationKitCxxAbi` |
+
+## Build System
+
+The project uses CMake. The architecture is designed for seamless integration into existing (cmake) OSDev toolchains:
+
+* **Root CMakeLists.txt**: Handles the global project configuration and builds the test suite executable.
+* **Component CMakeLists.txt**: Each directory contains its own logic, often declaring `INTERFACE` targets to facilitate header-only usage while managing necessary source files for non-template logic.
+
+## Testing
+
+Unit tests for all components are located in the `/Test` directory. These ensure the reliability of the STL and memory primitives before deployment into a kernel environment.
+
+---
+
+## License
+
+This project is licensed under the terms found in the `LICENSE` file.

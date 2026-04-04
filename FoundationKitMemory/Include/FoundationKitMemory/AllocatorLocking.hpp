@@ -55,6 +55,8 @@
 #include <FoundationKitCxxStl/Sync/Locks.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/Mutex.hpp>
+#include <FoundationKitCxxStl/Sync/TicketLock.hpp>
+#include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
 
 namespace FoundationKitMemory {
 
@@ -125,10 +127,10 @@ namespace FoundationKitMemory {
         using Type = Sync::Mutex;
     };
 
-    // Multi-threaded without sleep (spinlock)
+    // Multi-threaded without sleep (Interrupt-safe TicketLock)
     template <>
     struct SelectAllocatorLock<false, false> {
-        using Type = Sync::SpinLock;
+        using Type = Sync::InterruptSafeTicketLock;
     };
 
     /// @brief Helper alias for SelectAllocatorLock.

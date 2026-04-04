@@ -37,7 +37,6 @@ add_library(FoundationKitCxxStl INTERFACE ${FOUNDATIONKITCXXSTL_HEADERS})
 
 target_include_directories(FoundationKitCxxStl INTERFACE Include)
 
-target_link_libraries(FoundationKitCxxStl INTERFACE FoundationKitMemory)
 target_link_libraries(FoundationKitCxxStl INTERFACE FoundationKitOsl)
 
 target_compile_definitions(FoundationKitCxxStl INTERFACE 

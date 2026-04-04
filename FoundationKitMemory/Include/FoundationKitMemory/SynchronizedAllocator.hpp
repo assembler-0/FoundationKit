@@ -3,7 +3,7 @@
 #include <FoundationKitMemory/MemoryCore.hpp>
 #include <FoundationKitCxxStl/Sync/Locks.hpp>
 #include <FoundationKitCxxStl/Sync/SharedLock.hpp>
-#include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
+#include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
 
 namespace FoundationKitMemory {
 
@@ -17,8 +17,8 @@ namespace FoundationKitMemory {
     /// @desc Ensures that memory operations are thread-safe. 
     ///       Works even if the OSL scheduler is not yet active (using SpinLock).
     /// @tparam BaseAllocator Must satisfy IAllocator<BaseAllocator>
-    /// @tparam LockType Locking policy (default FoundationKitCxxStl::Sync::SharedSpinLock)
-    template <IAllocator BaseAllocator, typename LockType = Sync::SharedSpinLock>
+    /// @tparam LockType Locking policy (default FoundationKitCxxStl::Sync::InterruptSafeTicketLock)
+    template <IAllocator BaseAllocator, typename LockType = Sync::InterruptSafeTicketLock>
     class SynchronizedAllocator {
     public:
         // ====================================================================

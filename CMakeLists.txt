@@ -3,9 +3,9 @@ project(FoundationKit CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 
+add_subdirectory(FoundationKitOsl)
 add_subdirectory(FoundationKitCxxStl)
 add_subdirectory(FoundationKitMemory)
-add_subdirectory(FoundationKitOsl)
 
 option(FOUNDATIONKIT_BUILD_TESTS "Build test executable" ON)
 
@@ -19,7 +19,8 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/LockStressTest.cpp
         Test/OslStub.cpp
     )
-    target_link_libraries(FoundationKitCxxStlTester PRIVATE FoundationKitCxxStl FoundationKitMemory FoundationKitOsl)
+
+    target_link_libraries(FoundationKitCxxStlTester PRIVATE FoundationKitMemory)
     
     target_compile_options(FoundationKitCxxStlTester PRIVATE -ffreestanding -fno-stack-protector)
 endif()
