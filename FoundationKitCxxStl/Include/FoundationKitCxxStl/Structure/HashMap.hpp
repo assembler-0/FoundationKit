@@ -6,6 +6,7 @@
 #include <FoundationKitCxxStl/Base/Vector.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Pair.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 
@@ -46,6 +47,8 @@ namespace FoundationKitCxxStl::Structure {
             }
 
             usize idx = FindBucket(key);
+            FK_BUG_ON(idx >= m_buckets.Size(), "HashMap: FindBucket returned out of bounds index ({})", idx);
+
             if (m_buckets[idx].status == BucketStatus::Occupied) {
                 m_buckets[idx].value = V(FoundationKitCxxStl::Forward<Args>(args)...);
                 return true;
@@ -59,7 +62,9 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         Optional<V&> Get(const K& key) {
+            if (m_buckets.Empty()) return {};
             usize idx = FindBucket(key);
+            FK_BUG_ON(idx >= m_buckets.Size(), "HashMap: FindBucket returned out of bounds index ({})", idx);
             if (m_buckets[idx].status == BucketStatus::Occupied) {
                 return m_buckets[idx].value;
             }
@@ -67,7 +72,9 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         Optional<const V&> Get(const K& key) const {
+            if (m_buckets.Empty()) return {};
             usize idx = FindBucket(key);
+            FK_BUG_ON(idx >= m_buckets.Size(), "HashMap: FindBucket returned out of bounds index ({})", idx);
             if (m_buckets[idx].status == BucketStatus::Occupied) {
                 return m_buckets[idx].value;
             }
@@ -75,7 +82,9 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         bool Remove(const K& key) {
+            if (m_buckets.Empty()) return false;
             usize idx = FindBucket(key);
+            FK_BUG_ON(idx >= m_buckets.Size(), "HashMap: FindBucket returned out of bounds index ({})", idx);
             if (m_buckets[idx].status == BucketStatus::Occupied) {
                 m_buckets[idx].status = BucketStatus::Deleted;
                 m_size--;
@@ -89,10 +98,14 @@ namespace FoundationKitCxxStl::Structure {
 
     private:
         usize FindBucket(const K& key) const {
+            FK_BUG_ON(m_buckets.Empty(), "HashMap: FindBucket called on empty bucket vector");
             const u64 h = H{}(key);
             const usize mask = m_buckets.Size() - 1;
+            FK_BUG_ON((m_buckets.Size() & mask) != 0, "HashMap: capacity ({}) is not a power of two", m_buckets.Size());
+            
             auto idx = h & mask;
             auto first_deleted = static_cast<usize>(-1);
+            usize probed = 0;
 
             while (m_buckets[idx].status != BucketStatus::Empty) {
                 if (m_buckets[idx].status == BucketStatus::Occupied && m_buckets[idx].key == key) {
@@ -102,12 +115,15 @@ namespace FoundationKitCxxStl::Structure {
                     first_deleted = idx;
                 }
                 idx = (idx + 1) & mask;
+                probed++;
+                FK_BUG_ON(probed >= m_buckets.Size(), "HashMap: probe sequence exceeded capacity; potential infinite loop");
             }
 
             return first_deleted != static_cast<usize>(-1) ? first_deleted : idx;
         }
 
         bool Rehash(usize new_capacity) {
+            FK_BUG_ON(new_capacity <= m_buckets.Size(), "HashMap: Rehash called with smaller or equal capacity");
             Vector<Bucket, Alloc> old_buckets = FoundationKitCxxStl::Move(m_buckets);
             if (!m_buckets.Resize(new_capacity)) {
                 m_buckets = FoundationKitCxxStl::Move(old_buckets);

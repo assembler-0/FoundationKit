@@ -15,37 +15,67 @@ namespace FoundationKitMemory {
     ///       Prevents allocations outside the region and deallocations across regions.
     class MemoryRegion {
     public:
+        /// @brief Magic number for corruption detection.
+        static constexpr u32 kMagic = 0x5245474D; // 'REGM'
+
         /// @brief Create a memory region from raw pointer and size.
         /// @param base Starting address (must be non-null if size > 0)
         /// @param size Region size in bytes
         constexpr MemoryRegion(void* base, usize size) noexcept
-            : m_base(static_cast<byte*>(base)), m_size(size) {
+            : m_base(static_cast<byte*>(base)), m_size(size), m_magic(kMagic) {
             FK_BUG_ON(base == nullptr && size > 0, 
                 "MemoryRegion: null base with non-zero size ({})", size);
+            
+            if (base != nullptr) {
+                FK_BUG_ON(reinterpret_cast<uptr>(base) + size < reinterpret_cast<uptr>(base),
+                    "MemoryRegion: size ({}) causes address space wraparound from ({})", size, base);
+            }
         }
 
         /// @brief Create a null (empty) region.
-        constexpr MemoryRegion() noexcept = default;
+        constexpr MemoryRegion() noexcept : m_magic(kMagic) {}
+
+        /// @brief Verify region integrity.
+        void Verify() const noexcept {
+            if (m_magic != kMagic) [[unlikely]] {
+                FK_BUG("MemoryRegion: corruption detected - magic mismatch (found: {:#x}, expected: {:#x}) at region {}", 
+                    m_magic, kMagic, *this);
+            }
+            if (m_base == nullptr && m_size > 0) [[unlikely]] {
+                FK_BUG("MemoryRegion: inconsistent state - null base with non-zero size ({})", m_size);
+            }
+        }
 
         /// @brief Get the start address of this region.
-        [[nodiscard]] constexpr byte* Base() const noexcept { return m_base; }
+        [[nodiscard]] constexpr byte* Base() const noexcept { 
+            Verify();
+            return m_base; 
+        }
 
         /// @brief Get the end address (exclusive) of this region.
-        [[nodiscard]] constexpr byte* End() const noexcept { return m_base + m_size; }
+        [[nodiscard]] constexpr byte* End() const noexcept { 
+            Verify();
+            return m_base + m_size; 
+        }
 
         /// @brief Get the total size of this region.
-        [[nodiscard]] constexpr usize Size() const noexcept { return m_size; }
+        [[nodiscard]] constexpr usize Size() const noexcept { 
+            Verify();
+            return m_size; 
+        }
 
         /// @brief Check if a pointer belongs to this region.
         /// @param ptr The pointer to test (may be const)
         /// @return true if ptr is in [Base(), End())
         [[nodiscard]] constexpr bool Contains(const void* ptr) const noexcept {
+            Verify();
             const byte* p = static_cast<const byte*>(ptr);
             return p >= m_base && p < m_base + m_size;
         }
 
         /// @brief Check if this region is valid (size > 0).
         [[nodiscard]] constexpr bool IsValid() const noexcept {
+            Verify();
             return m_base != nullptr && m_size > 0;
         }
 
@@ -53,6 +83,7 @@ namespace FoundationKitMemory {
         /// @param offset The split point (must be <= Size())
         /// @return {left: [base, offset), right: [base+offset, end)}
         [[nodiscard]] constexpr MemoryRegion Split(usize offset) const noexcept {
+            Verify();
             FK_BUG_ON(offset > m_size, "MemoryRegion::Split: offset ({}) exceeds size ({})", offset, m_size);
             return {m_base + offset, m_size - offset};
         }
@@ -62,8 +93,11 @@ namespace FoundationKitMemory {
         /// @param size Size of the sub-region
         /// @return New region [base+offset, base+offset+size)
         [[nodiscard]] constexpr MemoryRegion SubRegion(usize offset, usize size) const noexcept {
-            FK_BUG_ON(offset + size > m_size, 
-                "MemoryRegion::SubRegion: bounds ({}) exceed this region ({})", offset + size, m_size);
+            Verify();
+            FK_BUG_ON(offset > m_size, "MemoryRegion::SubRegion: offset ({}) exceeds region size ({})", offset, m_size);
+            FK_BUG_ON(size > m_size - offset, 
+                "MemoryRegion::SubRegion: sub-region size ({}) exceeds remaining space ({}) from offset ({})", 
+                size, m_size - offset, offset);
             return {m_base + offset, size};
         }
 
@@ -71,12 +105,15 @@ namespace FoundationKitMemory {
         /// @param other The region to test against
         /// @return true if regions have any byte in common
         [[nodiscard]] constexpr bool Overlaps(const MemoryRegion& other) const noexcept {
+            Verify();
+            other.Verify();
             return !(End() <= other.Base() || Base() >= other.End());
         }
 
     private:
-        byte* m_base = nullptr;
-        usize m_size = 0;
+        byte* m_base  = nullptr;
+        usize m_size  = 0;
+        u32   m_magic = 0;
     };
 
     static_assert(sizeof(MemoryRegion) == sizeof(byte*) + sizeof(usize));
@@ -197,6 +234,26 @@ namespace FoundationKitMemory {
     private:
         MemoryRegion m_base_region;
         MemoryRegion m_regions[NumRegions];
+    };
+
+    /// @brief Formatter for MemoryRegion.
+    template <>
+    struct Formatter<MemoryRegion> {
+        template <typename Sink>
+        void Format(Sink& sb, const MemoryRegion& value, const FormatSpec& spec = {}) {
+            // Note: We access private members directly to avoid calling Verify() recursively during crash trace
+            if (value.m_base == nullptr && value.m_size == 0) {
+                sb.Append("[Empty Region]", 14);
+                return;
+            }
+            sb.Append('[');
+            Formatter<byte*>().Format(sb, value.m_base, spec);
+            sb.Append('-');
+            Formatter<byte*>().Format(sb, value.m_base + value.m_size, spec);
+            sb.Append(" (", 2);
+            Formatter<usize>().Format(sb, value.m_size, spec);
+            sb.Append(")]", 2);
+        }
     };
 
 } // namespace FoundationKitMemory

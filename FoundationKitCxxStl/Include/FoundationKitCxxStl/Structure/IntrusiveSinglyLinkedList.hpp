@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 
@@ -22,6 +23,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         Node* PopFront() {
+            FK_BUG_ON(!m_head, "IntrusiveSinglyLinkedList: PopFront called on empty list");
             if (!m_head) return nullptr;
             Node* node = m_head;
             m_head = m_head->next;
@@ -29,8 +31,14 @@ namespace FoundationKitCxxStl::Structure {
             return node;
         }
 
-        [[nodiscard]] Node* Front() { return m_head; }
-        [[nodiscard]] const Node* Front() const { return m_head; }
+        [[nodiscard]] Node* Front() { 
+            FK_BUG_ON(!m_head, "IntrusiveSinglyLinkedList: Front called on empty list");
+            return m_head; 
+        }
+        [[nodiscard]] const Node* Front() const { 
+            FK_BUG_ON(!m_head, "IntrusiveSinglyLinkedList: Front called on empty list");
+            return m_head; 
+        }
 
         [[nodiscard]] bool Empty() const { return m_head == nullptr; }
         [[nodiscard]] usize Size() const { return m_size; }

@@ -47,4 +47,17 @@ namespace FoundationKitCxxStl {
         );
     }
 
+    /// @brief Formatter for Pair<T1, T2>.
+    template <typename T1, typename T2>
+    struct Formatter<Pair<T1, T2>> {
+        template <typename Sink>
+        void Format(Sink& sb, const Pair<T1, T2>& value, const FormatSpec& spec = {}) {
+            sb.Append('(');
+            Formatter<Unqualified<T1>>().Format(sb, value.first, spec);
+            sb.Append(", ", 2);
+            Formatter<Unqualified<T2>>().Format(sb, value.second, spec);
+            sb.Append(')');
+        }
+    };
+
 } // namespace FoundationKitCxxStl

@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
     namespace Detail {
@@ -114,6 +115,20 @@ namespace FoundationKitCxxStl {
             return nullptr;
         }
 
+        template<typename T>
+        [[nodiscard]] T &Get() noexcept {
+            FK_BUG_ON(!IsValid(), "Variant: Get() called on an empty/invalid variant");
+            FK_BUG_ON(!Is<T>(), "Variant: Get() called with incorrect type");
+            return *reinterpret_cast<T *>(&m_storage);
+        }
+
+        template<typename T>
+        [[nodiscard]] const T &Get() const noexcept {
+            FK_BUG_ON(!IsValid(), "Variant: Get() called on an empty/invalid variant");
+            FK_BUG_ON(!Is<T>(), "Variant: Get() called with incorrect type");
+            return *reinterpret_cast<const T *>(&m_storage);
+        }
+
         void Reset() noexcept {
             if (m_index != InvalidIndex) {
                 Destroy(m_index, &m_storage);
@@ -156,4 +171,38 @@ namespace FoundationKitCxxStl {
     [[nodiscard]] const T *GetIf(const Variant<Ts...> *v) noexcept {
         return v ? v->template GetIf<T>() : nullptr;
     }
+
+    template<typename T, typename... Ts>
+    [[nodiscard]] T &Get(Variant<Ts...> &v) noexcept {
+        return v.template Get<T>();
+    }
+
+    template<typename T, typename... Ts>
+    [[nodiscard]] const T &Get(const Variant<Ts...> &v) noexcept {
+        return v.template Get<T>();
+    }
+
+    /// @brief Formatter for Variant<Ts...>.
+    template <typename... Ts>
+    struct Formatter<Variant<Ts...>> {
+        template <typename Sink>
+        void Format(Sink& sb, const Variant<Ts...>& variant, const FormatSpec& spec = {}) {
+            if (!variant.IsValid()) {
+                sb.Append("InvalidVariant", 14);
+                return;
+            }
+
+            usize target_idx = variant.Index();
+            usize current_idx = 0;
+            
+            ([&] {
+                if (current_idx++ == target_idx) {
+                    sb.Append("Variant(", 8);
+                    Formatter<Unqualified<Ts>>().Format(sb, variant.template Get<Ts>(), spec);
+                    sb.Append(')');
+                }
+            }(), ...);
+        }
+    };
+
 } // namespace FoundationKitCxxStl

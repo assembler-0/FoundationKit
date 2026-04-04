@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Utility.hpp>
+#include <FoundationKitCxxStl/Base/Format.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
@@ -112,13 +113,17 @@ namespace FoundationKitCxxStl {
 
         /// @brief Access value.
         [[nodiscard]] constexpr T& Value() & noexcept {
-            FK_BUG_ON(!_has_value, "Optional: access to empty value");
+            if (!_has_value) [[unlikely]] {
+                FK_BUG("Optional: access to empty value in {}", *this);
+            }
             return _value;
         }
 
         /// @brief Access value (const).
         [[nodiscard]] constexpr const T& Value() const& noexcept {
-            FK_BUG_ON(!_has_value, "Optional: access to empty value");
+            if (!_has_value) [[unlikely]] {
+                FK_BUG("Optional: access to empty value in {}", *this);
+            }
             return _value;
         }
 
@@ -201,6 +206,21 @@ namespace FoundationKitCxxStl {
 
     private:
         T* _ptr;
+    };
+
+    /// @brief Formatter for Optional<T>.
+    template <typename T>
+    struct Formatter<Optional<T>> {
+        template <typename Sink>
+        void Format(Sink& sb, const Optional<T>& value, const FormatSpec& spec = {}) {
+            if (value.HasValue()) {
+                sb.Append("Optional(", 9);
+                Formatter<Unqualified<T>>().Format(sb, *value, spec);
+                sb.Append(')');
+            } else {
+                sb.Append("Empty", 5);
+            }
+        }
     };
 
 } // namespace FoundationKitCxxStl

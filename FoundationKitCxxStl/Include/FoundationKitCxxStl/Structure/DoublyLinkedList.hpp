@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
 #include <FoundationKitMemory/AnyAllocator.hpp>
 
@@ -123,6 +124,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         void PopFront() {
+            FK_BUG_ON(!m_head, "DoublyLinkedList: PopFront called on empty list");
             if (!m_head) return;
 
             Node* old_head = m_head;
@@ -139,6 +141,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         void PopBack() {
+            FK_BUG_ON(!m_tail, "DoublyLinkedList: PopBack called on empty list");
             if (!m_tail) return;
 
             Node* old_tail = m_tail;
@@ -163,10 +166,22 @@ namespace FoundationKitCxxStl::Structure {
         [[nodiscard]] usize Size() const { return m_size; }
         [[nodiscard]] bool Empty() const { return m_size == 0; }
 
-        [[nodiscard]] T& Front() { return m_head->value; }
-        [[nodiscard]] const T& Front() const { return m_head->value; }
-        [[nodiscard]] T& Back() { return m_tail->value; }
-        [[nodiscard]] const T& Back() const { return m_tail->value; }
+        [[nodiscard]] T& Front() { 
+            FK_BUG_ON(!m_head, "DoublyLinkedList: Front called on empty list");
+            return m_head->value; 
+        }
+        [[nodiscard]] const T& Front() const { 
+            FK_BUG_ON(!m_head, "DoublyLinkedList: Front called on empty list");
+            return m_head->value; 
+        }
+        [[nodiscard]] T& Back() { 
+            FK_BUG_ON(!m_tail, "DoublyLinkedList: Back called on empty list");
+            return m_tail->value; 
+        }
+        [[nodiscard]] const T& Back() const { 
+            FK_BUG_ON(!m_tail, "DoublyLinkedList: Back called on empty list");
+            return m_tail->value; 
+        }
 
         Iterator begin() { return Iterator(m_head); }
         Iterator end() { return Iterator(nullptr); }

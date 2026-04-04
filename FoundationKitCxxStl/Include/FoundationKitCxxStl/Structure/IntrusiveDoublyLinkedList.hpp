@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 
@@ -47,6 +48,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         IntrusiveDoublyLinkedListNode* PopFront() noexcept {
+            FK_BUG_ON(Empty(), "IntrusiveDoublyLinkedList: PopFront called on empty list");
             if (Empty()) return nullptr;
             IntrusiveDoublyLinkedListNode* node = m_head.next;
             Remove(node);
@@ -54,6 +56,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         IntrusiveDoublyLinkedListNode* PopBack() noexcept {
+            FK_BUG_ON(Empty(), "IntrusiveDoublyLinkedList: PopBack called on empty list");
             if (Empty()) return nullptr;
             IntrusiveDoublyLinkedListNode* node = m_head.prev;
             Remove(node);
@@ -61,6 +64,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         void Remove(IntrusiveDoublyLinkedListNode* node) noexcept {
+            FK_BUG_ON(!node, "IntrusiveDoublyLinkedList: Remove called with null node");
             node->prev->next = node->next;
             node->next->prev = node->prev;
             node->next = node;

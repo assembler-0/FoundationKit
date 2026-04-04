@@ -42,6 +42,8 @@ namespace FoundationKitMemory {
                 resource_ptr = &wrapper;
             }
 
+            FK_BUG_ON(resource_ptr == nullptr, "GlobalAllocatorSystem::Initialize: failed to resolve memory resource pointer");
+
             BasicMemoryResource* old = m_allocator.Exchange(
                 resource_ptr,
                 MemoryOrder::SeqCst
@@ -49,7 +51,7 @@ namespace FoundationKitMemory {
             
             if (old != nullptr) {
                 // Multiple initialization attempts detected
-                ::FoundationKitOsl::OslLog(FK_FORMAT_WARN_MSG("GlobalAllocatorSystem initialized more than once"));
+                FK_LOG_WARN("GlobalAllocatorSystem initialized more than once - ignoring subsequent initialization");
             }
         }
 
@@ -61,7 +63,8 @@ namespace FoundationKitMemory {
         [[nodiscard]] static BasicMemoryResource& GetAllocator() noexcept {
             BasicMemoryResource* alloc = m_allocator.Load(MemoryOrder::SeqCst);
             FK_BUG_ON(alloc == nullptr, 
-                "GlobalAllocatorSystem::GetAllocator: Global allocator not initialized.");
+                "GlobalAllocatorSystem::GetAllocator: FATAL - Global allocator accessed before initialization! "
+                "The kernel must call InitializeGlobalAllocator() during early bootstrap.");
             return *alloc;
         }
 

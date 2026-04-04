@@ -64,8 +64,8 @@ namespace FoundationKitCxxStl {
         }
 
         template <typename T>
-        StaticStringBuilder& Append(const T& value) {
-            Formatter<Unqualified<T>>().Format(*this, value);
+        StaticStringBuilder& Append(const T& value, const FormatSpec& spec = {}) {
+            Formatter<Unqualified<T>>().Format(*this, value, spec);
             return *this;
         }
 
@@ -76,19 +76,47 @@ namespace FoundationKitCxxStl {
             const usize size = fmt.size;
 
             for (usize i = 0; i < size; ++i) {
-                if (data[i] == '{' && i + 1 < size && data[i + 1] == '}') {
-                    usize current_idx = 0;
-                    auto dispatcher = [&]<typename T0>(T0&& arg) {
-                        if (current_idx == arg_index) {
-                            this->Append(FoundationKitCxxStl::Forward<T0>(arg));
+                if (data[i] == '{' && i + 1 < size) {
+                    // Start of placeholder
+                    usize start = i;
+                    i++; 
+
+                    FormatSpec spec{};
+                    if (data[i] == ':') {
+                        i++;
+                        // Parse Spec: [fill][align][width][.precision][type]
+                        if (data[i] == '0') { spec.zero_pad = true; i++; }
+                        
+                        // Width
+                        while (data[i] >= '0' && data[i] <= '9') {
+                            spec.width = spec.width * 10 + (data[i] - '0');
+                            i++;
                         }
-                        current_idx++;
-                    };
 
-                    (dispatcher(args), ...);
+                        // Type
+                        if (data[i] == 'x') { spec.base = 16; i++; }
+                        else if (data[i] == 'X') { spec.base = 16; spec.uppercase = true; i++; }
+                        else if (data[i] == 'b') { spec.base = 2; i++; }
+                        else if (data[i] == 'o') { spec.base = 8; i++; }
+                        else if (data[i] == 'd') { spec.base = 10; i++; }
+                        else if (data[i] == 'p') { spec.base = 16; spec.prefix = true; spec.uppercase = true; i++; }
+                    }
 
-                    arg_index++;
-                    i++; // skip '}'
+                    if (data[i] == '}') {
+                        usize current_idx = 0;
+                        auto dispatcher = [&]<typename T0>(T0&& arg) {
+                            if (current_idx == arg_index) {
+                                this->Append(FoundationKitCxxStl::Forward<T0>(arg), spec);
+                            }
+                            current_idx++;
+                        };
+                        (dispatcher(args), ...);
+                        arg_index++;
+                    } else {
+                        // Not a valid closure, just append the '{' and continue
+                        Append('{');
+                        i = start; 
+                    }
                 } else {
                     Append(data[i]);
                 }

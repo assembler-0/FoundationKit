@@ -1,6 +1,8 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
+#include <FoundationKitCxxStl/Base/Format.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -67,7 +69,7 @@ namespace FoundationKitCxxStl {
         }
 
         [[nodiscard]] constexpr StringView SubView(const SizeType offset, SizeType count = static_cast<usize>(-1)) const noexcept {
-            if (offset > m_size) return StringView();
+            FK_BUG_ON(offset > m_size, "StringView: SubView offset ({}) out of bounds ({})", offset, m_size);
             const SizeType actual_count = (count == static_cast<usize>(-1) || offset + count > m_size) 
                                           ? m_size - offset 
                                           : count;
@@ -131,5 +133,16 @@ namespace FoundationKitCxxStl {
         if (lhs.Size() > rhs.Size()) return 1;
         return 0;
     }
+
+    /// @brief Implementation of StringView formatter.
+    template <>
+    struct Formatter<StringView> {
+        template <typename Sink>
+        void Format(Sink& sb, const StringView& value, const FormatSpec& spec = {}) {
+            if (!spec.align_left) Detail::Pad(sb, value.Size(), spec);
+            sb.Append(value.Data(), value.Size());
+            if (spec.align_left) Detail::Pad(sb, value.Size(), spec);
+        }
+    };
 
 } // namespace FoundationKitCxxStl

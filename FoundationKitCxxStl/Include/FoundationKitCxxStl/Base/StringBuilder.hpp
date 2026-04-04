@@ -78,13 +78,4 @@ namespace FoundationKitCxxStl {
         String<> m_buffer;
     };
 
-    // Formatter for StringView using the generic sink
-    template <>
-    struct Formatter<StringView> {
-        template <typename Sink>
-        void Format(Sink& sb, const StringView& value) {
-            sb.Append(value.Data(), value.Size());
-        }
-    };
-
 } // namespace FoundationKitCxxStl

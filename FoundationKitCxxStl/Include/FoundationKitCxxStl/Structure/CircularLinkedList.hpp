@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
 #include <FoundationKitMemory/AnyAllocator.hpp>
 
@@ -104,6 +105,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         void PopFront() {
+            FK_BUG_ON(!m_last, "CircularLinkedList: PopFront called on empty list");
             if (!m_last) return;
 
             Node* head = m_last->next;
@@ -133,10 +135,22 @@ namespace FoundationKitCxxStl::Structure {
         [[nodiscard]] usize Size() const { return m_size; }
         [[nodiscard]] bool Empty() const { return m_size == 0; }
 
-        [[nodiscard]] T& Front() { return m_last->next->value; }
-        [[nodiscard]] const T& Front() const { return m_last->next->value; }
-        [[nodiscard]] T& Back() { return m_last->value; }
-        [[nodiscard]] const T& Back() const { return m_last->value; }
+        [[nodiscard]] T& Front() { 
+            FK_BUG_ON(!m_last, "CircularLinkedList: Front called on empty list");
+            return m_last->next->value; 
+        }
+        [[nodiscard]] const T& Front() const { 
+            FK_BUG_ON(!m_last, "CircularLinkedList: Front called on empty list");
+            return m_last->next->value; 
+        }
+        [[nodiscard]] T& Back() { 
+            FK_BUG_ON(!m_last, "CircularLinkedList: Back called on empty list");
+            return m_last->value; 
+        }
+        [[nodiscard]] const T& Back() const { 
+            FK_BUG_ON(!m_last, "CircularLinkedList: Back called on empty list");
+            return m_last->value; 
+        }
 
         // Circular iterators are tricky. Usually you stop after one full loop.
         // For standard begin/end we return a special end iterator or handle it via a counter.

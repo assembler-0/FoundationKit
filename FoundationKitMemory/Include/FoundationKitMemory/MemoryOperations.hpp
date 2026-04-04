@@ -23,6 +23,17 @@ namespace FoundationKitMemory {
         auto* d = static_cast<byte*>(dest);
         const auto* s = static_cast<const byte*>(src);
 
+        // Paranoid: Check for address space wraparound
+        FK_BUG_ON(reinterpret_cast<uptr>(d) + size < reinterpret_cast<uptr>(d), 
+            "MemoryCopy: destination range wraparound (dest: {}, size: {})", dest, size);
+        FK_BUG_ON(reinterpret_cast<uptr>(s) + size < reinterpret_cast<uptr>(s), 
+            "MemoryCopy: source range wraparound (src: {}, size: {})", src, size);
+
+        // Paranoid: Strictly forbid overlap in MemoryCopy
+        const bool overlap = (d < s + size) && (s < d + size);
+        FK_BUG_ON(overlap, "MemoryCopy: overlapping buffers detected! Use MemoryMove instead (dest: {}, src: {}, size: {})", 
+            dest, src, size);
+
 #if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
         if (FoundationKitOsl::OslIsSimdEnabled()) {
             Base::CompilerBuiltins::MemCpy(dest, src, size);
@@ -38,6 +49,12 @@ namespace FoundationKitMemory {
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void* MemoryMove(void* dest, const void* src, usize size) noexcept {
         if (size == 0) return dest;
         FK_BUG_ON(!dest || !src, "MemoryMove: null pointer provided with non-zero size");
+
+        // Paranoid: Check for address space wraparound
+        FK_BUG_ON(reinterpret_cast<uptr>(dest) + size < reinterpret_cast<uptr>(dest), 
+            "MemoryMove: destination range wraparound (dest: {}, size: {})", dest, size);
+        FK_BUG_ON(reinterpret_cast<uptr>(src) + size < reinterpret_cast<uptr>(src), 
+            "MemoryMove: source range wraparound (src: {}, size: {})", src, size);
 
 #if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
         if (FoundationKitOsl::OslIsSimdEnabled()) {
@@ -63,6 +80,10 @@ namespace FoundationKitMemory {
         if (size == 0) return dest;
         FK_BUG_ON(!dest, "MemorySet: null pointer provided with non-zero size ({})", size);
 
+        // Paranoid: Check for address space wraparound
+        FK_BUG_ON(reinterpret_cast<uptr>(dest) + size < reinterpret_cast<uptr>(dest), 
+            "MemorySet: range wraparound (dest: {}, size: {})", dest, size);
+
 #if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
         if (FoundationKitOsl::OslIsSimdEnabled()) {
             Base::CompilerBuiltins::MemSet(dest, value, size);
@@ -80,6 +101,12 @@ namespace FoundationKitMemory {
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE i32 MemoryCompare(const void* lhs, const void* rhs, usize size) noexcept {
         if (size == 0) return 0;
         FK_BUG_ON(!lhs || !rhs, "MemoryCompare: null pointer provided with non-zero size ({})", size);
+
+        // Paranoid: Check for address space wraparound
+        FK_BUG_ON(reinterpret_cast<uptr>(lhs) + size < reinterpret_cast<uptr>(lhs), 
+            "MemoryCompare: lhs range wraparound (lhs: {}, size: {})", lhs, size);
+        FK_BUG_ON(reinterpret_cast<uptr>(rhs) + size < reinterpret_cast<uptr>(rhs), 
+            "MemoryCompare: rhs range wraparound (rhs: {}, size: {})", rhs, size);
 
 #if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
         if (FoundationKitOsl::OslIsSimdEnabled()) {

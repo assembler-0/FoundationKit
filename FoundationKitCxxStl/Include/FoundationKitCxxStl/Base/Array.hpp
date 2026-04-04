@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -49,21 +50,25 @@ namespace FoundationKitCxxStl {
 
         [[nodiscard]] constexpr Reference Front() noexcept { 
             static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Front()");
+            FK_BUG_ON(N == 0, "FixedArray: Front() called on empty array");
             return DataBuffer[0]; 
         }
         
         [[nodiscard]] constexpr ConstReference Front() const noexcept { 
             static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Front()");
+            FK_BUG_ON(N == 0, "FixedArray: Front() called on empty array");
             return DataBuffer[0]; 
         }
 
         [[nodiscard]] constexpr Reference Back() noexcept { 
             static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Back()");
+            FK_BUG_ON(N == 0, "FixedArray: Back() called on empty array");
             return DataBuffer[N - 1]; 
         }
         
         [[nodiscard]] constexpr ConstReference Back() const noexcept { 
             static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Back()");
+            FK_BUG_ON(N == 0, "FixedArray: Back() called on empty array");
             return DataBuffer[N - 1]; 
         }
 

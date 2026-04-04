@@ -1,6 +1,8 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Utility.hpp>
+#include <FoundationKitCxxStl/Base/Format.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -38,12 +40,16 @@ namespace FoundationKitCxxStl {
         [[nodiscard]] constexpr explicit operator bool() const noexcept { return _has_value; }
 
         [[nodiscard]] constexpr T& Value() & noexcept {
-            FK_BUG_ON(!_has_value, "Expected: access to value while error is present");
+            if (!_has_value) [[unlikely]] {
+                FK_BUG("Expected: access to value while holding {}", *this);
+            }
             return _value;
         }
 
         [[nodiscard]] constexpr const T& Value() const& noexcept {
-            FK_BUG_ON(!_has_value, "Expected: access to value while error is present");
+            if (!_has_value) [[unlikely]] {
+                FK_BUG("Expected: access to value while holding {}", *this);
+            }
             return _value;
         }
 
@@ -59,7 +65,9 @@ namespace FoundationKitCxxStl {
         }
 
         [[nodiscard]] constexpr const E& Error() const& noexcept {
-            FK_BUG_ON(_has_value, "Expected: access to error while value is present");
+            if (_has_value) [[unlikely]] {
+                FK_BUG("Expected: access to error while holding {}", *this);
+            }
             return _error;
         }
 
@@ -113,6 +121,27 @@ namespace FoundationKitCxxStl {
             E _error;
         };
         bool _has_value;
+    };
+
+    /// @brief Formatter for Expected<T, E>.
+    template <typename T, typename E>
+    struct Formatter<Expected<T, E>> {
+        template <typename Sink>
+        void Format(Sink& sb, const Expected<T, E>& value, const FormatSpec& spec = {}) {
+            if (value.HasValue()) {
+                sb.Append("Value(", 6);
+                if constexpr (!SameAs<T, void>) {
+                    Formatter<Unqualified<T>>().Format(sb, *value, spec);
+                } else {
+                    sb.Append("void", 4);
+                }
+                sb.Append(')');
+            } else {
+                sb.Append("Error(", 6);
+                Formatter<Unqualified<E>>().Format(sb, value.Error(), spec);
+                sb.Append(')');
+            }
+        }
     };
 
 } // namespace FoundationKitCxxStl

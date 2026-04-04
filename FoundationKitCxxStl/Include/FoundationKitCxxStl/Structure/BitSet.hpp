@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bit.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
 
 namespace FoundationKitCxxStl::Structure {
@@ -19,12 +20,14 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         constexpr void Set(const usize pos, const bool value = true) noexcept {
+            FK_BUG_ON(pos >= N, "BitSet: Set offset out of bounds");
             if (pos >= N) return;
             if (value) m_words[pos / WordSize] |= static_cast<usize>(1) << (pos % WordSize);
             else Reset(pos);
         }
 
         constexpr void Reset(const usize pos) noexcept {
+            FK_BUG_ON(pos >= N, "BitSet: Reset offset out of bounds");
             if (pos >= N) return;
             m_words[pos / WordSize] &= ~(static_cast<usize>(1) << (pos % WordSize));
         }
@@ -34,11 +37,13 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         constexpr void Flip(const usize pos) noexcept {
+            FK_BUG_ON(pos >= N, "BitSet: Flip offset out of bounds");
             if (pos >= N) return;
             m_words[pos / WordSize] ^= static_cast<usize>(1) << (pos % WordSize);
         }
 
         [[nodiscard]] constexpr bool Test(const usize pos) const noexcept {
+            FK_BUG_ON(pos >= N, "BitSet: Test offset out of bounds");
             if (pos >= N) return false;
             return (m_words[pos / WordSize] & static_cast<usize>(1) << (pos % WordSize)) != 0;
         }

@@ -2,6 +2,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
 #include <stdio.h>
+#include <stdlib.h>
 
 extern "C" {
     using namespace FoundationKitCxxStl;
@@ -9,7 +10,7 @@ extern "C" {
     [[noreturn]] void OslBug(const char* msg) {
         fprintf(stderr, "%s", msg);
         fflush(stderr);
-        while (true) {}
+        exit(1);
     }
 
     bool OslIsSimdEnabled() {

@@ -18,8 +18,11 @@ namespace FoundationKitMemory {
         usize value;
 
         constexpr Alignment(usize align = 1) noexcept : value(align) {
-            FK_BUG_ON(align == 0 || (align & (align - 1)) != 0, 
-                "Alignment must be a power of 2");
+            FK_BUG_ON(align == 0, "Alignment: cannot be zero");
+            FK_BUG_ON((align & (align - 1)) != 0, 
+                "Alignment: must be a power of 2 (provided: {})", align);
+            FK_BUG_ON(align > (1ULL << 48), 
+                "Alignment: value ({}) is suspiciously large (architecture limit check)", align);
         }
 
         [[nodiscard]] constexpr bool IsPowerOfTwo() const noexcept {
@@ -27,10 +30,14 @@ namespace FoundationKitMemory {
         }
 
         [[nodiscard]] constexpr uptr AlignUp(uptr ptr) const noexcept {
-            return (ptr + value - 1) & ~(value - 1);
+            FK_BUG_ON(value == 0, "Alignment::AlignUp: internal state corruption (value is 0)");
+            uptr result = (ptr + value - 1) & ~(value - 1);
+            FK_BUG_ON(result < ptr, "Alignment::AlignUp: address space wraparound (ptr: {}, align: {})", ptr, value);
+            return result;
         }
 
         [[nodiscard]] constexpr uptr AlignDown(uptr ptr) const noexcept {
+            FK_BUG_ON(value == 0, "Alignment::AlignDown: internal state corruption (value is 0)");
             return ptr & ~(value - 1);
         }
     };
@@ -49,7 +56,8 @@ namespace FoundationKitMemory {
         InvalidSize,
         NotOwned,
         AllocationTooLarge,
-        DesignationMismatch  // e.g., deleting array as single object
+        DesignationMismatch,  // e.g., deleting array as single object
+        CorruptionDetected    // Memory integrity failed
     };
 
     // ============================================================================
@@ -62,7 +70,15 @@ namespace FoundationKitMemory {
         usize       size  = 0;
         MemoryError error = MemoryError::None;
 
-        [[nodiscard]] constexpr bool IsSuccess() const noexcept { return ptr != nullptr && error == MemoryError::None; }
+        [[nodiscard]] constexpr bool IsSuccess() const noexcept { 
+            // Paranoid: Ensure state consistency
+            FK_BUG_ON(ptr != nullptr && error != MemoryError::None, 
+                "AllocationResult: inconsistency - success pointer with error code ({})", static_cast<u8>(error));
+            FK_BUG_ON(ptr != nullptr && size == 0, 
+                "AllocationResult: inconsistency - success pointer with zero size");
+            return ptr != nullptr && error == MemoryError::None; 
+        }
+
         [[nodiscard]] constexpr explicit operator bool() const noexcept { return IsSuccess(); }
 
         // Backwards compatibility
@@ -70,11 +86,14 @@ namespace FoundationKitMemory {
 
         /// @brief Create a successful result.
         [[nodiscard]] static constexpr AllocationResult Success(void* p, usize s) noexcept {
+            FK_BUG_ON(p == nullptr, "AllocationResult::Success: cannot pass null pointer");
+            FK_BUG_ON(s == 0, "AllocationResult::Success: cannot pass zero size");
             return {p, s, MemoryError::None};
         }
 
         /// @brief Create a failure result with specific error.
         [[nodiscard]] static constexpr AllocationResult Failure(MemoryError err = MemoryError::OutOfMemory) noexcept {
+            FK_BUG_ON(err == MemoryError::None, "AllocationResult::Failure: cannot pass MemoryError::None");
             return {nullptr, 0, err};
         }
     };
@@ -168,22 +187,27 @@ namespace FoundationKitMemory {
 
         /// @brief Optional reallocation support (default falls back to alloc+copy+free).
         [[nodiscard]] virtual AllocationResult Reallocate(void* ptr, usize old_size, usize new_size, usize align) noexcept {
+            FK_BUG_ON(ptr == nullptr && old_size > 0, "Reallocate: null pointer with non-zero old_size ({})", old_size);
+            
             if (new_size == 0) {
                 Deallocate(ptr, old_size);
                 return AllocationResult::Failure();
             }
 
             if (new_size <= old_size) {
-                return {ptr, new_size};
+                return {ptr, new_size, MemoryError::None};
             }
 
             AllocationResult new_alloc = Allocate(new_size, align);
             if (!new_alloc) return new_alloc;
 
             if (ptr) {
-                // Perform in-place copy (simple byte copy)
+                // Perform byte copy
                 auto* src = static_cast<const byte*>(ptr);
                 auto* dst = static_cast<byte*>(new_alloc.ptr);
+                
+                FK_BUG_ON(src == dst, "Reallocate: logic error - Allocate() returned the same pointer as old ptr");
+                
                 for (usize i = 0; i < old_size; ++i) {
                     dst[i] = src[i];
                 }
@@ -212,10 +236,19 @@ namespace FoundationKitMemory {
         explicit constexpr AllocatorWrapper(Alloc& alloc) noexcept : allocator(alloc) {}
 
         [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept override {
-            return allocator.Allocate(size, align);
+            FK_BUG_ON(size == 0, "AllocatorWrapper::Allocate: zero size requested");
+            const Alignment a{align}; // Validates align is power-of-2
+            
+            AllocationResult result = allocator.Allocate(size, align);
+            FK_BUG_ON(result.ptr != nullptr && (reinterpret_cast<uptr>(result.ptr) % align) != 0,
+                "AllocatorWrapper::Allocate: underlying allocator returned unaligned pointer (ptr: {}, align: {})",
+                result.ptr, align);
+            
+            return result;
         }
 
         void Deallocate(void* ptr, usize size) noexcept override {
+            FK_BUG_ON(ptr == nullptr && size > 0, "AllocatorWrapper::Deallocate: null pointer with size ({})", size);
             allocator.Deallocate(ptr, size);
         }
 
@@ -223,6 +256,7 @@ namespace FoundationKitMemory {
             if constexpr (requires { allocator.Deallocate(ptr); }) {
                 allocator.Deallocate(ptr);
             } else {
+                FK_BUG_ON(ptr != nullptr, "AllocatorWrapper::Deallocate: unsized deallocate requested but not supported (must call with size)");
                 allocator.Deallocate(ptr, 0);
             }
         }
@@ -232,6 +266,8 @@ namespace FoundationKitMemory {
         }
 
         [[nodiscard]] AllocationResult Reallocate(void* ptr, usize old_size, usize new_size, usize align) noexcept override {
+            FK_BUG_ON(ptr == nullptr && old_size > 0, "AllocatorWrapper::Reallocate: null pointer with non-zero old_size ({})", old_size);
+            
             if constexpr (IReallocatableAllocator<Alloc>) {
                 return allocator.Reallocate(ptr, old_size, new_size, align);
             } else {
