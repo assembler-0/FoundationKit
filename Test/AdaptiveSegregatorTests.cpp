@@ -79,8 +79,8 @@ TEST_CASE(AdaptiveSegregator_TwoTier_ResetStats) {
     AdaptiveSegregator2Tier<256, BumpAllocator, BumpAllocator> segregator(
         Move(small_alloc), Move(large_alloc));
     
-    segregator.Allocate(128, 16);
-    segregator.Allocate(512, 16);
+    (void)segregator.Allocate(128, 16);
+    (void)segregator.Allocate(512, 16);
     
     ASSERT_EQ(segregator.SmallAllocations(), 1);
     ASSERT_EQ(segregator.LargeAllocations(), 1);
@@ -118,7 +118,7 @@ TEST_CASE(AdaptiveSegregator_TwoTier_AdaptiveHeuristic) {
     ASSERT_EQ(suggested1, 256);
     
     for (usize i = 0; i < 10; ++i) {
-        segregator.Allocate(512, 16);
+        (void)segregator.Allocate(512, 16);
     }
     
     usize suggested2 = segregator.AdaptiveThreshold();
@@ -212,9 +212,9 @@ TEST_CASE(AdaptiveSegregator_ThreeTier_ResetStats) {
     AdaptiveSegregator3Tier<64, 512, BumpAllocator, BumpAllocator, BumpAllocator>
         segregator(Move(tiny_alloc), Move(small_alloc), Move(large_alloc));
     
-    segregator.Allocate(32, 8);
-    segregator.Allocate(256, 16);
-    segregator.Allocate(2048, 32);
+    (void)segregator.Allocate(32, 8);
+    (void)segregator.Allocate(256, 16);
+    (void)segregator.Allocate(2048, 32);
     
     segregator.ResetStats();
     

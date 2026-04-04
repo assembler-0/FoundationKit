@@ -3,6 +3,9 @@
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
+/// @brief sets the default lock
+#define FOUNDATIONKIT_DEFAULT_LOCK ::FoundationKitCxxStl::Sync::SpinLock
+
 namespace FoundationKitCxxStl::Sync {
 
     using namespace FoundationKitCxxStl::Base;

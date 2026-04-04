@@ -31,9 +31,7 @@ namespace FoundationKitCxxStl {
 
         ~String() noexcept {
             if (m_is_heap) {
-                if (char* ptr = m_data.heap.Release()) {
-                    m_allocator.Deallocate(static_cast<void*>(ptr), m_heap_capacity + 1);
-                }
+                m_data.heap.~UniquePtr();
             }
         }
 
@@ -46,7 +44,7 @@ namespace FoundationKitCxxStl {
               m_heap_capacity(other.m_heap_capacity),
               m_is_heap(other.m_is_heap) {
             if (m_is_heap) {
-                m_data.heap = FoundationKitCxxStl::Move(other.m_data.heap);
+                FoundationKitCxxStl::ConstructAt<FoundationKitMemory::UniquePtr<char[], Alloc>>(&m_data.heap, FoundationKitCxxStl::Move(other.m_data.heap));
             } else {
                 FoundationKitMemory::MemoryCopy(m_data.sso, other.m_data.sso, SsoCapacity + 1);
             }
@@ -58,7 +56,7 @@ namespace FoundationKitCxxStl {
         String& operator=(String&& other) noexcept {
             if (this != &other) {
                 if (m_is_heap) {
-                    if (char* ptr = m_data.heap.Release()) m_allocator.Deallocate(static_cast<void*>(ptr), m_heap_capacity + 1);
+                    m_data.heap.~UniquePtr();
                 }
                 
                 m_allocator = FoundationKitCxxStl::Move(other.m_allocator);
@@ -67,7 +65,7 @@ namespace FoundationKitCxxStl {
                 m_heap_capacity = other.m_heap_capacity;
                 
                 if (m_is_heap) {
-                    m_data.heap = FoundationKitCxxStl::Move(other.m_data.heap);
+                    FoundationKitCxxStl::ConstructAt<FoundationKitMemory::UniquePtr<char[], Alloc>>(&m_data.heap, FoundationKitCxxStl::Move(other.m_data.heap));
                 } else {
                     FoundationKitMemory::MemoryCopy(m_data.sso, other.m_data.sso, SsoCapacity + 1);
                 }
@@ -220,11 +218,11 @@ namespace FoundationKitCxxStl {
             new_ptr[m_size] = '\0';
             
             if (m_is_heap) {
-                if (char* ptr = m_data.heap.Release()) m_allocator.Deallocate(static_cast<void*>(ptr), m_heap_capacity + 1);
+                m_data.heap.~UniquePtr();
             }
 
             m_is_heap = true;
-            FoundationKitCxxStl::ConstructAt<FoundationKitMemory::UniquePtr<char[]>>(&m_data.heap, new_ptr, next_cap + 1, FoundationKitMemory::AnyAllocator(m_allocator));
+            FoundationKitCxxStl::ConstructAt<FoundationKitMemory::UniquePtr<char[], Alloc>>(&m_data.heap, new_ptr, next_cap + 1, m_allocator);
             m_heap_capacity = next_cap;
             
             return {};
@@ -237,7 +235,7 @@ namespace FoundationKitCxxStl {
 
         union Data {
             char  sso[SsoCapacity + 1];
-            FoundationKitMemory::UniquePtr<char[]> heap;
+            FoundationKitMemory::UniquePtr<char[], Alloc> heap;
 
             constexpr Data() : sso{} {}
             ~Data() {} 

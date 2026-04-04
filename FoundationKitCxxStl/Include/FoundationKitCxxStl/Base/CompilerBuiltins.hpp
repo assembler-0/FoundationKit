@@ -1,5 +1,40 @@
 #pragma once
 
+// ============================================================================
+// Compiler Feature Detection
+// ============================================================================
+
+#if defined(__has_builtin)
+    #define FOUNDATIONKIT_COMPILER_HAS_BUILTIN(b) __has_builtin(b)
+#else
+    #define FOUNDATIONKIT_COMPILER_HAS_BUILTIN(b) 0
+#endif
+
+#if defined(__has_attribute)
+    #define FOUNDATIONKIT_COMPILER_HAS_ATTRIBUTE_ALIAS(a) __has_attribute(a)
+#endif
+
+// ============================================================================
+// Placement New Operators (when __builtin_construct_at not available)
+// ============================================================================
+
+#if !FOUNDATIONKIT_COMPILER_HAS_BUILTIN(__builtin_construct_at)
+
+[[nodiscard]] inline void* operator new(unsigned long, void* p) noexcept {
+    return p;
+}
+
+[[nodiscard]] inline void* operator new[](unsigned long, void* p) noexcept {
+    return p;
+}
+
+inline void operator delete(void*, void*) noexcept {
+}
+
+inline void operator delete[](void*, void*) noexcept {
+}
+#endif
+
 namespace FoundationKitCxxStl::Base::CompilerBuiltins {
 
     /// @breif Hints to the compiler that 'exp' is likely to have the value 'c'.
@@ -390,5 +425,15 @@ namespace FoundationKitCxxStl::Base::CompilerBuiltins {
     inline void AtomicClear(volatile bool* ptr, MemoryOrder order = MemoryOrder::SeqCst) noexcept {
         __atomic_clear(ptr, static_cast<int>(order));
     }
+
+    /// @brief In-Place Construction
+#if FOUNDATIONKIT_COMPILER_HAS_BUILTIN(__builtin_construct_at)
+    template <typename T, typename... Args>
+    T* ConstructAt(void* ptr, Args&&... args) noexcept {
+        T* p = static_cast<T*>(ptr);
+        __builtin_construct_at(p, Forward<Args>(args)...);
+        return p;
+    }
+#endif
 
 } // namespace FoundationKitCxxStl::Base::CompilerBuiltins

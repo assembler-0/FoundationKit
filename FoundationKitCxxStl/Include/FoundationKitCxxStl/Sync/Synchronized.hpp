@@ -3,7 +3,7 @@
 #include <FoundationKitCxxStl/Sync/Locks.hpp>
 #include <FoundationKitCxxStl/Sync/SharedLock.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Base/Compiler.hpp>
+#include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 

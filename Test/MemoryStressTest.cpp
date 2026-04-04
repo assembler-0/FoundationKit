@@ -54,7 +54,6 @@ TEST_CASE(Memory_BumpAllocator_CoreOps) {
 
     // Test allocation tracking
     usize remaining = bump.Remaining();
-    uptr ptr1_offset = reinterpret_cast<uptr>(res1.ptr) - reinterpret_cast<uptr>(g_bump_buffer);
     uptr ptr2_offset = reinterpret_cast<uptr>(res2.ptr) - reinterpret_cast<uptr>(g_bump_buffer);
     usize expected = sizeof(g_bump_buffer) - (ptr2_offset + 512);
     ASSERT_EQ(remaining, expected);

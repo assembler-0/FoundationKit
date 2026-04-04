@@ -1,7 +1,7 @@
 #pragma once
 
 #include <FoundationKitMemory/MemoryOperations.hpp>
-#include <FoundationKitMemory/Global.hpp>
+#include <FoundationKitMemory/GlobalAllocator.hpp>
 
 namespace FoundationKitMemory {
 
@@ -12,8 +12,9 @@ namespace FoundationKitMemory {
     ///          SynchronizedAllocator<AnyAllocator, Mutex>
     class AnyAllocator {
     public:
-        /// @brief Adopts the system-wide default resource by default.
-        AnyAllocator() noexcept : m_resource(GetDefaultResource()) {}
+        /// @brief Adopts the system-wide global allocator by default.
+        /// @desc Will bug if GlobalAllocatorSystem has not been initialized.
+        AnyAllocator() noexcept : m_resource(&GetGlobalAllocator()) {}
 
         explicit constexpr AnyAllocator(nullptr_t) noexcept : m_resource(nullptr) {}
         explicit constexpr AnyAllocator(BasicMemoryResource* resource) noexcept : m_resource(resource) {}
