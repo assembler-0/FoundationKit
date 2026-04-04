@@ -26,9 +26,6 @@ namespace FoundationKitMemory {
         }
 
         void Deallocate(void* ptr, usize size) noexcept {
-            // CRITICAL: Check actual ownership, not just size.
-            // If small allocator can have allocations > Threshold (over-allocation),
-            // we need to check which allocator actually owns this pointer.
             if (m_small.Owns(ptr)) {
                 m_small.Deallocate(ptr, size);
             } else {

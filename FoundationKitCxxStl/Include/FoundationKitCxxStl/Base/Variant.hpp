@@ -44,12 +44,11 @@ namespace FoundationKitCxxStl {
     public:
         static constexpr usize InvalidIndex = static_cast<usize>(-1);
 
-        constexpr Variant() noexcept : m_index(InvalidIndex) {
-        }
+        constexpr Variant() noexcept : m_index(InvalidIndex) {}
 
         template<typename T>
             requires (SameAs<Detail::DecayT<T>, Ts> || ...)
-        constexpr Variant(T &&value) noexcept {
+        explicit constexpr Variant(T &&value) noexcept {
             using U = Detail::DecayT<T>;
             constexpr usize idx = Detail::TypeIndex<U, Ts...>::Value;
             FoundationKitCxxStl::ConstructAt<U>(&m_storage, FoundationKitCxxStl::Forward<T>(value));
@@ -140,7 +139,7 @@ namespace FoundationKitCxxStl {
         static constexpr usize StorageSize = Detail::Max<sizeof(Ts)...>::Value;
         static constexpr usize StorageAlign = Detail::Max<alignof(Ts)...>::Value;
 
-        alignas(StorageAlign) byte m_storage[StorageSize];
+        alignas(StorageAlign) byte m_storage[StorageSize]{};
         usize m_index;
 
         static void Destroy(const usize idx, void *storage) {
@@ -194,7 +193,7 @@ namespace FoundationKitCxxStl {
 
             usize target_idx = variant.Index();
             usize current_idx = 0;
-            
+
             ([&] {
                 if (current_idx++ == target_idx) {
                     sb.Append("Variant(", 8);

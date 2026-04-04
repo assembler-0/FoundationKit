@@ -1,7 +1,5 @@
 #pragma once
 
-#include <FoundationKitMemory/MemoryOperations.hpp>
-
 namespace FoundationKitMemory {
 
     /// @brief Tries to allocate from P (Primary). If it fails, falls back to F (Fallback).
@@ -26,9 +24,6 @@ namespace FoundationKitMemory {
         }
 
         void Deallocate(void* ptr, usize size) noexcept {
-            // CRITICAL FIX: Check actual ownership before deallocate.
-            // Prevents TOCTOU race where ownership can change between check and deallocation.
-            // To be fully thread-safe, this must be called on a SynchronizedAllocator wrapper.
             if (m_primary.Owns(ptr)) {
                 m_primary.Deallocate(ptr, size);
             } else {

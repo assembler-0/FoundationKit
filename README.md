@@ -19,7 +19,7 @@ The project is organized as a monorepo. Each component resides in its own direct
 | **FoundationKitCxxStl** | A kernel-ready, C++23 compliant Standard Template Library.  | `Documentation/FoundationKitCxxStl` |
 | **FoundationKitMemory** | Core memory management primitives and allocators.           | `Documentation/FoundationKitMemory` |
 | **FoundationKitOsl**    | Operating System Layer for fundamental system abstractions. | `Documentation/FoundationKitOsl`    |
-| **FoundationKitCxxAbi** | Low-level C++ ABI support (exception handling, RTTI, etc.). | `Documentation/FoundationKitCxxAbi` |
+| **FoundationKitCxxAbi** | Low-level C++ ABI support (TO BE IMPLEMENTED).              | `Documentation/FoundationKitCxxAbi` |
 
 ## Build System
 
