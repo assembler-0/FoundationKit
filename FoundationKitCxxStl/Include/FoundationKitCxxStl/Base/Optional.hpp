@@ -1,7 +1,7 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Osl/Osl.hpp>
+#include <FoundationKitOsl/Osl.hpp>
 
 namespace FoundationKitCxxStl {
 

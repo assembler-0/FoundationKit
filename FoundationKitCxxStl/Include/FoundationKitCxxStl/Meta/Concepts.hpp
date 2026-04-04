@@ -259,4 +259,30 @@ namespace FoundationKitCxxStl {
     static_assert(POD<u32>,               "u32 must be POD");
     static_assert(StandardLayout<u32>,    "u32 must be standard layout");
 
+    // ========================================================================
+    // Lock Concepts (for synchronization primitives)
+    // ========================================================================
+
+    /// @brief Basic lock interface: Lock() and Unlock().
+    template <typename L>
+    concept BasicLockable = requires(L& lock) {
+        { lock.Lock() } -> SameAs<void>;
+        { lock.Unlock() } -> SameAs<void>;
+    };
+
+    /// @brief Enhanced lockable: Lock(), Unlock(), TryLock().
+    template <typename L>
+    concept Lockable = BasicLockable<L> && requires(L& lock) {
+        { lock.TryLock() } -> SameAs<bool>;
+    };
+
+    /// @brief Shared lock interface: LockShared(), UnlockShared(), Lock() for exclusive, Unlock() for unlock.
+    template <typename L>
+    concept SharedLockable = requires(L& lock) {
+        { lock.LockShared() } -> SameAs<void>;
+        { lock.UnlockShared() } -> SameAs<void>;
+        { lock.Lock() } -> SameAs<void>;
+        { lock.Unlock() } -> SameAs<void>;
+    };
+
 } // namespace FoundationKitCxxStl

@@ -1,4 +1,5 @@
 #include <Test/TestFramework.hpp>
+#include <FoundationKitOsl/Osl.hpp>
 
 namespace FoundationKitCxxStl::Test {
 
@@ -16,16 +17,31 @@ namespace FoundationKitCxxStl::Test {
         for (TestCase* curr = s_first; curr != nullptr; curr = curr->Next) {
             s_current_test_failed = false;
             
+            // Log test start
+            ::FoundationKitOsl::OslLog("| running test: ");
+            ::FoundationKitOsl::OslLog(curr->Name);
+            ::FoundationKitOsl::OslLog("\n");
+
             curr->Func();
 
             if (s_current_test_failed) {
                 failed++;
+                ::FoundationKitOsl::OslLog("|----> FAILED\n");
+            } else {
+                ::FoundationKitOsl::OslLog("|----> PASSED\n");
             }
         }
 
         return failed;
     }
 
-    void TestRegistry::ReportFailure(const char*, const char*, usize) noexcept {}
+    void TestRegistry::ReportFailure(const char* expr, const char* file, usize line) noexcept {
+        (void)line;
+        ::FoundationKitOsl::OslLog("| Assertion failed: ");
+        ::FoundationKitOsl::OslLog(expr);
+        ::FoundationKitOsl::OslLog(" at ");
+        ::FoundationKitOsl::OslLog(file);
+        ::FoundationKitOsl::OslLog("\n");
+    }
 
 } // namespace FoundationKitCxxStl::Test

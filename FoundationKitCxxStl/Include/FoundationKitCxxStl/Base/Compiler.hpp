@@ -32,12 +32,6 @@
 
 #endif
 
-#if !defined(FOUNDATIONKITCXXSTL_FREESTANDING)
-#  if defined(__STDC_HOSTED__) && (__STDC_HOSTED__ == 0)
-#    define FOUNDATIONKITCXXSTL_FREESTANDING 1
-#  endif
-#endif
-
 /// @section compiler attributes
 
 #if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
@@ -75,7 +69,7 @@
 #define FK_BUG_ON(condition, msg)                                                               \
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKitCxxStl::Osl::FoundationKitCxxStlOslBug("FoundationKitCxxStl (bug): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
+            ::FoundationKitOsl::OslBug("FoundationKitCxxStl (bug): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
         }                                                                                       \
     } while (0)
 
@@ -83,6 +77,6 @@
 #define FK_WARN_ON(condition, msg)                                                              \
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKitCxxStl::Osl::FoundationKitCxxStlOslLog("FoundationKitCxxStl (warn): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
+            ::FoundationKitOsl::FoundationKitCxxStlOslLog("FoundationKitCxxStl (warn): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
         }                                                                                       \
     } while (0)

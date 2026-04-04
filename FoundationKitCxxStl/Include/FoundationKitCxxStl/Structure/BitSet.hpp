@@ -2,7 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bit.hpp>
-#include <FoundationKitCxxStl/Memory/Operations.hpp>
+#include <FoundationKitMemory/MemoryOperations.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 
@@ -15,7 +15,7 @@ namespace FoundationKitCxxStl::Structure {
         static constexpr usize WordCount = (N + WordSize - 1) / WordSize;
 
         constexpr BitSet() noexcept {
-            Memory::MemoryZero(m_words, sizeof(m_words));
+            FoundationKitMemory::MemoryZero(m_words, sizeof(m_words));
         }
 
         constexpr void Set(const usize pos, const bool value = true) noexcept {
@@ -30,7 +30,7 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         constexpr void Reset() noexcept {
-            Memory::MemoryZero(m_words, sizeof(m_words));
+            FoundationKitMemory::MemoryZero(m_words, sizeof(m_words));
         }
 
         constexpr void Flip(const usize pos) noexcept {

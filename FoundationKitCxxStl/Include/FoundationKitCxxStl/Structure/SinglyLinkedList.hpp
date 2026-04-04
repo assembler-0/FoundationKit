@@ -2,15 +2,15 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Memory/Allocator.hpp>
-#include <FoundationKitCxxStl/Memory/AnyAllocator.hpp>
+#include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/AnyAllocator.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 
     /// @brief A simple singly linked list.
     /// @tparam T The type of elements.
     /// @tparam Alloc The allocator to use for nodes.
-    template <typename T, Memory::IAllocator Alloc = Memory::AnyAllocator>
+    template <typename T, FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class SinglyLinkedList {
     public:
         struct Node {

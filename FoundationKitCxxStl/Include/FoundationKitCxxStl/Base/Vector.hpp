@@ -3,15 +3,15 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
-#include <FoundationKitCxxStl/Memory/Allocator.hpp>
-#include <FoundationKitCxxStl/Memory/AnyAllocator.hpp>
+#include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/AnyAllocator.hpp>
 
 namespace FoundationKitCxxStl {
 
     /// @brief A dynamic array that can grow in size.
     /// @tparam T The type of elements.
     /// @tparam Alloc The allocator to use.
-    template <typename T, Memory::IAllocator Alloc = Memory::AnyAllocator>
+    template <typename T, FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class Vector {
     public:
         using SizeType = usize;

@@ -5,16 +5,15 @@
 #include <FoundationKitCxxStl/Base/Expected.hpp>
 #include <FoundationKitCxxStl/Base/StringView.hpp>
 #include <FoundationKitCxxStl/Base/Vector.hpp>
-#include <FoundationKitCxxStl/Memory/Allocator.hpp>
-#include <FoundationKitCxxStl/Memory/AnyAllocator.hpp>
-#include <FoundationKitCxxStl/Memory/Operations.hpp>
-#include <FoundationKitCxxStl/Memory/UniquePtr.hpp>
+#include <FoundationKitMemory/AnyAllocator.hpp>
+#include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/UniquePtr.hpp>
 
 namespace FoundationKitCxxStl {
 
     /// @brief A dynamic string class with Small String Optimization (SSO).
     /// @tparam Alloc The allocator for heap-based storage.
-    template <Memory::IAllocator Alloc = Memory::AnyAllocator>
+    template <FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class String {
     public:
         using SizeType = usize;
@@ -49,7 +48,7 @@ namespace FoundationKitCxxStl {
             if (m_is_heap) {
                 m_data.heap = FoundationKitCxxStl::Move(other.m_data.heap);
             } else {
-                Memory::MemoryCopy(m_data.sso, other.m_data.sso, SsoCapacity + 1);
+                FoundationKitMemory::MemoryCopy(m_data.sso, other.m_data.sso, SsoCapacity + 1);
             }
             other.m_size = 0;
             other.m_is_heap = false;
@@ -70,7 +69,7 @@ namespace FoundationKitCxxStl {
                 if (m_is_heap) {
                     m_data.heap = FoundationKitCxxStl::Move(other.m_data.heap);
                 } else {
-                    Memory::MemoryCopy(m_data.sso, other.m_data.sso, SsoCapacity + 1);
+                    FoundationKitMemory::MemoryCopy(m_data.sso, other.m_data.sso, SsoCapacity + 1);
                 }
                 
                 other.m_size = 0;
@@ -80,14 +79,14 @@ namespace FoundationKitCxxStl {
             return *this;
         }
 
-        Expected<void, Memory::MemoryError> Append(const StringView view) noexcept {
+        Expected<void, FoundationKitMemory::MemoryError> Append(const StringView view) noexcept {
             const SizeType old_size = m_size;
             const SizeType new_size = old_size + view.Size();
 
             if (auto res = EnsureCapacity(new_size); !res) return res;
 
             char* buffer = m_is_heap ? m_data.heap.Get() : m_data.sso;
-            Memory::MemoryCopy(buffer + old_size, view.Data(), view.Size());
+            FoundationKitMemory::MemoryCopy(buffer + old_size, view.Data(), view.Size());
             
             m_size = new_size;
             buffer[m_size] = '\0';
@@ -114,12 +113,12 @@ namespace FoundationKitCxxStl {
 
         [[nodiscard]] bool StartsWith(const StringView view) const noexcept {
             if (view.Size() > m_size) return false;
-            return Memory::MemoryCompare(CStr(), view.Data(), view.Size()) == 0;
+            return FoundationKitMemory::MemoryCompare(CStr(), view.Data(), view.Size()) == 0;
         }
 
         [[nodiscard]] bool EndsWith(const StringView view) const noexcept {
             if (view.Size() > m_size) return false;
-            return Memory::MemoryCompare(CStr() + (m_size - view.Size()), view.Data(), view.Size()) == 0;
+            return FoundationKitMemory::MemoryCompare(CStr() + (m_size - view.Size()), view.Data(), view.Size()) == 0;
         }
 
         [[nodiscard]] bool Contains(const StringView view) const noexcept {
@@ -132,15 +131,15 @@ namespace FoundationKitCxxStl {
 
             const char* buffer = CStr();
             for (usize i = offset; i <= m_size - view.Size(); ++i) {
-                if (Memory::MemoryCompare(buffer + i, view.Data(), view.Size()) == 0) {
+                if (FoundationKitMemory::MemoryCompare(buffer + i, view.Data(), view.Size()) == 0) {
                     return i;
                 }
             }
             return static_cast<usize>(-1);
         }
 
-        [[nodiscard]] Expected<String, Memory::MemoryError> SubStr(usize offset, usize count = static_cast<usize>(-1)) const noexcept {
-            if (offset > m_size) return static_cast<Expected<String, Memory::MemoryError>>(Memory::MemoryError::InvalidSize);
+        [[nodiscard]] Expected<String, FoundationKitMemory::MemoryError> SubStr(usize offset, usize count = static_cast<usize>(-1)) const noexcept {
+            if (offset > m_size) return static_cast<Expected<String, FoundationKitMemory::MemoryError>>(FoundationKitMemory::MemoryError::InvalidSize);
             
             const usize actual_count = count == static_cast<usize>(-1) || offset + count > m_size
                                        ? m_size - offset 
@@ -151,7 +150,7 @@ namespace FoundationKitCxxStl {
             return result;
         }
 
-        [[nodiscard]] Expected<Vector<String<Alloc>>, Memory::MemoryError> Split(char delimiter) const noexcept {
+        [[nodiscard]] Expected<Vector<String<Alloc>>, FoundationKitMemory::MemoryError> Split(char delimiter) const noexcept {
             Vector<String<Alloc>> result(m_allocator);
             StringView view = static_cast<StringView>(*this);
             usize start = 0;
@@ -160,14 +159,14 @@ namespace FoundationKitCxxStl {
                 if (view[i] == delimiter) {
                     auto sub = SubStr(start, i - start);
                     if (!sub) return sub.Error();
-                    if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return Memory::MemoryError::OutOfMemory;
+                    if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return FoundationKitMemory::MemoryError::OutOfMemory;
                     start = i + 1;
                 }
             }
 
             auto sub = SubStr(start);
             if (!sub) return sub.Error();
-            if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return Memory::MemoryError::OutOfMemory;
+            if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return FoundationKitMemory::MemoryError::OutOfMemory;
 
             return result;
         }
@@ -193,7 +192,7 @@ namespace FoundationKitCxxStl {
 
             const usize new_size = end - start + 1;
             if (start > 0) {
-                Memory::MemoryMove(m_is_heap ? m_data.heap.Get() : m_data.sso, buffer + start, new_size);
+                FoundationKitMemory::MemoryMove(m_is_heap ? m_data.heap.Get() : m_data.sso, buffer + start, new_size);
             }
             
             m_size = new_size;
@@ -202,7 +201,7 @@ namespace FoundationKitCxxStl {
         }
 
     private:
-        Expected<void, Memory::MemoryError> EnsureCapacity(const SizeType required) noexcept {
+        Expected<void, FoundationKitMemory::MemoryError> EnsureCapacity(const SizeType required) noexcept {
             if (required <= SsoCapacity && !m_is_heap) return {};
 
             const SizeType current_cap = m_is_heap ? m_heap_capacity : SsoCapacity;
@@ -211,13 +210,13 @@ namespace FoundationKitCxxStl {
             SizeType next_cap = current_cap * 2;
             if (next_cap < required) next_cap = required;
 
-            const Memory::AllocResult res = m_allocator.Allocate(next_cap + 1, alignof(char));
-            if (!res.ok()) return Expected<void, Memory::MemoryError>(Memory::MemoryError::OutOfMemory);
+            const FoundationKitMemory::AllocResult res = m_allocator.Allocate(next_cap + 1, alignof(char));
+            if (!res.ok()) return Expected<void, FoundationKitMemory::MemoryError>(FoundationKitMemory::MemoryError::OutOfMemory);
 
             auto new_ptr = static_cast<char*>(res.ptr);
             const char* old_ptr = CStr();
             
-            Memory::MemoryCopy(new_ptr, old_ptr, m_size);
+            FoundationKitMemory::MemoryCopy(new_ptr, old_ptr, m_size);
             new_ptr[m_size] = '\0';
             
             if (m_is_heap) {
@@ -225,7 +224,7 @@ namespace FoundationKitCxxStl {
             }
 
             m_is_heap = true;
-            FoundationKitCxxStl::ConstructAt<Memory::UniquePtr<char[]>>(&m_data.heap, new_ptr, next_cap + 1, Memory::AnyAllocator(m_allocator));
+            FoundationKitCxxStl::ConstructAt<FoundationKitMemory::UniquePtr<char[]>>(&m_data.heap, new_ptr, next_cap + 1, FoundationKitMemory::AnyAllocator(m_allocator));
             m_heap_capacity = next_cap;
             
             return {};
@@ -238,7 +237,7 @@ namespace FoundationKitCxxStl {
 
         union Data {
             char  sso[SsoCapacity + 1];
-            Memory::UniquePtr<char[]> heap;
+            FoundationKitMemory::UniquePtr<char[]> heap;
 
             constexpr Data() : sso{} {}
             ~Data() {} 

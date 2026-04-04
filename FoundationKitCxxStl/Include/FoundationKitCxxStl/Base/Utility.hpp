@@ -1,7 +1,7 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
-#include <FoundationKitCxxStl/Memory/PlacementNew.hpp>
+#include <FoundationKitMemory/PlacementNew.hpp>
 #include <FoundationKitCxxStl/Std/initializer_list>
 
 namespace FoundationKitCxxStl {
@@ -48,7 +48,7 @@ namespace FoundationKitCxxStl {
 
     template <typename T, typename... Args>
     T* ConstructAt(void* ptr, Args&&... args) noexcept {
-        return ::new (ptr) T(static_cast<Args&&>(args)...);
+        return ::new (ptr) T(FoundationKitCxxStl::Forward<Args>(args)...);
     }
 
 } // namespace FoundationKitCxxStl

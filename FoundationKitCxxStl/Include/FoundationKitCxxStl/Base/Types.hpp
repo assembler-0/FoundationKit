@@ -68,7 +68,3 @@ static_assert(sizeof(FoundationKitCxxStl::i16) == 2, "FoundationKitCxxStl: i16 i
 static_assert(sizeof(FoundationKitCxxStl::i32) == 4, "FoundationKitCxxStl: i32 is not 4 bytes");
 static_assert(sizeof(FoundationKitCxxStl::i64) == 8, "FoundationKitCxxStl: i64 is not 8 bytes");
 static_assert(sizeof(FoundationKitCxxStl::uptr) == sizeof(void*), "FoundationKitCxxStl: uptr width does not match pointer width");
-
-#if defined(FOUNDATIONKITCXXSTL_USE_NAMESPACE)
-using namespace FoundationKitCxxStl;
-#endif

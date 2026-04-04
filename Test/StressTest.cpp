@@ -26,20 +26,24 @@
 #include <FoundationKitCxxStl/Structure/HashMap.hpp>
 
 // Memory components
-#include <FoundationKitCxxStl/Memory/BumpAllocator.hpp>
-#include <FoundationKitCxxStl/Memory/AnyAllocator.hpp>
-#include <FoundationKitCxxStl/Memory/UniquePtr.hpp>
-#include <FoundationKitCxxStl/Memory/SharedPtr.hpp>
-#include <FoundationKitCxxStl/Memory/PoolAllocator.hpp>
+#include <FoundationKitMemory/BumpAllocator.hpp>
+#include <FoundationKitMemory/FreeListAllocator.hpp>
+#include <FoundationKitMemory/SlabAllocator.hpp>
+#include <FoundationKitMemory/BuddyAllocator.hpp>
+#include <FoundationKitMemory/AnyAllocator.hpp>
+#include <FoundationKitMemory/UniquePtr.hpp>
+#include <FoundationKitMemory/SharedPtr.hpp>
+#include <FoundationKitMemory/PoolAllocator.hpp>
+#include <FoundationKitMemory/Global.hpp>
 
 using namespace FoundationKitCxxStl;
-using namespace FoundationKitCxxStl::Memory;
+using namespace FoundationKitMemory;
 using namespace FoundationKitCxxStl::Structure;
 
 // Global test allocator
 static byte g_test_buffer[128 * 1024]; // 128KB should be enough
 static BumpAllocator g_test_alloc(g_test_buffer, sizeof(g_test_buffer));
-static ConcreteResource g_test_resource(g_test_alloc);
+static MemoryResourceWrapper g_test_resource(g_test_alloc);
 
 // Forward declare for Variant test
 struct Complex {
@@ -303,7 +307,7 @@ TEST_CASE(Memory_PoolAllocator) {
 
     // Exhaust pool
     for (int i = 0; i < 14; ++i) { // 1024 / 64 = 16. Already have 2 (one reused).
-        pool.Allocate(64, 8);
+        (void)pool.Allocate(64, 8);
     }
     auto res_fail = pool.Allocate(64, 8);
     ASSERT_FALSE(res_fail.ok());
@@ -530,7 +534,7 @@ TEST_CASE(Structure_HashMap) {
 
 TEST_CASE(Base_Extended_Suite) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator::SetDefaultResource(&g_test_resource);
+    FoundationKitMemory::SetDefaultResource(&g_test_resource);
     AnyAllocator any_alloc(&g_test_resource);
 
     // 1. CommandLine Parsing

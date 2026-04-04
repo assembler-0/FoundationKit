@@ -14,7 +14,7 @@ namespace FoundationKitCxxStl::Structure {
     /// @tparam V Value type.
     /// @tparam H Hash function.
     /// @tparam Alloc Allocator for the underlying storage.
-    template <typename K, typename V, typename H = Hash, Memory::IAllocator Alloc = Memory::AnyAllocator>
+    template <typename K, typename V, typename H = Hash, FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class HashMap {
     public:
         enum class BucketStatus : u8 {
