@@ -101,7 +101,8 @@ namespace FoundationKitMemory {
             if (!ptr) return;
 
             auto* header = reinterpret_cast<AllocationHeader*>(static_cast<byte*>(ptr) - sizeof(AllocationHeader));
-            FK_BUG_ON(header->magic != HeaderMagic, "FreeListAllocator: Memory corruption or invalid pointer");
+            FK_BUG_ON(header->magic != HeaderMagic,
+                "FreeListAllocator: Header magic mismatch (expected: {} got: {})", HeaderMagic, header->magic);
 
             const uptr block_start = reinterpret_cast<uptr>(ptr) - header->padding;
             const usize block_size = header->size;

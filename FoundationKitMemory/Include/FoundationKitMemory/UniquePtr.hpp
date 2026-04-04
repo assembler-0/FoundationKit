@@ -131,7 +131,7 @@ namespace FoundationKitMemory {
         
         [[nodiscard]] T& operator[](usize index) const noexcept { 
             FK_BUG_ON(!m_ptr, "UniquePtr[]: access via null pointer");
-            FK_BUG_ON(index >= m_count, "UniquePtr[]: index out of bounds");
+            FK_BUG_ON(index >= m_count, "UniquePtr[]: index ({}) out of bounds ({})", index, m_count);
             return m_ptr[index]; 
         }
         

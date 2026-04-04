@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -29,7 +30,7 @@ namespace FoundationKitCxxStl {
             : m_data(first), m_size(static_cast<SizeType>(last - first)) {}
 
         template <usize N>
-        constexpr Span(T (&arr)[N]) noexcept
+        explicit constexpr Span(T (&arr)[N]) noexcept
             : m_data(arr), m_size(N) {}
 
         [[nodiscard]] constexpr Pointer Data() const noexcept { return m_data; }
@@ -37,7 +38,7 @@ namespace FoundationKitCxxStl {
         [[nodiscard]] constexpr bool Empty() const noexcept { return m_size == 0; }
 
         [[nodiscard]] constexpr Reference operator[](SizeType index) const noexcept {
-            FK_BUG_ON(index >= m_size, "Span: index out of bounds");
+            FK_BUG_ON(index >= m_size, "Span: index ({}) out of bounds ({})", index, m_size);
             return m_data[index];
         }
 
@@ -55,7 +56,7 @@ namespace FoundationKitCxxStl {
         [[nodiscard]] constexpr Iterator end() const noexcept { return m_data + m_size; }
 
         [[nodiscard]] constexpr Span SubSpan(SizeType offset, SizeType count = static_cast<usize>(-1)) const noexcept {
-            FK_BUG_ON(offset > m_size, "Span: offset out of bounds");
+            FK_BUG_ON(offset > m_size, "Span: offset ({}) out of bounds ({})", offset, m_size);
             const SizeType actual_count = (count == static_cast<usize>(-1) || offset + count > m_size) 
                                           ? m_size - offset 
                                           : count;
@@ -63,12 +64,12 @@ namespace FoundationKitCxxStl {
         }
 
         [[nodiscard]] constexpr Span First(SizeType count) const noexcept {
-            FK_BUG_ON(count > m_size, "Span: count out of bounds");
+            FK_BUG_ON(count > m_size, "Span: count ({}) out of bounds ({})", count, m_size);
             return Span(m_data, count);
         }
 
         [[nodiscard]] constexpr Span Last(SizeType count) const noexcept {
-            FK_BUG_ON(count > m_size, "Span: count out of bounds");
+            FK_BUG_ON(count > m_size, "Span: count ({}) out of bounds ({})", count, m_size);
             return Span(m_data + (m_size - count), count);
         }
 

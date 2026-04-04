@@ -82,8 +82,10 @@ namespace FoundationKitMemory {
             if (!ptr) return;
 
             Header* header = GetHeader(ptr);
-            FK_BUG_ON(header->magic != HeaderMagic, "TrackingAllocator: Memory corruption or invalid pointer");
-            FK_BUG_ON(header->user_size != size && size != 0, "TrackingAllocator: Deallocate size mismatch");
+            FK_BUG_ON(header->magic != HeaderMagic,
+                "TrackingAllocator: Header magic mismatch (expected: {} got: {})", HeaderMagic, header->magic);
+            FK_BUG_ON(header->user_size != size && size != 0,
+                "TrackingAllocator: Deallocate size ({}) mismatch ({})", header->user_size, size);
 
             void* raw_ptr = reinterpret_cast<byte*>(header) + sizeof(Header) - header->padding;
             m_base.Deallocate(raw_ptr, header->size);
@@ -125,7 +127,8 @@ namespace FoundationKitMemory {
             if (!ptr) return Allocate(new_size, align);
 
             Header* header = GetHeader(ptr);
-            FK_BUG_ON(header->magic != HeaderMagic, "TrackingAllocator: Invalid pointer in Reallocate");
+            FK_BUG_ON(header->magic != HeaderMagic,
+                "TrackingAllocator: Header magic mismatch (expected: {} got:{})", HeaderMagic, header->magic);
 
             // If new size fits in current allocation and isn't significantly smaller, we can just update
             if (new_size <= header->user_size && new_size > header->user_size / 2) {

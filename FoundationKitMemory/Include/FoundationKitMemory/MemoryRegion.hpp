@@ -21,7 +21,7 @@ namespace FoundationKitMemory {
         constexpr MemoryRegion(void* base, usize size) noexcept
             : m_base(static_cast<byte*>(base)), m_size(size) {
             FK_BUG_ON(base == nullptr && size > 0, 
-                "MemoryRegion: null base with non-zero size");
+                "MemoryRegion: null base with non-zero size ({})", size);
         }
 
         /// @brief Create a null (empty) region.
@@ -53,8 +53,8 @@ namespace FoundationKitMemory {
         /// @param offset The split point (must be <= Size())
         /// @return {left: [base, offset), right: [base+offset, end)}
         [[nodiscard]] constexpr MemoryRegion Split(usize offset) const noexcept {
-            FK_BUG_ON(offset > m_size, "MemoryRegion::Split: offset exceeds size");
-            return MemoryRegion(m_base + offset, m_size - offset);
+            FK_BUG_ON(offset > m_size, "MemoryRegion::Split: offset ({}) exceeds size ({})", offset, m_size);
+            return {m_base + offset, m_size - offset};
         }
 
         /// @brief Create a sub-region within this region.
@@ -63,8 +63,8 @@ namespace FoundationKitMemory {
         /// @return New region [base+offset, base+offset+size)
         [[nodiscard]] constexpr MemoryRegion SubRegion(usize offset, usize size) const noexcept {
             FK_BUG_ON(offset + size > m_size, 
-                "MemoryRegion::SubRegion: bounds exceed this region");
-            return MemoryRegion(m_base + offset, size);
+                "MemoryRegion::SubRegion: bounds ({}) exceed this region ({})", offset + size, m_size);
+            return {m_base + offset, size};
         }
 
         /// @brief Check if two regions overlap.
@@ -162,9 +162,9 @@ namespace FoundationKitMemory {
         explicit constexpr RegionPool(void* base, usize total_size) noexcept
             : m_base_region(base, total_size) {
             FK_BUG_ON(total_size == 0 || NumRegions == 0, 
-                "RegionPool: cannot partition empty region");
-            
-            usize region_size = total_size / NumRegions;
+                "RegionPool: cannot partition empty region (size: {} regions: {})", total_size, NumRegions);
+
+            const usize region_size = total_size / NumRegions;
             FK_BUG_ON(region_size == 0, 
                 "RegionPool: region_size underflow (too many regions)");
             
@@ -176,7 +176,7 @@ namespace FoundationKitMemory {
         /// @brief Get a specific sub-region by index.
         /// @param idx Index (0 <= idx < NumRegions)
         [[nodiscard]] constexpr MemoryRegion At(usize idx) const noexcept {
-            FK_BUG_ON(idx >= NumRegions, "RegionPool::At: index out of bounds");
+            FK_BUG_ON(idx >= NumRegions, "RegionPool::At: index ({}) out of bounds ({})", idx, NumRegions);
             return m_regions[idx];
         }
 

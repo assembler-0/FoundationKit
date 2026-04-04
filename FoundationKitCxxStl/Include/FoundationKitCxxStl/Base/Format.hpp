@@ -1,17 +1,15 @@
 #pragma once
 
-#include <FoundationKitCxxStl/Base/StringView.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
 namespace FoundationKitCxxStl {
 
-    class StringBuilder;
-
     template <typename T>
     struct Formatter {
-        void Format(StringBuilder& sb, const T& value);
+        template <typename Sink>
+        void Format(Sink& sb, const T& value);
     };
 
     namespace Detail {
@@ -66,5 +64,55 @@ namespace FoundationKitCxxStl {
             return i;
         }
     }
+
+    // --- Basic Specializations ---
+
+    template <>
+    struct Formatter<char> {
+        template <typename Sink>
+        void Format(Sink& sb, const char& value) {
+            sb.Append(value);
+        }
+    };
+
+    template <>
+    struct Formatter<const char*> {
+        template <typename Sink>
+        void Format(Sink& sb, const char* const& value) {
+            if (!value) return;
+            usize len = 0;
+            while (value[len]) len++;
+            sb.Append(value, len);
+        }
+    };
+
+    template <usize N>
+    struct Formatter<char[N]> {
+        template <typename Sink>
+        void Format(Sink& sb, const char (&value)[N]) {
+            // Arrays don't decay when passed by reference, so we manually treat as const char*
+            Formatter<const char*>().template Format<Sink>(sb, static_cast<const char*>(value));
+        }
+    };
+
+    template <usize N>
+    struct Formatter<const char[N]> {
+        template <typename Sink>
+        void Format(Sink& sb, const char (&value)[N]) {
+            Formatter<const char*>().template Format<Sink>(sb, static_cast<const char*>(value));
+        }
+    };
+
+    template <Integral T>
+    struct Formatter<T> {
+        template <typename Sink>
+        void Format(Sink& sb, const T& value) {
+            char buf[64];
+            usize len;
+            if constexpr (Signed<T>) len = Detail::SignedToChars(value, buf);
+            else len = Detail::UnsignedToChars(value, buf);
+            sb.Append(buf, len);
+        }
+    };
 
 } // namespace FoundationKitCxxStl

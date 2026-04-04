@@ -2,9 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
-#include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Base/Compiler.hpp>
-#include <FoundationKitOsl/Osl.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitMemory {
 

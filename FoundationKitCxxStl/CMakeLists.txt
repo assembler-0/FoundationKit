@@ -11,6 +11,7 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/Expected.hpp
     Include/FoundationKitCxxStl/Base/Format.hpp
     Include/FoundationKitCxxStl/Base/Hash.hpp
+    Include/FoundationKitCxxStl/Base/Logger.hpp
     Include/FoundationKitCxxStl/Base/NumericLimits.hpp
     Include/FoundationKitCxxStl/Base/Optional.hpp
     Include/FoundationKitCxxStl/Base/Pair.hpp

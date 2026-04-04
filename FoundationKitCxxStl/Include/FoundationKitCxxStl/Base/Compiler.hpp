@@ -2,6 +2,22 @@
 
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
 
+// --- Stringification Macros ---
+#ifndef FOUNDATIONKIT_STR
+#  define FOUNDATIONKIT_STR_(x)          #x
+#  define FOUNDATIONKIT_STR(x)           FOUNDATIONKIT_STR_(x)
+#endif
+
+#ifndef FOUNDATIONKITCXXSTL_STR
+#  define FOUNDATIONKITCXXSTL_STR_(x)    #x
+#  define FOUNDATIONKITCXXSTL_STR(x)     FOUNDATIONKITCXXSTL_STR_(x)
+#endif
+
+#define FK_FORMAT_MSG(m)       "#!(IN)[FoundationKit]: " m
+#define FK_FORMAT_ERR_MSG(m)   "#!(EE)[FoundationKit]: " m
+#define FK_FORMAT_WARN_MSG(m)  "#!(WR)[FoundationKit]: " m
+#define FK_FORMAT_INFO_MSG(m)  "#!(IN)[FoundationKit]: " m
+
 /// @section basic compiler, platform width detection
 
 #if !defined(FOUNDATIONKITCXXSTL_COMPILER_GCC)   && \
@@ -15,7 +31,7 @@
 #  elif defined(_MSC_VER)
 #    define FOUNDATIONKITCXXSTL_COMPILER_MSVC 1
 #  else
-#    warning FK_FORMAT_MSG("unknown compiler. Using default implementation (GCC).")
+#    warning FK_FORMAT_INFO_MSG("unknown compiler. Using default implementation (GCC).")
 #    define FOUNDATIONKITCXXSTL_COMPILER_GCC 1
 #  endif
 
@@ -62,21 +78,3 @@
 #endif
 
 #define FOUNDATIONKITCXXSTL_GLOBAL
-#define FOUNDATIONKITCXXSTL_STR_(x)          #x
-#define FOUNDATIONKITCXXSTL_STR(x)           FOUNDATIONKITCXXSTL_STR_(x)
-
-/// @brief Asserts that a condition is true, otherwise triggers a fatal OSL bug.
-#define FK_BUG_ON(condition, msg)                                                               \
-    do {                                                                                        \
-        if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKitOsl::OslBug("#!(EE)[FoundationKit]: " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
-        }                                                                                       \
-    } while (0)
-
-/// @brief Asserts that a condition is true, otherwise warns host OS.
-#define FK_WARN_ON(condition, msg)                                                              \
-    do {                                                                                        \
-        if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKitOsl::FoundationKitCxxStlOslLog("#!(WR)[FoundationKit]: " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
-        }                                                                                       \
-    } while (0)

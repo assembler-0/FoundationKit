@@ -94,16 +94,20 @@ namespace FoundationKitMemory {
             if (!ptr) return;
 
             Header* header = GetHeader(ptr);
-            FK_BUG_ON(header->magic != HeaderMagic, "SafeAllocator: Memory corruption or invalid pointer (Header)");
-            FK_BUG_ON(header->user_size != size && size != 0, "SafeAllocator: Deallocate size mismatch");
+            FK_BUG_ON(header->magic != HeaderMagic,
+                "SafeAllocator: Header magic mismatch (expected: {} got: {})", HeaderMagic, header->magic);
+            FK_BUG_ON(header->user_size != size && size != 0,
+                "SafeAllocator: Deallocate size ({}) mismatch ({})", header->user_size, size);
 
             // Verify integrity
             const byte* head_canary = static_cast<const byte*>(ptr) - CanarySize;
             const byte* tail_canary = static_cast<const byte*>(ptr) + header->user_size;
 
             for (usize i = 0; i < CanarySize; ++i) {
-                FK_BUG_ON(head_canary[i] != HeadCanaryValue, "SafeAllocator: Memory corruption detected (underflow)");
-                FK_BUG_ON(tail_canary[i] != TailCanaryValue, "SafeAllocator: Memory corruption detected (overflow)");
+                FK_BUG_ON(head_canary[i] != HeadCanaryValue,
+                    "SafeAllocator: Canaty corruption (underflow, expected: {} got: {})", HeadCanaryValue, head_canary[i]);
+                FK_BUG_ON(tail_canary[i] != TailCanaryValue,
+                    "SafeAllocator: Canaty corruption (overflow, expected: {} got: {})", TailCanaryValue, tail_canary[i]);
             }
 
             // Perform actual deallocation using original values

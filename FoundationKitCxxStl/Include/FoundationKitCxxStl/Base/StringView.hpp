@@ -26,12 +26,17 @@ namespace FoundationKitCxxStl {
         [[nodiscard]] constexpr bool Empty() const noexcept { return m_size == 0; }
 
         [[nodiscard]] constexpr char operator[](const SizeType index) const noexcept {
-            FK_BUG_ON(index >= m_size, "StringView: index out of bounds");
+            FK_BUG_ON(index >= m_size, "StringView: index ({}) out of bounds ({})", index, m_size);
             return m_data[index];
         }
 
         [[nodiscard]] constexpr const char* Begin() const noexcept { return m_data; }
         [[nodiscard]] constexpr const char* End() const noexcept { return m_data + m_size; }
+
+        /// @brief Implicitly convert to Logger's internal string view.
+        [[nodiscard]] constexpr operator Detail::LoggerStringView() const noexcept {
+            return {m_data, m_size};
+        }
 
         [[nodiscard]] constexpr bool operator==(const StringView& other) const noexcept {
             if (m_size != other.m_size) return false;

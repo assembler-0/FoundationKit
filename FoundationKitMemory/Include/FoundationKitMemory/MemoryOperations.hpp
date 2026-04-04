@@ -18,7 +18,7 @@ namespace FoundationKitMemory {
     /// @note Does not handle overlapping buffers. Use MemoryMove if buffers overlap.
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void* MemoryCopy(void* dest, const void* src, usize size) noexcept {
         if (size == 0) return dest;
-        FK_BUG_ON(!dest || !src, "MemoryCopy: null pointer provided with non-zero size");
+        FK_BUG_ON(!dest || !src, "MemoryCopy: null pointer provided with non-zero size ({})", size);
         
         auto* d = static_cast<byte*>(dest);
         const auto* s = static_cast<const byte*>(src);
@@ -61,7 +61,7 @@ namespace FoundationKitMemory {
     /// @brief Set memory in 'dest' to 'value'.
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void* MemorySet(void* dest, const byte value, usize size) noexcept {
         if (size == 0) return dest;
-        FK_BUG_ON(!dest, "MemorySet: null pointer provided with non-zero size");
+        FK_BUG_ON(!dest, "MemorySet: null pointer provided with non-zero size ({})", size);
 
 #if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
         if (FoundationKitOsl::OslIsSimdEnabled()) {
@@ -79,7 +79,7 @@ namespace FoundationKitMemory {
     /// @return Negative if lhs < rhs, positive if lhs > rhs, zero if equal.
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE i32 MemoryCompare(const void* lhs, const void* rhs, usize size) noexcept {
         if (size == 0) return 0;
-        FK_BUG_ON(!lhs || !rhs, "MemoryCompare: null pointer provided with non-zero size");
+        FK_BUG_ON(!lhs || !rhs, "MemoryCompare: null pointer provided with non-zero size ({})", size);
 
 #if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
         if (FoundationKitOsl::OslIsSimdEnabled()) {

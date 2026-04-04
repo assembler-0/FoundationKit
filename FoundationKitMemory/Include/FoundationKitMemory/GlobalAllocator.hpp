@@ -61,8 +61,7 @@ namespace FoundationKitMemory {
         [[nodiscard]] static BasicMemoryResource& GetAllocator() noexcept {
             BasicMemoryResource* alloc = m_allocator.Load(MemoryOrder::SeqCst);
             FK_BUG_ON(alloc == nullptr, 
-                "GlobalAllocatorSystem::GetAllocator: Global allocator not initialized. "
-                "Hint: Has GlobalAllocatorSystem::Initialize() been called?.");
+                "GlobalAllocatorSystem::GetAllocator: Global allocator not initialized.");
             return *alloc;
         }
 

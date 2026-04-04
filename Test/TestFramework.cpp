@@ -1,5 +1,6 @@
 #include <Test/TestFramework.hpp>
 #include <FoundationKitOsl/Osl.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Test {
 
@@ -18,7 +19,7 @@ namespace FoundationKitCxxStl::Test {
             s_current_test_failed = false;
             
             // Log test start
-            ::FoundationKitOsl::OslLog(FK_FORMAT_MSG("| running test: "));
+            ::FoundationKitOsl::OslLog(FK_FORMAT_INFO_MSG("| running test: "));
             ::FoundationKitOsl::OslLog(curr->Name);
             ::FoundationKitOsl::OslLog("\n");
 
@@ -26,9 +27,9 @@ namespace FoundationKitCxxStl::Test {
 
             if (s_current_test_failed) {
                 failed++;
-                ::FoundationKitOsl::OslLog(FK_FORMAT_MSG("|----> FAILED\n"));
+                ::FoundationKitOsl::OslLog(FK_FORMAT_WARN_MSG("|----> FAILED\n"));
             } else {
-                ::FoundationKitOsl::OslLog(FK_FORMAT_MSG("|----> PASSED\n"));
+                ::FoundationKitOsl::OslLog(FK_FORMAT_INFO_MSG("|----> PASSED\n"));
             }
         }
 
@@ -37,7 +38,7 @@ namespace FoundationKitCxxStl::Test {
 
     void TestRegistry::ReportFailure(const char* expr, const char* file, usize line) noexcept {
         (void)line;
-        ::FoundationKitOsl::OslLog("| Assertion failed: ");
+        ::FoundationKitOsl::OslLog(FK_FORMAT_WARN_MSG("| Assertion failed: "));
         ::FoundationKitOsl::OslLog(expr);
         ::FoundationKitOsl::OslLog(" at ");
         ::FoundationKitOsl::OslLog(file);

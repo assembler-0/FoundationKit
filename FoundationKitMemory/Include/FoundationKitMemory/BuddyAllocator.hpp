@@ -1,7 +1,6 @@
 #pragma once
 
 #include <FoundationKitMemory/MemoryCore.hpp>
-#include <FoundationKitMemory/MemoryCommon.hpp>
 #include <FoundationKitCxxStl/Base/Bit.hpp>
 #include <FoundationKitCxxStl/Structure/BitSet.hpp>
 
@@ -59,8 +58,8 @@ namespace FoundationKitMemory {
         void Deallocate(void* ptr, usize size) noexcept {
             if (!ptr || !m_start) return;
 
-            const usize offset = static_cast<usize>(static_cast<byte*>(ptr) - m_start);
-            FK_BUG_ON(offset >= MaxBlockSize, "BuddyAllocator: Pointer out of range");
+            const auto offset = static_cast<usize>(static_cast<byte*>(ptr) - m_start);
+            FK_BUG_ON(offset >= MaxBlockSize, "BuddyAllocator: Pointer out of range ({}) >= ({})", offset, MaxBlockSize);
 
             usize order = 0;
             usize current_size = MinBlockSize;

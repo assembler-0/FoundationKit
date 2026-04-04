@@ -16,6 +16,7 @@
 #include <FoundationKitCxxStl/Base/Bit.hpp>
 #include <FoundationKitCxxStl/Base/Algorithm.hpp>
 #include <FoundationKitCxxStl/Base/CommandLine.hpp>
+#include <FoundationKitCxxStl/Base/Logger.hpp>
 
 // Structure components
 #include <FoundationKitCxxStl/Structure/SinglyLinkedList.hpp>
@@ -603,4 +604,31 @@ TEST_CASE(Base_Extended_Suite) {
     StringBuilder sb(any_alloc);
     sb.Format("Base10: {}, Base16: {}, Char: {}, String: {}", 255, "FF", 'A', StringView("Test"));
     ASSERT_EQ(StringCompare(sb.View(), "Base10: 255, Base16: FF, Char: A, String: Test"), 0);
+}
+
+TEST_CASE(Base_LoggingAndFormatting) {
+    g_test_alloc.DeallocateAll();
+    AnyAllocator any_alloc{};
+
+    // Test Log (non-formatted)
+    Log(LogLevel::Info, "Testing non-formatted Info log");
+    Log(LogLevel::Warning, "Testing non-formatted Warning log");
+
+    // Test LogFmt
+    LogFmt(LogLevel::Info, "Testing formatted log: {}, {}", "Hello", 12345);
+
+    // Test Macros
+    FK_LOG_INFO("Macro Info: {}", 1);
+    FK_LOG_WARN("Macro Warning: {}", 2);
+    FK_LOG_ERR("Macro Error: {}", 3);
+
+    // Test StaticStringBuilder directly
+    StaticStringBuilder<128> ssb;
+    ssb.Format("Static: {}, {}, {}", 100, "String", 'Z');
+    ASSERT_EQ(StringCompare(StringView(ssb.CStr()), "Static: 100, String, Z"), 0);
+
+    // Test multiple arguments and different types in Format
+    StringBuilder sb(any_alloc);
+    sb.Format("Mixed: {} {} {} {} {}", -1, 2u, 'A', "BCD", StringView("EFG"));
+    ASSERT_EQ(StringCompare(sb.View(), "Mixed: -1 2 A BCD EFG"), 0);
 }

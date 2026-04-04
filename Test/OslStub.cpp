@@ -7,7 +7,8 @@ extern "C" {
     using namespace FoundationKitCxxStl;
 
     [[noreturn]] void OslBug(const char* msg) {
-        perror(msg);
+        fprintf(stderr, "%s", msg);
+        fflush(stderr);
         while (true) {}
     }
 

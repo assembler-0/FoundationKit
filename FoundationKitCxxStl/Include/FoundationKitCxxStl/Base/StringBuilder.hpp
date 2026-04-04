@@ -18,6 +18,11 @@ namespace FoundationKitCxxStl {
             return *this;
         }
 
+        StringBuilder& Append(const char* data, usize size) {
+            m_buffer.Append(StringView(data, size));
+            return *this;
+        }
+
         StringBuilder& Append(const char c) {
             const char buf[2] = {c, '\0'};
             m_buffer.Append(StringView(buf, 1));
@@ -73,44 +78,12 @@ namespace FoundationKitCxxStl {
         String<> m_buffer;
     };
 
-    // Specializations for basic types
-
-    template <>
-    struct Formatter<char> {
-        void Format(StringBuilder& sb, char value) {
-            sb.Append(value);
-        }
-    };
-
+    // Formatter for StringView using the generic sink
     template <>
     struct Formatter<StringView> {
-        void Format(StringBuilder& sb, StringView value) {
-            sb.Append(value);
-        }
-    };
-
-    template <usize N>
-    struct Formatter<char[N]> {
-        void Format(StringBuilder& sb, const char* value) {
-            sb.Append(StringView(value));
-        }
-    };
-
-    template <>
-    struct Formatter<const char*> {
-        void Format(StringBuilder& sb, const char* value) {
-            sb.Append(StringView(value));
-        }
-    };
-
-    template <Integral T>
-    struct Formatter<T> {
-        void Format(StringBuilder& sb, T value) {
-            char buf[64];
-            usize len;
-            if constexpr (Signed<T>) len = Detail::SignedToChars(value, buf);
-            else len = Detail::UnsignedToChars(value, buf);
-            sb.Append(StringView(buf, len));
+        template <typename Sink>
+        void Format(Sink& sb, const StringView& value) {
+            sb.Append(value.Data(), value.Size());
         }
     };
 

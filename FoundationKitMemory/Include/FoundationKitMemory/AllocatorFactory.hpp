@@ -91,7 +91,7 @@ namespace FoundationKitMemory {
             // Partition the base region into NumRegions equal parts
             usize region_size = base_region.Size() / NumRegions;
             FK_BUG_ON(region_size == 0, 
-                "MultiRegionAllocator: base_region too small for NumRegions");
+                "MultiRegionAllocator: base_region too small ({}) for NumRegions ({})", region_size, NumRegions);
             
             for (usize i = 0; i < NumRegions; ++i) {
                 m_regions[i] = base_region.SubRegion(i * region_size, region_size);
@@ -104,7 +104,7 @@ namespace FoundationKitMemory {
         /// @return true if registration succeeded, false if region is full
         bool RegisterAllocator(usize region_idx, BasicMemoryResource* alloc) noexcept {
             FK_BUG_ON(region_idx >= NumRegions, 
-                "MultiRegionAllocator::RegisterAllocator: region_idx out of bounds");
+                "MultiRegionAllocator::RegisterAllocator: region_idx ({}) out of bounds ({})", region_idx, NumRegions);
             FK_BUG_ON(alloc == nullptr, 
                 "MultiRegionAllocator::RegisterAllocator: null allocator");
 
@@ -125,7 +125,7 @@ namespace FoundationKitMemory {
         /// @return Number of allocators unregistered
         usize UnregisterAllocators(usize region_idx) noexcept {
             FK_BUG_ON(region_idx >= NumRegions, 
-                "MultiRegionAllocator::UnregisterAllocators: region_idx out of bounds");
+                "MultiRegionAllocator::UnregisterAllocators: region_idx ({}) out of bounds ({})", region_idx, NumRegions);
 
             usize count = 0;
             for (usize i = 0; i < MaxAllocatorsPerRegion; ++i) {
@@ -175,7 +175,7 @@ namespace FoundationKitMemory {
         /// @brief Get a specific region.
         [[nodiscard]] constexpr MemoryRegion GetRegion(usize idx) const noexcept {
             FK_BUG_ON(idx >= NumRegions, 
-                "MultiRegionAllocator::GetRegion: index out of bounds");
+                "MultiRegionAllocator::GetRegion: index ({}) out of bounds ({})", idx, NumRegions);
             return m_regions[idx];
         }
 
@@ -186,7 +186,7 @@ namespace FoundationKitMemory {
         /// @brief Helper: Allocate from a specific region.
         [[nodiscard]] AllocationResult AllocateInRegion(usize region_idx, usize size, usize align) noexcept {
             FK_BUG_ON(region_idx >= NumRegions, 
-                "MultiRegionAllocator::AllocateInRegion: region_idx out of bounds");
+                "MultiRegionAllocator::AllocateInRegion: region_idx ({}) out of bounds ({})", region_idx, NumRegions);
 
             for (usize i = 0; i < MaxAllocatorsPerRegion; ++i) {
                 usize entry_idx = region_idx * MaxAllocatorsPerRegion + i;
