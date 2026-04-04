@@ -63,7 +63,7 @@ TEST_CASE(Base_FixedArray) {
     auto val = arr.At(2);
     ASSERT_TRUE(val.HasValue());
     ASSERT_EQ(*val, 30);
-    
+
     arr.Fill(100);
     for (usize i = 0; i < arr.Size(); ++i) {
         ASSERT_EQ(arr[i], 100);

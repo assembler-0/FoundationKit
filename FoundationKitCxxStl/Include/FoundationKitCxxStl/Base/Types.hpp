@@ -2,6 +2,10 @@
 
 #include <FoundationKitCxxStl/Base/Compiler.hpp>
 
+#define FK_FORMAT_MSG(m)  "#!(IN)[FoundationKit] " m
+#define FK_FORMAT_ERR_MSG(m)  "#!(EE)[FoundationKit] " m
+#define FK_FORMAT_WARN_MSG(m)  "#!(WR)[FoundationKit] " m
+
 namespace FoundationKitCxxStl {
     using i8  = signed char;
     using u8  = unsigned char;
@@ -63,8 +67,8 @@ namespace FoundationKitCxxStl {
 
 } // namespace FoundationKitCxxStl
 
-static_assert(sizeof(FoundationKitCxxStl::i8)  == 1, "FoundationKitCxxStl: i8 is not 1 byte");
-static_assert(sizeof(FoundationKitCxxStl::i16) == 2, "FoundationKitCxxStl: i16 is not 2 bytes");
-static_assert(sizeof(FoundationKitCxxStl::i32) == 4, "FoundationKitCxxStl: i32 is not 4 bytes");
-static_assert(sizeof(FoundationKitCxxStl::i64) == 8, "FoundationKitCxxStl: i64 is not 8 bytes");
-static_assert(sizeof(FoundationKitCxxStl::uptr) == sizeof(void*), "FoundationKitCxxStl: uptr width does not match pointer width");
+static_assert(sizeof(FoundationKitCxxStl::i8)  == 1, FK_FORMAT_ERR_MSG("i8 is not 1 byte"));
+static_assert(sizeof(FoundationKitCxxStl::i16) == 2, FK_FORMAT_ERR_MSG("i16 is not 2 bytes"));
+static_assert(sizeof(FoundationKitCxxStl::i32) == 4, FK_FORMAT_ERR_MSG("i32 is not 4 bytes"));
+static_assert(sizeof(FoundationKitCxxStl::i64) == 8, FK_FORMAT_ERR_MSG("i64 is not 8 bytes"));
+static_assert(sizeof(FoundationKitCxxStl::uptr) == sizeof(void*), FK_FORMAT_ERR_MSG("uptr width does not match pointer width"));

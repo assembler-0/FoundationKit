@@ -18,7 +18,7 @@ namespace FoundationKitCxxStl::Test {
             s_current_test_failed = false;
             
             // Log test start
-            ::FoundationKitOsl::OslLog("| running test: ");
+            ::FoundationKitOsl::OslLog(FK_FORMAT_MSG("| running test: "));
             ::FoundationKitOsl::OslLog(curr->Name);
             ::FoundationKitOsl::OslLog("\n");
 
@@ -26,9 +26,9 @@ namespace FoundationKitCxxStl::Test {
 
             if (s_current_test_failed) {
                 failed++;
-                ::FoundationKitOsl::OslLog("|----> FAILED\n");
+                ::FoundationKitOsl::OslLog(FK_FORMAT_MSG("|----> FAILED\n"));
             } else {
-                ::FoundationKitOsl::OslLog("|----> PASSED\n");
+                ::FoundationKitOsl::OslLog(FK_FORMAT_MSG("|----> PASSED\n"));
             }
         }
 

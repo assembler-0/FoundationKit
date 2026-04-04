@@ -48,22 +48,22 @@ namespace FoundationKitCxxStl {
         }
 
         [[nodiscard]] constexpr Reference Front() noexcept { 
-            static_assert(N > 0, "FoundationKitCxxStl: FixedArray must not be empty to call Front()");
+            static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Front()");
             return DataBuffer[0]; 
         }
         
         [[nodiscard]] constexpr ConstReference Front() const noexcept { 
-            static_assert(N > 0, "FoundationKitCxxStl: FixedArray must not be empty to call Front()");
+            static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Front()");
             return DataBuffer[0]; 
         }
 
         [[nodiscard]] constexpr Reference Back() noexcept { 
-            static_assert(N > 0, "FoundationKitCxxStl: FixedArray must not be empty to call Back()");
+            static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Back()");
             return DataBuffer[N - 1]; 
         }
         
         [[nodiscard]] constexpr ConstReference Back() const noexcept { 
-            static_assert(N > 0, "FoundationKitCxxStl: FixedArray must not be empty to call Back()");
+            static_assert(N > 0, "FixedArray: FixedArray must not be empty to call Back()");
             return DataBuffer[N - 1]; 
         }
 

@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitMemory/PlacementNew.hpp>
 #include <FoundationKitCxxStl/Std/initializer_list>
+#include <FoundationKitCxxStl/Base/Utility.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -34,7 +35,7 @@ namespace FoundationKitCxxStl {
     /// @brief Forwards an r-value.
     template <typename T>
     [[nodiscard]] constexpr T&& Forward(RemoveReferenceT<T>&& arg) noexcept {
-        static_assert(!LValueReference<T>, "FoundationKitCxxStl: Cannot forward an r-value as an l-value.");
+        static_assert(!LValueReference<T>, FK_FORMAT_ERR_MSG("Cannot forward an r-value as an l-value."));
         return static_cast<T&&>(arg);
     }
 

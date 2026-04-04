@@ -15,7 +15,7 @@
 #  elif defined(_MSC_VER)
 #    define FOUNDATIONKITCXXSTL_COMPILER_MSVC 1
 #  else
-#    warning "FoundationKitCxxStl: unknown compiler. Using default implementation (GCC)."
+#    warning FK_FORMAT_MSG("unknown compiler. Using default implementation (GCC).")
 #    define FOUNDATIONKITCXXSTL_COMPILER_GCC 1
 #  endif
 
@@ -69,7 +69,7 @@
 #define FK_BUG_ON(condition, msg)                                                               \
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKitOsl::OslBug("FoundationKitCxxStl (bug): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
+            ::FoundationKitOsl::OslBug("#!(EE)[FoundationKit]: " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
         }                                                                                       \
     } while (0)
 
@@ -77,6 +77,6 @@
 #define FK_WARN_ON(condition, msg)                                                              \
     do {                                                                                        \
         if (!!(condition)) [[unlikely]] {                                                       \
-            ::FoundationKitOsl::FoundationKitCxxStlOslLog("FoundationKitCxxStl (warn): " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
+            ::FoundationKitOsl::FoundationKitCxxStlOslLog("#!(WR)[FoundationKit]: " msg " (" #condition ") at " __FILE_NAME__ ":" FOUNDATIONKITCXXSTL_STR(__LINE__)); \
         }                                                                                       \
     } while (0)
