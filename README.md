@@ -9,17 +9,18 @@ FoundationKit is a modular C++23 systems framework designed specifically for ope
 The project is organized as a monorepo. Each component resides in its own directory and follows a standardized internal structure:
 
 * **`Include/[Component]/`**: Public headers (primarily header-only templates).
-* **`Src/`**: Implementation files (where applicable).
+* **`Src/`**: Implementation files.
 * **`CMakeLists.txt`**: Defines the specific library target and source declarations.
 
 ### Components
 
-| Component               | Description                                                 | Documentation                       |
-|:------------------------|:------------------------------------------------------------|:------------------------------------|
-| **FoundationKitCxxStl** | A kernel-ready, C++23 compliant Standard Template Library.  | `Documentation/FoundationKitCxxStl` |
-| **FoundationKitMemory** | Core memory management primitives and allocators.           | `Documentation/FoundationKitMemory` |
-| **FoundationKitOsl**    | Operating System Layer for fundamental system abstractions. | `Documentation/FoundationKitOsl`    |
-| **FoundationKitCxxAbi** | Low-level C++ ABI support (TO BE IMPLEMENTED).              | `Documentation/FoundationKitCxxAbi` |
+| Component                 | Description                                                 | Documentation                       |
+|:--------------------------|:------------------------------------------------------------|:------------------------------------|
+| **FoundationKitCxxStl**   | A kernel-ready, C++23 compliant Standard Template Library.  | `Documentation/FoundationKitCxxStl` |
+| **FoundationKitMemory**   | Core memory management primitives and allocators.           | `Documentation/FoundationKitMemory` |
+| **FoundationKitOsl**      | Operating System Layer for fundamental system abstractions. | `Documentation/FoundationKitOsl`    |
+| **FoundationKitCxxAbi**   | Low-level C++ ABI support.                                  | `Documentation/FoundationKitCxxAbi` |
+| **FoundationKitPlatform** | Low-level architecture specific helpers                     | `WIP!`                              |
 
 ## Build System
 
@@ -36,4 +37,4 @@ Unit tests for all components are located in the `/Test` directory. These ensure
 
 ## License
 
-This project is licensed under the terms found in the `LICENSE` file.
+This project is licensed under the MIT license. For more information see the `LICENSE` file.

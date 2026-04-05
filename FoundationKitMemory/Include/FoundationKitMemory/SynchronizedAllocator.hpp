@@ -19,8 +19,7 @@ using namespace FoundationKitCxxStl;
 /// @tparam BaseAllocator Must satisfy IAllocator<BaseAllocator>
 /// @tparam LockType Locking policy (default
 /// FoundationKitCxxStl::Sync::InterruptSafeTicketLock)
-template <IAllocator BaseAllocator,
-          typename LockType = Sync::InterruptSafeTicketLock>
+template <IAllocator BaseAllocator, typename LockType = InterruptSafeTicketLock>
 class SynchronizedAllocator {
 public:
   // ====================================================================
@@ -39,17 +38,17 @@ public:
   // ====================================================================
 
   [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept {
-    Sync::LockGuard lock(m_lock);
+    LockGuard lock(m_lock);
     return m_base.Allocate(size, align);
   }
 
   void Deallocate(void *ptr, usize size) noexcept {
-    Sync::LockGuard lock(m_lock);
+    LockGuard lock(m_lock);
     m_base.Deallocate(ptr, size);
   }
 
   void Deallocate(void *ptr) noexcept {
-    Sync::LockGuard lock(m_lock);
+    LockGuard lock(m_lock);
     if constexpr (requires { m_base.Deallocate(ptr); }) {
       m_base.Deallocate(ptr);
     } else {
@@ -59,10 +58,10 @@ public:
 
   [[nodiscard]] bool Owns(const void *ptr) const noexcept {
     if constexpr (SharedLockable<LockType>) {
-      Sync::SharedLock lock(m_lock);
+      SharedLock lock(m_lock);
       return m_base.Owns(ptr);
     } else {
-      Sync::LockGuard lock(m_lock);
+      LockGuard lock(m_lock);
       return m_base.Owns(ptr);
     }
   }
@@ -73,7 +72,7 @@ public:
 
   [[nodiscard]] AllocationResult
   Reallocate(void *ptr, usize old_size, usize new_size, usize align) noexcept {
-    Sync::LockGuard lock(m_lock);
+    LockGuard lock(m_lock);
     if constexpr (IReallocatableAllocator<BaseAllocator>) {
       return m_base.Reallocate(ptr, old_size, new_size, align);
     } else {
@@ -85,7 +84,7 @@ public:
       if (new_size <= old_size)
         return {ptr, new_size};
 
-      AllocationResult res = m_base.Allocate(new_size, align);
+      const AllocationResult res = m_base.Allocate(new_size, align);
       if (!res)
         return res;
 
@@ -98,7 +97,7 @@ public:
   }
 
   void DeallocateAll() noexcept {
-    Sync::LockGuard lock(m_lock);
+    LockGuard lock(m_lock);
     if constexpr (IClearableAllocator<BaseAllocator>) {
       m_base.DeallocateAll();
     }

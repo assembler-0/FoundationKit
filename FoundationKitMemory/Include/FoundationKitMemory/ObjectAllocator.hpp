@@ -83,7 +83,7 @@ namespace FoundationKitMemory {
 
             auto mix = [&](u32 acc, u32 word) constexpr noexcept -> u32 {
                 for (int b = 0; b < 4; ++b) {
-                    acc ^= static_cast<u32>(word & 0xFF);
+                    acc ^= (word & 0xFF);
                     acc *= FNV_PRIME;
                     word >>= 8;
                 }
