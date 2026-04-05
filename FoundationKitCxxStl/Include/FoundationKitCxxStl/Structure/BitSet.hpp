@@ -36,6 +36,10 @@ namespace FoundationKitCxxStl::Structure {
             FoundationKitMemory::MemoryZero(m_words, sizeof(m_words));
         }
 
+        constexpr void SetAll() noexcept {
+            FoundationKitMemory::MemorySet(m_words, 0xFF, sizeof(m_words));
+        }
+
         constexpr void Flip(const usize pos) noexcept {
             FK_BUG_ON(pos >= N, "BitSet: Flip offset out of bounds");
             if (pos >= N) return;

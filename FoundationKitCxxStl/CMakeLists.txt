@@ -50,6 +50,8 @@ target_include_directories(FoundationKitCxxStl PUBLIC Include)
 target_link_libraries(FoundationKitCxxStl PUBLIC FoundationKitOsl FoundationKitPlatform)
 
 target_compile_options(FoundationKitCxxStl PRIVATE
+    -fPIC
+    -fPIE
     -fno-rtti
     -fno-exceptions
     -fno-builtin

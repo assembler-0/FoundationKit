@@ -16,6 +16,8 @@ target_compile_definitions(FoundationKitPlatform INTERFACE
 )
 
 target_compile_options(FoundationKitPlatform INTERFACE
+    -fPIC
+    -fPIE
     -fno-rtti
     -fno-exceptions
     -fno-builtin

@@ -12,13 +12,10 @@ namespace FoundationKitMemory {
     // ============================================================================
 
     /// @brief Two-tier segregator with statistics collection (thread-safe statistics).
-    /// @tparam SmallThreshold Allocation size boundary (small <= threshold < large)
     /// @tparam SmallAlloc Allocator for allocations <= SmallThreshold
     /// @tparam LargeAlloc Allocator for allocations > SmallThreshold
-    ///
-    /// Routes allocations by size class and tracks usage statistics
-    /// for runtime tuning and diagnostics. Statistics use atomic operations.
-    template <usize SmallThreshold, IAllocator SmallAlloc, IAllocator LargeAlloc>
+    /// @tparam SmallThreshold Allocation size boundary (0 = use runtime threshold)
+    template <IAllocator SmallAlloc, IAllocator LargeAlloc, usize SmallThreshold = 0>
     class AdaptiveSegregator2Tier {
     public:
         using Small = SmallAlloc;
@@ -26,13 +23,13 @@ namespace FoundationKitMemory {
 
         constexpr AdaptiveSegregator2Tier() noexcept = default;
 
-        explicit constexpr AdaptiveSegregator2Tier(SmallAlloc&& small, LargeAlloc&& large) noexcept
-            : m_small(Move(small)), m_large(Move(large)) {}
+        explicit constexpr AdaptiveSegregator2Tier(SmallAlloc&& small, LargeAlloc&& large, usize threshold = SmallThreshold) noexcept
+            : m_small(Move(small)), m_large(Move(large)), m_threshold(threshold) {}
 
         /// @brief Allocate by size tier.
         [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept {
             AllocationResult result;
-            if (size <= SmallThreshold) {
+            if (size <= GetThreshold()) {
                 result = m_small.Allocate(size, align);
                 if (result.IsSuccess()) m_small_allocations.FetchAdd(1, Sync::MemoryOrder::Relaxed);
             } else {
@@ -44,7 +41,7 @@ namespace FoundationKitMemory {
 
         /// @brief Deallocate by size tier.
         void Deallocate(void* ptr, usize size) noexcept {
-            if (size <= SmallThreshold) {
+            if (size <= GetThreshold()) {
                 m_small.Deallocate(ptr, size);
                 m_small_deallocations.FetchAdd(1, Sync::MemoryOrder::Relaxed);
             } else {
@@ -75,7 +72,10 @@ namespace FoundationKitMemory {
         [[nodiscard]] usize LargeDeallocations() const noexcept { return m_large_deallocations.Load(Sync::MemoryOrder::Relaxed); }
 
         /// @brief Get the current threshold.
-        [[nodiscard]] static constexpr usize Threshold() noexcept { return SmallThreshold; }
+        [[nodiscard]] usize GetThreshold() const noexcept {
+            if constexpr (SmallThreshold != 0) return SmallThreshold;
+            return m_threshold;
+        }
 
         /// @brief Reset statistics.
         void ResetStats() noexcept {
@@ -90,21 +90,24 @@ namespace FoundationKitMemory {
         [[nodiscard]] usize AdaptiveThreshold() const noexcept {
             usize small_alloc = m_small_allocations.Load(Sync::MemoryOrder::Relaxed);
             usize large_alloc = m_large_allocations.Load(Sync::MemoryOrder::Relaxed);
-            
+
+            const usize current_threshold = GetThreshold();
+
             if (large_alloc > 0 && small_alloc > 0) {
                 if (large_alloc > small_alloc * 10) {
-                    return (SmallThreshold * 3) / 2;  // Raise by 50%
+                    return (current_threshold * 3) / 2;  // Raise by 50%
                 }
                 if (small_alloc > large_alloc * 10) {
-                    return (SmallThreshold * 2) / 3;  // Lower by 33%
+                    return (current_threshold * 2) / 3;  // Lower by 33%
                 }
             }
-            return SmallThreshold;
+            return current_threshold;
         }
 
     private:
         SmallAlloc m_small;
         LargeAlloc m_large;
+        usize      m_threshold = SmallThreshold;
         Sync::Atomic<usize> m_small_allocations{0};
         Sync::Atomic<usize> m_small_deallocations{0};
         Sync::Atomic<usize> m_large_allocations{0};

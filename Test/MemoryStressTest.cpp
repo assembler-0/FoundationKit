@@ -257,7 +257,7 @@ TEST_CASE(Memory_Segregator_SizeRouting) {
     BumpAllocator small_alloc(small_buf, sizeof(small_buf));
     FreeListAllocator large_alloc(large_buf, sizeof(large_buf));
     
-    Segregator<256, BumpAllocator, FreeListAllocator> seg(Move(small_alloc), Move(large_alloc));
+    Segregator<BumpAllocator, FreeListAllocator, 256> seg(Move(small_alloc), Move(large_alloc));
 
     // Small allocation
     auto res1 = seg.Allocate(128, 8);
@@ -741,7 +741,7 @@ TEST_CASE(Memory_AllAllocators_Comprehensive) {
     // 7. Segregator
     {
         static byte s1[1024], s2[1024];
-        Segregator<128, BumpAllocator, BumpAllocator> seg(
+        Segregator<BumpAllocator, BumpAllocator, 128> seg(
             BumpAllocator(s1, 1024), BumpAllocator(s2, 1024));
         auto res = seg.Allocate(64, 8);
         ASSERT_TRUE(res);

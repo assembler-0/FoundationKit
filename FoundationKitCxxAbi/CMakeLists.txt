@@ -61,6 +61,8 @@ target_compile_definitions(FoundationKitCxxAbi PUBLIC
 )
 
 target_compile_options(FoundationKitCxxAbi PRIVATE
+    -fPIC
+    -fPIE
     -fno-rtti
     -fno-exceptions
     -fno-builtin

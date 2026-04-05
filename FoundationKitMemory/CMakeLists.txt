@@ -43,6 +43,9 @@ target_include_directories(FoundationKitMemory PUBLIC Include)
 target_link_libraries(FoundationKitMemory PUBLIC FoundationKitCxxStl)
 
 target_compile_options(FoundationKitMemory PRIVATE
+    -fPIC
+    -fPIE
+    -fno-plt
     -fno-rtti
     -fno-exceptions
     -fno-builtin

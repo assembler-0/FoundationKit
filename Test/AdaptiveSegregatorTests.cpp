@@ -19,7 +19,7 @@ TEST_CASE(AdaptiveSegregator_TwoTier_BasicAllocation) {
     BumpAllocator small_alloc(small_buffer, sizeof(small_buffer));
     BumpAllocator large_alloc(large_buffer, sizeof(large_buffer));
     
-    AdaptiveSegregator2Tier<256, BumpAllocator, BumpAllocator> segregator(
+    AdaptiveSegregator2Tier<BumpAllocator, BumpAllocator, 256> segregator(
         Move(small_alloc), Move(large_alloc));
     
     auto res_small = segregator.Allocate(128, 16);
@@ -38,7 +38,7 @@ TEST_CASE(AdaptiveSegregator_TwoTier_DeallocateTracking) {
     BumpAllocator small_alloc(small_buffer, sizeof(small_buffer));
     BumpAllocator large_alloc(large_buffer, sizeof(large_buffer));
     
-    AdaptiveSegregator2Tier<256, BumpAllocator, BumpAllocator> segregator(
+    AdaptiveSegregator2Tier<BumpAllocator, BumpAllocator, 256> segregator(
         Move(small_alloc), Move(large_alloc));
     
     auto res_small = segregator.Allocate(128, 16);
@@ -58,7 +58,7 @@ TEST_CASE(AdaptiveSegregator_TwoTier_OwnershipCheck) {
     BumpAllocator small_alloc(small_buffer, sizeof(small_buffer));
     BumpAllocator large_alloc(large_buffer, sizeof(large_buffer));
     
-    AdaptiveSegregator2Tier<256, BumpAllocator, BumpAllocator> segregator(
+    AdaptiveSegregator2Tier<BumpAllocator, BumpAllocator, 256> segregator(
         Move(small_alloc), Move(large_alloc));
     
     auto res_small = segregator.Allocate(128, 16);
@@ -76,7 +76,7 @@ TEST_CASE(AdaptiveSegregator_TwoTier_ResetStats) {
     BumpAllocator small_alloc(small_buffer, sizeof(small_buffer));
     BumpAllocator large_alloc(large_buffer, sizeof(large_buffer));
     
-    AdaptiveSegregator2Tier<256, BumpAllocator, BumpAllocator> segregator(
+    AdaptiveSegregator2Tier<BumpAllocator, BumpAllocator, 256> segregator(
         Move(small_alloc), Move(large_alloc));
     
     (void)segregator.Allocate(128, 16);
@@ -98,10 +98,10 @@ TEST_CASE(AdaptiveSegregator_TwoTier_ThresholdValue) {
     BumpAllocator small_alloc(small_buffer, sizeof(small_buffer));
     BumpAllocator large_alloc(large_buffer, sizeof(large_buffer));
     
-    AdaptiveSegregator2Tier<512, BumpAllocator, BumpAllocator> segregator(
+    AdaptiveSegregator2Tier<BumpAllocator, BumpAllocator, 512> segregator(
         Move(small_alloc), Move(large_alloc));
     
-    ASSERT_EQ(segregator.Threshold(), 512);
+    ASSERT_EQ(segregator.GetThreshold(), 512);
 }
 
 TEST_CASE(AdaptiveSegregator_TwoTier_AdaptiveHeuristic) {
@@ -111,7 +111,7 @@ TEST_CASE(AdaptiveSegregator_TwoTier_AdaptiveHeuristic) {
     BumpAllocator small_alloc(small_buffer, sizeof(small_buffer));
     BumpAllocator large_alloc(large_buffer, sizeof(large_buffer));
     
-    AdaptiveSegregator2Tier<256, BumpAllocator, BumpAllocator> segregator(
+    AdaptiveSegregator2Tier<BumpAllocator, BumpAllocator, 256> segregator(
         Move(small_alloc), Move(large_alloc));
     
     usize suggested1 = segregator.AdaptiveThreshold();
