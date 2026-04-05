@@ -1,7 +1,5 @@
 # FoundationKitCxxStl
 
-set(FOUNDATIONKITCXXSTL_MACHINE_WIDTH 64 CACHE STRING "Machine width size (32 or 64)")
-
 set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/Algorithm.hpp
     Include/FoundationKitCxxStl/Base/Array.hpp
@@ -23,6 +21,7 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/Utility.hpp
     Include/FoundationKitCxxStl/Base/Variant.hpp
     Include/FoundationKitCxxStl/Base/Vector.hpp
+    Include/FoundationKitCxxStl/Base/PlacementNew.hpp
     Include/FoundationKitCxxStl/Meta/Concepts.hpp
     Include/FoundationKitCxxStl/Std/initializer_list
     Include/FoundationKitCxxStl/Structure/BitSet.hpp
@@ -38,15 +37,18 @@ add_library(FoundationKitCxxStl INTERFACE ${FOUNDATIONKITCXXSTL_HEADERS})
 
 target_include_directories(FoundationKitCxxStl INTERFACE Include)
 
-target_link_libraries(FoundationKitCxxStl INTERFACE FoundationKitOsl)
-
-target_compile_definitions(FoundationKitCxxStl INTERFACE 
-    FOUNDATIONKITCXXSTL_ARCH_${FOUNDATIONKITCXXSTL_MACHINE_WIDTH}
-)
+target_link_libraries(FoundationKitCxxStl INTERFACE FoundationKitOsl FoundationKitPlatform)
 
 target_compile_options(FoundationKitCxxStl INTERFACE
-        -fno-rtti
-        -fno-exceptions
-        -fno-builtin
-        -Wall -Wextra -Wpedantic
+    -fno-rtti
+    -fno-exceptions
+    -fno-builtin
+    -ffreestanding
+    -fno-stack-protector
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wno-unused-parameter
+    -nostdinc++
+    -nostdlib
 )

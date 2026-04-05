@@ -12,5 +12,12 @@ target_compile_options(FoundationKitOsl INTERFACE
         -fno-rtti
         -fno-exceptions
         -fno-builtin
-        -Wall -Wextra -Wpedantic
+        -ffreestanding
+        -fno-stack-protector
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wno-unused-parameter
+        -nostdinc++
+        -nostdlib
 )

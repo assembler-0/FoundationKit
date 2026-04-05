@@ -14,27 +14,6 @@
     #define FOUNDATIONKIT_COMPILER_HAS_ATTRIBUTE_ALIAS(a) __has_attribute(a)
 #endif
 
-// ============================================================================
-// Placement New Operators (when __builtin_construct_at not available)
-// ============================================================================
-
-#if !FOUNDATIONKIT_COMPILER_HAS_BUILTIN(__builtin_construct_at)
-
-[[nodiscard]] inline void* operator new(unsigned long, void* p) noexcept {
-    return p;
-}
-
-[[nodiscard]] inline void* operator new[](unsigned long, void* p) noexcept {
-    return p;
-}
-
-inline void operator delete(void*, void*) noexcept {
-}
-
-inline void operator delete[](void*, void*) noexcept {
-}
-#endif
-
 namespace FoundationKitCxxStl::Base::CompilerBuiltins {
 
     /// @breif Hints to the compiler that 'exp' is likely to have the value 'c'.

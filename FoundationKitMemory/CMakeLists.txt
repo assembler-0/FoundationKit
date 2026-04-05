@@ -43,8 +43,15 @@ target_include_directories(FoundationKitMemory PUBLIC Include)
 target_link_libraries(FoundationKitMemory PUBLIC FoundationKitCxxStl)
 
 target_compile_options(FoundationKitMemory PRIVATE
-        -fno-rtti
-        -fno-exceptions
-        -fno-builtin
-        -Wall -Wextra -Wpedantic
+    -fno-rtti
+    -fno-exceptions
+    -fno-builtin
+    -ffreestanding
+    -fno-stack-protector
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wno-unused-parameter
+    -nostdinc++
+    -nostdlib
 )

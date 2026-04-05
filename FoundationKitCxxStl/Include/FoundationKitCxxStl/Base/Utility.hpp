@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitCxxStl/Std/initializer_list>
+#include <FoundationKitCxxStl/Base/PlacementNew.hpp>
 
 namespace FoundationKitCxxStl {
 

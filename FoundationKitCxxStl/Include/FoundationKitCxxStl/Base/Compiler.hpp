@@ -13,10 +13,9 @@
 #  define FOUNDATIONKITCXXSTL_STR(x)     FOUNDATIONKITCXXSTL_STR_(x)
 #endif
 
-#define FK_FORMAT_MSG(m)       "#!(IN)[FoundationKit]: " m
 #define FK_FORMAT_ERR_MSG(m)   "#!(EE)[FoundationKit]: " m
-#define FK_FORMAT_WARN_MSG(m)  "#!(WR)[FoundationKit]: " m
-#define FK_FORMAT_INFO_MSG(m)  "#!(IN)[FoundationKit]: " m
+#define FK_FORMAT_WARN_MSG(m)  "#!(WW)[FoundationKit]: " m
+#define FK_FORMAT_INFO_MSG(m)  "#!(II)[FoundationKit]: " m
 
 /// @section basic compiler, platform width detection
 
@@ -33,17 +32,6 @@
 #  else
 #    warning FK_FORMAT_INFO_MSG("unknown compiler. Using default implementation (GCC).")
 #    define FOUNDATIONKITCXXSTL_COMPILER_GCC 1
-#  endif
-
-#endif
-
-#if !defined(FOUNDATIONKITCXXSTL_ARCH_32) && !defined(FOUNDATIONKITCXXSTL_ARCH_64)
-
-#  if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__) || \
-      defined(__aarch64__) || defined(__riscv) && (__riscv_xlen == 64)
-#    define FOUNDATIONKITCXXSTL_ARCH_64 1
-#  else
-#    define FOUNDATIONKITCXXSTL_ARCH_32 1
 #  endif
 
 #endif

@@ -63,12 +63,12 @@ TEST_CASE(MemoryRegion_Overlaps_Detection) {
     alignas(16) static byte buffer[2048];
     
     MemoryRegion r1(buffer, 512);
-    MemoryRegion r2(buffer + 256, 512);    // Overlaps r1
-    MemoryRegion r3(buffer + 768, 512);    // Also overlaps r1
-    MemoryRegion r4(buffer + 1024, 512);   // Doesn't overlap
+    MemoryRegion r2(buffer + 256, 512);    // Overlaps r1 [256, 768)
+    MemoryRegion r3(buffer + 768, 512);    // Does NOT overlap r1 [768, 1280)
+    MemoryRegion r4(buffer + 1024, 512);   // Doesn't overlap r1 [1024, 1536)
     
     ASSERT_TRUE(r1.Overlaps(r2));
-    ASSERT_TRUE(r1.Overlaps(r3));
+    ASSERT_FALSE(r1.Overlaps(r3));
     ASSERT_FALSE(r1.Overlaps(r4));
 }
 
@@ -199,8 +199,11 @@ TEST_CASE(MultiRegion_AllocatorRegistration) {
     static BumpAllocator bump0 = AllocatorFactory::CreateBump(r0);
     static BumpAllocator bump1 = AllocatorFactory::CreateBump(r1);
     
-    bool reg0 = multi.RegisterAllocator(0, &bump0);
-    bool reg1 = multi.RegisterAllocator(1, &bump1);
+    static AllocatorWrapper<BumpAllocator> wrap0{bump0};
+    static AllocatorWrapper<BumpAllocator> wrap1{bump1};
+    
+    bool reg0 = multi.RegisterAllocator(0, &wrap0);
+    bool reg1 = multi.RegisterAllocator(1, &wrap1);
     
     ASSERT_TRUE(reg0);
     ASSERT_TRUE(reg1);
@@ -218,8 +221,11 @@ TEST_CASE(MultiRegion_Allocation_Routing) {
     static BumpAllocator bump0 = AllocatorFactory::CreateBump(r0);
     static BumpAllocator bump1 = AllocatorFactory::CreateBump(r1);
     
-    multi.RegisterAllocator(0, &bump0);
-    multi.RegisterAllocator(1, &bump1);
+    static AllocatorWrapper<BumpAllocator> wrap0{bump0};
+    static AllocatorWrapper<BumpAllocator> wrap1{bump1};
+    
+    multi.RegisterAllocator(0, &wrap0);
+    multi.RegisterAllocator(1, &wrap1);
     
     auto res = multi.Allocate(256, 16);
     ASSERT_TRUE(res.IsSuccess());

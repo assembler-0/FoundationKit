@@ -84,7 +84,8 @@ namespace FoundationKitCxxStl {
                     FormatSpec spec{};
                     if (data[i] == ':') {
                         i++;
-                        // Parse Spec: [fill][align][width][.precision][type]
+                        // Parse Spec: [prefix][fill][align][width][.precision][type]
+                        if (data[i] == '#') { spec.prefix = true; i++; }
                         if (data[i] == '0') { spec.zero_pad = true; i++; }
                         
                         // Width
@@ -146,8 +147,8 @@ namespace FoundationKitCxxStl {
             switch (level) {
                 case LogLevel::Fatal:   return "#!(FF)[FoundationKit]: ";
                 case LogLevel::Error:   return "#!(EE)[FoundationKit]: ";
-                case LogLevel::Warning: return "#!(WR)[FoundationKit]: ";
-                case LogLevel::Info:    return "#!(IN)[FoundationKit]: ";
+                case LogLevel::Warning: return "#!(WW)[FoundationKit]: ";
+                case LogLevel::Info:    return "#!(II)[FoundationKit]: ";
             }
             return "#!(##)[FoundationKit]: ";
         }
@@ -191,5 +192,14 @@ namespace FoundationKitCxxStl {
 /// @brief Log error message.
 #define FK_LOG_ERR(fmt, ...)  ::FoundationKitCxxStl::LogFmt(::FoundationKitCxxStl::LogLevel::Error, FoundationKitCxxStl::Detail::LoggerStringView(fmt) __VA_OPT__(,) __VA_ARGS__)
 
+#include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+
 /// @brief Reports a fatal bug and halts execution.
-#define FK_BUG(fmt, ...)      ::FoundationKitCxxStl::LogFmt(::FoundationKitCxxStl::LogLevel::Fatal, FoundationKitCxxStl::Detail::LoggerStringView(fmt " at " __FILE_NAME__ ":" FOUNDATIONKIT_STR(__LINE__)) __VA_OPT__(,) __VA_ARGS__)
+#define FK_BUG(fmt, ...)                                                                                                 \
+    do {                                                                                                                 \
+        ::FoundationKitCxxStl::LogFmt(::FoundationKitCxxStl::LogLevel::Fatal,                                            \
+                                      FoundationKitCxxStl::Detail::LoggerStringView(                                     \
+                                          fmt " at " __FILE_NAME__ ":" FOUNDATIONKIT_STR(__LINE__)) __VA_OPT__(, )       \
+                                          __VA_ARGS__);                                                                  \
+        ::FoundationKitCxxStl::Base::CompilerBuiltins::Unreachable();                                                                                         \
+    } while (0)

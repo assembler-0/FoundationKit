@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Compiler.hpp>
+#include <FoundationKitPlatform/MachineWidth.hpp>
 
 namespace FoundationKitCxxStl {
     using i8  = signed char;
@@ -29,16 +30,18 @@ namespace FoundationKitCxxStl {
     using f32 = float;
     using f64 = double;
 
-#if defined(FOUNDATIONKITCXXSTL_ARCH_64)
+#if defined(FOUNDATIONKITPLATFORM_MACHINE_WITDH_64)
     using usize  = u64;
     using isize  = i64;
     using uptr   = u64;
     using iptr   = i64;
-#else
+#elif defined(FOUNDATIONKITPLATFORM_MACHINE_WITDH_32)
     using usize  = u32;
     using isize  = i32;
     using uptr   = u32;
     using iptr   = i32;
+#else
+# error unknown machine width
 #endif
 
     using byte   = u8;
