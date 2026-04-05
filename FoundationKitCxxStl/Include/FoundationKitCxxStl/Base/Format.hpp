@@ -219,6 +219,24 @@ namespace FoundationKitCxxStl {
 
 
     template <typename T>
+    struct Formatter;
+
+    template <typename T1, typename T2>
+    struct Pair;
+
+    template <typename T1, typename T2>
+    struct Formatter<Pair<T1, T2>> {
+        template <typename Sink>
+        void Format(Sink& sb, const Pair<T1, T2>& value, const FormatSpec& spec = {}) const noexcept {
+            sb.Append('(');
+            Formatter<Unqualified<T1>>().Format(sb, value.first, spec);
+            sb.Append(", ", 2);
+            Formatter<Unqualified<T2>>().Format(sb, value.second, spec);
+            sb.Append(')');
+        }
+    };
+
+    template <typename T>
     struct Formatter {
         /// @brief Format a value into a sink with optional specification.
         template <typename Sink>

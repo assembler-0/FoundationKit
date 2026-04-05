@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
+#include <FoundationKitCxxStl/Base/Pair.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
 namespace FoundationKitCxxStl {
@@ -215,6 +216,58 @@ namespace FoundationKitCxxStl {
             }
         }
         return result;
+    }
+
+    template <InputIterator I1, InputIterator I2>
+    constexpr Pair<I1, I2> Mismatch(I1 first1, I1 last1, I2 first2) {
+        while (first1 != last1 && *first1 == *first2) {
+            ++first1;
+            ++first2;
+        }
+        return {first1, first2};
+    }
+
+    template <InputIterator I1, InputIterator I2, typename Pred>
+    constexpr Pair<I1, I2> Mismatch(I1 first1, I1 last1, I2 first2, Pred pred) {
+        while (first1 != last1 && pred(*first1, *first2)) {
+            ++first1;
+            ++first2;
+        }
+        return {first1, first2};
+    }
+
+    template <ForwardIterator I, typename Pred>
+    constexpr I Partition(I first, I last, Pred pred) {
+        first = FindIfNot(first, last, pred);
+        if (first == last) return first;
+
+        for (I i = Next(first); i != last; ++i) {
+            if (pred(*i)) {
+                FoundationKitCxxStl::Swap(*first, *i);
+                ++first;
+            }
+        }
+        return first;
+    }
+
+    template <InputIterator I, typename Pred>
+    constexpr I FindIfNot(I first, I last, Pred pred) {
+        for (; first != last; ++first) {
+            if (!pred(*first)) return first;
+        }
+        return last;
+    }
+
+    template <InputIterator I>
+    constexpr I Next(I it, isize n = 1) {
+        while (n > 0) { ++it; --n; }
+        while (n < 0) { --it; ++n; }
+        return it;
+    }
+
+    template <InputIterator I>
+    constexpr I Prev(I it, isize n = 1) {
+        return Next(it, -n);
     }
 
     namespace Detail {

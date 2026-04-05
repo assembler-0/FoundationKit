@@ -67,4 +67,9 @@ extern "C" {
         (void)channel;
         // No-op in single-threaded mock
     }
+    static usize g_current_cpu_id = 0;
+
+    usize OslGetCurrentCpuId() noexcept {
+        return g_current_cpu_id;
+    }
 }

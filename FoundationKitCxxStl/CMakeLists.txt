@@ -3,6 +3,7 @@
 set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/Algorithm.hpp
     Include/FoundationKitCxxStl/Base/Array.hpp
+    Include/FoundationKitCxxStl/Base/Bcd.hpp
     Include/FoundationKitCxxStl/Base/Bit.hpp
     Include/FoundationKitCxxStl/Base/CommandLine.hpp
     Include/FoundationKitCxxStl/Base/Compiler.hpp
@@ -18,9 +19,11 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/StringBuilder.hpp
     Include/FoundationKitCxxStl/Base/StringView.hpp
     Include/FoundationKitCxxStl/Base/Types.hpp
+    Include/FoundationKitCxxStl/Base/Tuple.hpp
     Include/FoundationKitCxxStl/Base/Utility.hpp
     Include/FoundationKitCxxStl/Base/Variant.hpp
     Include/FoundationKitCxxStl/Base/Vector.hpp
+    Include/FoundationKitCxxStl/Base/StaticVector.hpp
     Include/FoundationKitCxxStl/Base/PlacementNew.hpp
     Include/FoundationKitCxxStl/Meta/Concepts.hpp
     Include/FoundationKitCxxStl/Std/initializer_list
@@ -30,16 +33,23 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Structure/HashMap.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveDoublyLinkedList.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveSinglyLinkedList.hpp
-    Include/FoundationKitCxxStl/Structure/SinglyLinkedList.hpp
+    Include/FoundationKitCxxStl/Structure/IntrusiveAvlTree.hpp
+    Include/FoundationKitCxxStl/Structure/IntrusiveRedBlackTree.hpp
+    Include/FoundationKitCxxStl/Structure/WorkQueue.hpp
 )
 
-add_library(FoundationKitCxxStl INTERFACE ${FOUNDATIONKITCXXSTL_HEADERS})
+set(FOUNDATIONKITCXXSTL_SOURCES
+    Src/Structure/IntrusiveRedBlackTree.cpp
+    Src/Structure/IntrusiveAvlTree.cpp
+)
 
-target_include_directories(FoundationKitCxxStl INTERFACE Include)
+add_library(FoundationKitCxxStl STATIC ${FOUNDATIONKITCXXSTL_HEADERS} ${FOUNDATIONKITCXXSTL_SOURCES})
 
-target_link_libraries(FoundationKitCxxStl INTERFACE FoundationKitOsl FoundationKitPlatform)
+target_include_directories(FoundationKitCxxStl PUBLIC Include)
 
-target_compile_options(FoundationKitCxxStl INTERFACE
+target_link_libraries(FoundationKitCxxStl PUBLIC FoundationKitOsl FoundationKitPlatform)
+
+target_compile_options(FoundationKitCxxStl PRIVATE
     -fno-rtti
     -fno-exceptions
     -fno-builtin

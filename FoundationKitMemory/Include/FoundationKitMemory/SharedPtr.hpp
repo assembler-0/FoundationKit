@@ -14,11 +14,13 @@ namespace FoundationKitMemory {
     ///       with freestanding constraints. No virtual keyword appears here.
     ///       Reference counts are Atomic<usize> to be safe for concurrent sharing.
     ///
-    ///       Memory ordering rationale:
-    ///       - Increment (copy ctor)  : Acquire — synchronise with the Release store
-    ///       - Decrement (destructor) : AcqRel  — release our writes, acquire the
-    ///                                             potential destroy path
-    ///       - Load (UseCount query)  : Relaxed  — observation only, no dependency
+    ///       Memory ordering rationale (C++23 SharedPtr standard):
+    ///       - Increment (copy ctor)  : Relaxed — only ensures the count is updated.
+    ///                                             We already own a reference.
+    ///       - Decrement (destructor) : AcqRel  — Release writes to the object,
+    ///                                             Acquire writes from others if zero.
+    ///       - Lock (Upgrade)         : Acquire — successfully seen object state.
+    ///       - Load (UseCount query)  : Relaxed — observation only.
     struct ControlBlock {
         /// @brief Atomically maintained strong reference count.
         FoundationKitCxxStl::Sync::Atomic<usize> use_count{0};
@@ -192,10 +194,10 @@ namespace FoundationKitMemory {
         SharedPtr(const SharedPtr& other) noexcept
             : m_ptr(other.m_ptr), m_control(other.m_control)
         {
-            // Acquire: ensures we see all writes made before the Release decrement
-            // that might have transferred the count to us.
+            // Relaxed: we already hold a reference to the same control block,
+            // so the block cannot be destroyed while we are in this constructor.
             if (m_control)
-                m_control->use_count.FetchAdd(1, FoundationKitCxxStl::Sync::MemoryOrder::Acquire);
+                m_control->use_count.FetchAdd(1, FoundationKitCxxStl::Sync::MemoryOrder::Relaxed);
         }
 
         ~SharedPtr() noexcept { Release(); }
@@ -213,10 +215,10 @@ namespace FoundationKitMemory {
 
         SharedPtr& operator=(const SharedPtr& other) noexcept {
             if (this != &other) {
-                // Acquire the new ref before releasing the old — order matters.
+                // Increment first to avoid self-destruction if other is this.
                 ControlBlock* new_ctrl = other.m_control;
                 if (new_ctrl)
-                    new_ctrl->use_count.FetchAdd(1, FoundationKitCxxStl::Sync::MemoryOrder::Acquire);
+                    new_ctrl->use_count.FetchAdd(1, FoundationKitCxxStl::Sync::MemoryOrder::Relaxed);
                 Release();
                 m_ptr     = other.m_ptr;
                 m_control = new_ctrl;
@@ -431,7 +433,7 @@ namespace FoundationKitMemory {
             : m_ptr(other.m_ptr), m_control(other.m_control)
         {
             if (m_control)
-                m_control->use_count.FetchAdd(1, FoundationKitCxxStl::Sync::MemoryOrder::Acquire);
+                m_control->use_count.FetchAdd(1, FoundationKitCxxStl::Sync::MemoryOrder::Relaxed);
         }
 
         ~SharedPtr() noexcept { Release(); }
@@ -452,7 +454,7 @@ namespace FoundationKitMemory {
                 ControlBlock* new_ctrl = other.m_control;
                 if (new_ctrl)
                     new_ctrl->use_count.FetchAdd(
-                        1, FoundationKitCxxStl::Sync::MemoryOrder::Acquire);
+                        1, FoundationKitCxxStl::Sync::MemoryOrder::Relaxed);
                 Release();
                 m_ptr     = other.m_ptr;
                 m_control = new_ctrl;

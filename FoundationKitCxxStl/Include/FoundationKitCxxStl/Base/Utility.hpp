@@ -55,6 +55,25 @@ namespace FoundationKitCxxStl {
         #endif
     }
 
+    struct InPlaceT {
+        explicit InPlaceT() = default;
+    };
+    inline constexpr InPlaceT InPlace{};
+
+    template <typename T>
+    struct InPlaceTypeT {
+        explicit InPlaceTypeT() = default;
+    };
+    template <typename T>
+    inline constexpr InPlaceTypeT<T> InPlaceType{};
+
+    template <usize I>
+    struct InPlaceIndexT {
+        explicit InPlaceIndexT() = default;
+    };
+    template <usize I>
+    inline constexpr InPlaceIndexT<I> InPlaceIndex{};
+
 } // namespace FoundationKitCxxStl
 
 namespace FoundationKitCxxStl {
