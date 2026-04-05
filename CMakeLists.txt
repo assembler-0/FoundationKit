@@ -22,6 +22,9 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/LockStressTest.cpp
         Test/OslStub.cpp
         Test/CxxAbiTest.cpp
+        Test/FormatTest.cpp
+        Test/StringTest.cpp
+        Test/CharTypeTest.cpp
     )
 
     target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi)

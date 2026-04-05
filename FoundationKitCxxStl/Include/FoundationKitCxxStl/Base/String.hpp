@@ -101,6 +101,25 @@ namespace FoundationKitCxxStl {
         [[nodiscard]] constexpr SizeType Size() const noexcept { return m_size; }
         [[nodiscard]] constexpr bool Empty() const noexcept { return m_size == 0; }
 
+        [[nodiscard]] char operator[](SizeType index) const noexcept {
+            return CStr()[index];
+        }
+
+        [[nodiscard]] char At(SizeType index) const noexcept {
+            FK_BUG_ON(index >= m_size, "String: At index ({}) out of bounds ({})", index, m_size);
+            return CStr()[index];
+        }
+
+        [[nodiscard]] char Front() const noexcept {
+            FK_BUG_ON(m_size == 0, "String: Front() called on empty string");
+            return CStr()[0];
+        }
+
+        [[nodiscard]] char Back() const noexcept {
+            FK_BUG_ON(m_size == 0, "String: Back() called on empty string");
+            return CStr()[m_size - 1];
+        }
+
         [[nodiscard]] const char* CStr() const noexcept {
             return m_is_heap ? m_data.heap.Get() : m_data.sso;
         }
@@ -120,20 +139,15 @@ namespace FoundationKitCxxStl {
         }
 
         [[nodiscard]] bool Contains(const StringView view) const noexcept {
-            return Find(view) != static_cast<usize>(-1);
+            return static_cast<StringView>(*this).Contains(view);
         }
 
         [[nodiscard]] usize Find(const StringView view, const usize offset = 0) const noexcept {
-            if (offset + view.Size() > m_size) return static_cast<usize>(-1);
-            if (view.Empty()) return offset;
+            return static_cast<StringView>(*this).Find(view, offset);
+        }
 
-            const char* buffer = CStr();
-            for (usize i = offset; i <= m_size - view.Size(); ++i) {
-                if (FoundationKitMemory::MemoryCompare(buffer + i, view.Data(), view.Size()) == 0) {
-                    return i;
-                }
-            }
-            return static_cast<usize>(-1);
+        [[nodiscard]] usize RFind(char c, usize offset = StringView::NPos) const noexcept {
+            return static_cast<StringView>(*this).RFind(c, offset);
         }
 
         [[nodiscard]] Expected<String, FoundationKitMemory::MemoryError> SubStr(usize offset, usize count = static_cast<usize>(-1)) const noexcept {
@@ -169,31 +183,22 @@ namespace FoundationKitCxxStl {
             return result;
         }
 
-        void Trim() noexcept {
+        void Trim(StringView chars = " \t\n\r") noexcept {
             if (m_size == 0) return;
 
-            const char* buffer = CStr();
-            usize start = 0;
-            while (start < m_size && (buffer[start] == ' ' || buffer[start] == '\t' || buffer[start] == '\n' || buffer[start] == '\r')) {
-                start++;
-            }
+            StringView view = static_cast<StringView>(*this);
+            StringView trimmed = view.Trim(chars);
 
-            if (start == m_size) {
+            if (trimmed.Empty()) {
                 Clear();
                 return;
             }
 
-            usize end = m_size - 1;
-            while (end > start && (buffer[end] == ' ' || buffer[end] == '\t' || buffer[end] == '\n' || buffer[end] == '\r')) {
-                end--;
-            }
-
-            const usize new_size = end - start + 1;
-            if (start > 0) {
-                FoundationKitMemory::MemoryMove(m_is_heap ? m_data.heap.Get() : m_data.sso, buffer + start, new_size);
+            if (trimmed.Data() != view.Data()) {
+                FoundationKitMemory::MemoryMove(m_is_heap ? m_data.heap.Get() : m_data.sso, trimmed.Data(), trimmed.Size());
             }
             
-            m_size = new_size;
+            m_size = trimmed.Size();
             char* write_buffer = m_is_heap ? m_data.heap.Get() : m_data.sso;
             write_buffer[m_size] = '\0';
         }

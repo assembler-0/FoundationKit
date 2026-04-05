@@ -37,27 +37,53 @@ namespace FoundationKitCxxStl {
 
         template <typename... Args>
         StringBuilder& Format(const StringView fmt, Args&&... args) {
-            usize arg_index = 0;
             const char* data = fmt.Data();
             const usize size = fmt.Size();
+            usize arg_index = 0;
 
             for (usize i = 0; i < size; ++i) {
-                if (data[i] == '{' && i + 1 < size && data[i + 1] == '}') {
-                    usize current_idx = 0;
-                    auto dispatcher = [&]<typename T0>(T0&& arg) {
-                        if (current_idx == arg_index) {
-                            this->Append(FoundationKitCxxStl::Forward<T0>(arg));
+                if (data[i] == '{') {
+                    if (i + 1 < size && data[i + 1] == '{') {
+                        Append('{');
+                        i++;
+                        continue;
+                    }
+
+                    // Look for matching '}'
+                    usize j = i + 1;
+                    while (j < size && data[j] != '}') j++;
+
+                    if (j < size) {
+                        // We found { ... }
+                        // Parse spec if any
+                        FormatSpec spec;
+                        const char* spec_begin = data + i + 1;
+                        if (*spec_begin == ':') {
+                            spec_begin++;
+                            Detail::ParseSpec(spec_begin, data + j, spec);
                         }
-                        current_idx++;
-                    };
 
-                    (dispatcher(args), ...);
+                        usize current_idx = 0;
+                        auto dispatcher = [&]<typename T0>(T0&& arg) {
+                            if (current_idx == arg_index) {
+                                Formatter<Unqualified<T0>>().Format(*this, FoundationKitCxxStl::Forward<T0>(arg), spec);
+                            }
+                            current_idx++;
+                        };
 
-                    arg_index++;
-                    i++; // skip '}'
-                } else {
-                    Append(data[i]);
+                        (dispatcher(args), ...);
+
+                        arg_index++;
+                        i = j;
+                        continue;
+                    }
+                } else if (data[i] == '}' && i + 1 < size && data[i + 1] == '}') {
+                    Append('}');
+                    i++;
+                    continue;
                 }
+                
+                Append(data[i]);
             }
             return *this;
         }

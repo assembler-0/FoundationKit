@@ -29,6 +29,7 @@
 #include <FoundationKitCxxAbi/Demangle/Demangler.hpp>
 #include <FoundationKitCxxStl/Base/Logger.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/CharType.hpp>
 
 using namespace FoundationKitCxxAbi::Demangle;
 using namespace FoundationKitCxxStl;
@@ -77,14 +78,9 @@ void EmitSubstitution(DemangleState& s, usize index) noexcept {
     }
 }
 
-/// TODO: ctype implementation
-[[nodiscard]] bool IsDigit(char c) noexcept {
-    return c >= '0' && c <= '9';
-}
-
 [[nodiscard]] usize ParseNumber(DemangleInput& in) noexcept {
     usize n = 0;
-    while (IsDigit(in.Peek())) {
+    while (CharType::IsDigit(in.Peek())) {
         n = n * 10 + static_cast<usize>(in.Consume() - '0');
     }
     return n;
@@ -94,9 +90,9 @@ void EmitSubstitution(DemangleState& s, usize index) noexcept {
     usize n = 0;
     while (in.Peek() != '_' && in.HasMore()) {
         char c = in.Consume();
-        if (IsDigit(c)) {
+        if (CharType::IsDigit(c)) {
             n = n * 36 + static_cast<usize>(c - '0');
-        } else if (c >= 'A' && c <= 'Z') {
+        } else if (CharType::IsUpper(c)) {
             n = n * 36 + static_cast<usize>(c - 'A' + 10);
         } else {
             break;
@@ -288,7 +284,7 @@ void ParseType(DemangleState& s) noexcept {
 }
 
 void ParseSourceName(DemangleState& s) noexcept {
-    if (!IsDigit(s.input.Peek())) { s.SetError(); return; }
+    if (!CharType::IsDigit(s.input.Peek())) { s.SetError(); return; }
     const usize len = ParseNumber(s.input);
     if (len == 0 || s.input.ptr + len > s.input.end) {
         s.SetError();
@@ -368,7 +364,7 @@ void ParseCtorDtorName(DemangleState& s) noexcept {
 
 void ParseUnqualifiedName(DemangleState& s) noexcept {
     char c = s.input.Peek();
-    if (IsDigit(c)) {
+    if (CharType::IsDigit(c)) {
         ParseSourceName(s);
         return;
     }
@@ -405,7 +401,7 @@ void ParseTemplateArgs(DemangleState& s) noexcept {
             s.output.Append('(');
             bool neg = s.input.Peek() == 'n';
             if (neg) { s.input.Consume(); s.output.Append('-'); }
-            while (IsDigit(s.input.Peek())) {
+            while (CharType::IsDigit(s.input.Peek())) {
                 s.output.Append(s.input.Consume());
             }
             s.output.Append(')');
@@ -468,7 +464,7 @@ void ParseNestedName(DemangleState& s) noexcept {
                 } while (val);
                 for (usize ri = ti; ri > 0; --ri) s.output.Append(tmp[ri-1]);
             }
-        } else if (IsDigit(c)) {
+        } else if (CharType::IsDigit(c)) {
             ParseSourceName(s);
         } else if (c == 'C' || c == 'D') {
             ParseCtorDtorName(s);
@@ -527,11 +523,11 @@ void ParseLocalName(DemangleState& s) noexcept {
         ParseName(s);
     }
     // Consume optional discriminator _ <number>
-    if (s.input.Peek() == '_' && !IsDigit(s.input.PeekAt(1))) {
+    if (s.input.Peek() == '_' && !CharType::IsDigit(s.input.PeekAt(1))) {
         // Not a discriminator, leave it.
     } else if (s.input.Peek() == '_') {
         s.input.Consume();
-        while (IsDigit(s.input.Peek())) s.input.Consume();
+        while (CharType::IsDigit(s.input.Peek())) s.input.Consume();
     }
 }
 
@@ -542,7 +538,7 @@ void ParseBareFunctionType(DemangleState& s) noexcept {
     while (s.input.HasMore() && !s.HasError()) {
         // 'v' alone means "void parameters" (no arguments)
         if (s.input.Peek() == 'v' &&
-            (!s.input.HasMore() || !IsDigit(s.input.PeekAt(1)))) {
+            (!s.input.HasMore() || !CharType::IsDigit(s.input.PeekAt(1)))) {
             s.input.Consume();
             break;
         }

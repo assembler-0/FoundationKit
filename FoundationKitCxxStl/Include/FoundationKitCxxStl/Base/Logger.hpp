@@ -71,39 +71,32 @@ namespace FoundationKitCxxStl {
 
         template <typename... Args>
         StaticStringBuilder& Format(const Detail::LoggerStringView fmt, Args&&... args) {
-            usize arg_index = 0;
             const char* data = fmt.data;
             const usize size = fmt.size;
+            usize arg_index = 0;
 
             for (usize i = 0; i < size; ++i) {
-                if (data[i] == '{' && i + 1 < size) {
-                    // Start of placeholder
-                    usize start = i;
-                    i++; 
-
-                    FormatSpec spec{};
-                    if (data[i] == ':') {
+                if (data[i] == '{') {
+                    if (i + 1 < size && data[i + 1] == '{') {
+                        Append('{');
                         i++;
-                        // Parse Spec: [prefix][fill][align][width][.precision][type]
-                        if (data[i] == '#') { spec.prefix = true; i++; }
-                        if (data[i] == '0') { spec.zero_pad = true; i++; }
-                        
-                        // Width
-                        while (data[i] >= '0' && data[i] <= '9') {
-                            spec.width = spec.width * 10 + (data[i] - '0');
-                            i++;
-                        }
-
-                        // Type
-                        if (data[i] == 'x') { spec.base = 16; i++; }
-                        else if (data[i] == 'X') { spec.base = 16; spec.uppercase = true; i++; }
-                        else if (data[i] == 'b') { spec.base = 2; i++; }
-                        else if (data[i] == 'o') { spec.base = 8; i++; }
-                        else if (data[i] == 'd') { spec.base = 10; i++; }
-                        else if (data[i] == 'p') { spec.base = 16; spec.prefix = true; spec.uppercase = true; i++; }
+                        continue;
                     }
 
-                    if (data[i] == '}') {
+                    // Look for matching '}'
+                    usize j = i + 1;
+                    while (j < size && data[j] != '}') j++;
+
+                    if (j < size) {
+                        // We found { ... }
+                        // Parse spec if any
+                        FormatSpec spec;
+                        const char* spec_begin = data + i + 1;
+                        if (*spec_begin == ':') {
+                            spec_begin++;
+                            Detail::ParseSpec(spec_begin, data + j, spec);
+                        }
+
                         usize current_idx = 0;
                         auto dispatcher = [&]<typename T0>(T0&& arg) {
                             if (current_idx == arg_index) {
@@ -111,16 +104,20 @@ namespace FoundationKitCxxStl {
                             }
                             current_idx++;
                         };
+
                         (dispatcher(args), ...);
+
                         arg_index++;
-                    } else {
-                        // Not a valid closure, just append the '{' and continue
-                        Append('{');
-                        i = start; 
+                        i = j;
+                        continue;
                     }
-                } else {
-                    Append(data[i]);
+                } else if (data[i] == '}' && i + 1 < size && data[i + 1] == '}') {
+                    Append('}');
+                    i++;
+                    continue;
                 }
+                
+                Append(data[i]);
             }
             return *this;
         }
