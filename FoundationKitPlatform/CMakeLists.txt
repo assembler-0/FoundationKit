@@ -5,6 +5,7 @@ set(FKPLATFORM_MACHINE_WIDTH_OVERRIDE "64" CACHE STRING "Machine width override"
 set(FOUNDATIONKITPLATFORM_HEADERS
     Include/FoundationKitPlatform/HostArchitecture.hpp
     Include/FoundationKitPlatform/MachineWidth.hpp
+    Include/FoundationKitPlatform/Bitfield.hpp
     Include/FoundationKitPlatform/Amd64/ControlRegs.hpp
     Include/FoundationKitPlatform/Amd64/Paging.hpp
 )

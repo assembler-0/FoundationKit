@@ -6,6 +6,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitPlatform/Bitfield.hpp>
 
 namespace FoundationKitPlatform::Amd64 {
 
@@ -47,6 +48,19 @@ namespace FoundationKitPlatform::Amd64 {
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void ClearCr0Bits(u64 mask) noexcept {
         WriteCr0(ReadCr0() & ~mask);
     }
+
+    // -------------------------------------------------------------------------
+    // Typed Bitfield accessors for CR0 fields
+    // Use these instead of raw mask arithmetic to prevent wrong-shift bugs.
+    // -------------------------------------------------------------------------
+    using Cr0Pe   = Bitfield<u64,  0, 1>;  ///< Protection Enable
+    using Cr0Mp   = Bitfield<u64,  1, 1>;  ///< Monitor Coprocessor
+    using Cr0Em   = Bitfield<u64,  2, 1>;  ///< Emulation
+    using Cr0Ts   = Bitfield<u64,  3, 1>;  ///< Task Switched
+    using Cr0Ne   = Bitfield<u64,  5, 1>;  ///< Numeric Error
+    using Cr0Wp   = Bitfield<u64, 16, 1>;  ///< Write Protect
+    using Cr0Am   = Bitfield<u64, 18, 1>;  ///< Alignment Mask
+    using Cr0Pg   = Bitfield<u64, 31, 1>;  ///< Paging Enable
 
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadCr2() noexcept {
         u64 val;
@@ -139,6 +153,19 @@ namespace FoundationKitPlatform::Amd64 {
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void ClearCr4Bits(u64 mask) noexcept {
         WriteCr4(ReadCr4() & ~mask);
     }
+
+    // -------------------------------------------------------------------------
+    // Typed Bitfield accessors for CR4 fields
+    // -------------------------------------------------------------------------
+    using Cr4Pae    = Bitfield<u64,  5, 1>;  ///< Physical Address Extension
+    using Cr4Pge    = Bitfield<u64,  7, 1>;  ///< Page Global Enable
+    using Cr4Osfxsr = Bitfield<u64,  9, 1>;  ///< OS FXSAVE/FXRSTOR support
+    using Cr4Umip   = Bitfield<u64, 11, 1>;  ///< User-Mode Instruction Prevention
+    using Cr4Vmxe   = Bitfield<u64, 13, 1>;  ///< VMX Enable
+    using Cr4Pcide  = Bitfield<u64, 17, 1>;  ///< PCID Enable
+    using Cr4Osxsave= Bitfield<u64, 18, 1>;  ///< XSAVE Enable
+    using Cr4Smep   = Bitfield<u64, 20, 1>;  ///< Supervisor Mode Execution Prevention
+    using Cr4Smap   = Bitfield<u64, 21, 1>;  ///< Supervisor Mode Access Prevention
 
     /// @brief Component bits for XCR0 (XSAVE state components).
     enum class Xcr0Flags : u64 {
@@ -237,6 +264,14 @@ namespace FoundationKitPlatform::Amd64 {
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void ClearEferBits(u64 mask) noexcept {
         WriteEfer(ReadEfer() & ~mask);
     }
+
+    // -------------------------------------------------------------------------
+    // Typed Bitfield accessors for EFER fields
+    // -------------------------------------------------------------------------
+    using EferSce  = Bitfield<u64,  0, 1>;  ///< SYSCALL Enable
+    using EferLme  = Bitfield<u64,  8, 1>;  ///< Long Mode Enable
+    using EferLma  = Bitfield<u64, 10, 1>;  ///< Long Mode Active (read-only)
+    using EferNxe  = Bitfield<u64, 11, 1>;  ///< No-Execute Enable
 
 } // namespace FoundationKitPlatform::Amd64
 

@@ -27,6 +27,7 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/CharTypeTest.cpp
         Test/StlExtensionTest.cpp
         Test/StructureTest.cpp
+        Test/Phase1Test.cpp
     )
 
     target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi)

@@ -23,6 +23,8 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/Utility.hpp
     Include/FoundationKitCxxStl/Base/Variant.hpp
     Include/FoundationKitCxxStl/Base/Vector.hpp
+    Include/FoundationKitCxxStl/Base/KernelError.hpp
+    Include/FoundationKitCxxStl/Base/FixedString.hpp
     Include/FoundationKitCxxStl/Base/StaticVector.hpp
     Include/FoundationKitCxxStl/Base/PlacementNew.hpp
     Include/FoundationKitCxxStl/Base/Safety.hpp
@@ -36,6 +38,8 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Structure/IntrusiveSinglyLinkedList.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveAvlTree.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveRedBlackTree.hpp
+    Include/FoundationKitCxxStl/Structure/RingBuffer.hpp
+    Include/FoundationKitCxxStl/Structure/InterruptSafeQueue.hpp
     Include/FoundationKitCxxStl/Structure/WorkQueue.hpp
 )
 
