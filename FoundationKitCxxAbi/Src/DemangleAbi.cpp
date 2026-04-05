@@ -33,34 +33,26 @@
 using namespace FoundationKitCxxAbi::Demangle;
 using namespace FoundationKitCxxStl;
 
-// ============================================================================
-// Internal parser — forward declarations
-// ============================================================================
-
 namespace {
 
-static void ParseEncoding(DemangleState& s) noexcept;
-static void ParseName(DemangleState& s) noexcept;
-static void ParseNestedName(DemangleState& s) noexcept;
-static void ParseUnscopedName(DemangleState& s) noexcept;
-static void ParseUnqualifiedName(DemangleState& s) noexcept;
-static void ParseSourceName(DemangleState& s) noexcept;
-static void ParseType(DemangleState& s) noexcept;
-static void ParseBuiltinType(DemangleState& s) noexcept;
-static void ParseTemplateArgs(DemangleState& s) noexcept;
-static void ParseSubstitution(DemangleState& s) noexcept;
-static void ParseBareFunctionType(DemangleState& s) noexcept;
-static void ParseOperatorName(DemangleState& s) noexcept;
-static void ParseCtorDtorName(DemangleState& s) noexcept;
-static void ParseLocalName(DemangleState& s) noexcept;
-static void ParseCvQualifiers(DemangleState& s) noexcept;
-
-// ---------------------------------------------------------------------------
-// Substitution table helpers
-// ---------------------------------------------------------------------------
+void ParseEncoding(DemangleState& s) noexcept;
+void ParseName(DemangleState& s) noexcept;
+void ParseNestedName(DemangleState& s) noexcept;
+void ParseUnscopedName(DemangleState& s) noexcept;
+void ParseUnqualifiedName(DemangleState& s) noexcept;
+void ParseSourceName(DemangleState& s) noexcept;
+void ParseType(DemangleState& s) noexcept;
+void ParseBuiltinType(DemangleState& s) noexcept;
+void ParseTemplateArgs(DemangleState& s) noexcept;
+void ParseSubstitution(DemangleState& s) noexcept;
+void ParseBareFunctionType(DemangleState& s) noexcept;
+void ParseOperatorName(DemangleState& s) noexcept;
+void ParseCtorDtorName(DemangleState& s) noexcept;
+void ParseLocalName(DemangleState& s) noexcept;
+void ParseCvQualifiers(DemangleState& s) noexcept;
 
 /// @brief Record the current output extent as a substitution.
-static void RecordSubstitution(DemangleState& s, usize start) noexcept {
+void RecordSubstitution(DemangleState& s, usize start) noexcept {
     if (s.nsubs < k_max_substitutions) {
         s.subs[s.nsubs++] = {start, s.output.written};
     } else {
@@ -70,7 +62,7 @@ static void RecordSubstitution(DemangleState& s, usize start) noexcept {
 }
 
 /// @brief Resolve a substitution index into the output buffer and re-emit.
-static void EmitSubstitution(DemangleState& s, usize index) noexcept {
+void EmitSubstitution(DemangleState& s, usize index) noexcept {
     if (index >= s.nsubs) {
         FK_LOG_WARN("__cxa_demangle: invalid substitution index {} (table has {} entries).",
                     index, s.nsubs);
@@ -85,15 +77,12 @@ static void EmitSubstitution(DemangleState& s, usize index) noexcept {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Digit helpers
-// ---------------------------------------------------------------------------
-
-[[nodiscard]] static bool IsDigit(char c) noexcept {
+/// TODO: ctype implementation
+[[nodiscard]] bool IsDigit(char c) noexcept {
     return c >= '0' && c <= '9';
 }
 
-[[nodiscard]] static usize ParseNumber(DemangleInput& in) noexcept {
+[[nodiscard]] usize ParseNumber(DemangleInput& in) noexcept {
     usize n = 0;
     while (IsDigit(in.Peek())) {
         n = n * 10 + static_cast<usize>(in.Consume() - '0');
@@ -101,8 +90,7 @@ static void EmitSubstitution(DemangleState& s, usize index) noexcept {
     return n;
 }
 
-// Decode S<seq-id>_ base-36 index: A=10, B=11, ..., Z=35.
-[[nodiscard]] static usize ParseSeqId(DemangleInput& in) noexcept {
+[[nodiscard]] usize ParseSeqId(DemangleInput& in) noexcept {
     usize n = 0;
     while (in.Peek() != '_' && in.HasMore()) {
         char c = in.Consume();
@@ -117,11 +105,7 @@ static void EmitSubstitution(DemangleState& s, usize index) noexcept {
     return n;
 }
 
-// ---------------------------------------------------------------------------
-// ParseSubstitution
-// Handles: S_ S0_ S1_ ... St Sa Sb Ss Si So Sd
-// ---------------------------------------------------------------------------
-static void ParseSubstitution(DemangleState& s) noexcept {
+void ParseSubstitution(DemangleState& s) noexcept {
     DemangleInput& in = s.input;
     if (!in.Expect('S')) { s.SetError(); return; }
 
@@ -150,10 +134,7 @@ static void ParseSubstitution(DemangleState& s) noexcept {
     EmitSubstitution(s, seq);
 }
 
-// ---------------------------------------------------------------------------
-// ParseBuiltinType
-// ---------------------------------------------------------------------------
-static void ParseBuiltinType(DemangleState& s) noexcept {
+void ParseBuiltinType(DemangleState& s) noexcept {
     char c = s.input.Consume();
     switch (c) {
         case 'v': s.output.Append("void");                  return;
@@ -193,16 +174,7 @@ static void ParseBuiltinType(DemangleState& s) noexcept {
     }
 }
 
-// ---------------------------------------------------------------------------
-// ParseCvQualifiers — r (restrict), V (volatile), K (const)
-// Emits qualifiers AFTER the type they qualify (C++ standard order).
-// We capture them and emit them as suffix strings.
-// ---------------------------------------------------------------------------
-static void ParseCvQualifiers(DemangleState& s) noexcept {
-    // Qualifiers appear as a prefix in the mangled name but as a suffix in the
-    // demangled output ("const int" not "int const"). We store them and append
-    // after the base type is emitted by the caller.
-    // This function emits the prefix only — caller must handle suffix order.
+void ParseCvQualifiers(DemangleState& s) noexcept {
     bool has_const    = false;
     bool has_volatile = false;
     bool has_restrict = false;
@@ -223,10 +195,7 @@ static void ParseCvQualifiers(DemangleState& s) noexcept {
     if (has_restrict) s.output.Append(" restrict");
 }
 
-// ---------------------------------------------------------------------------
-// ParseType
-// ---------------------------------------------------------------------------
-static void ParseType(DemangleState& s) noexcept {
+void ParseType(DemangleState& s) noexcept {
     if (!s.input.HasMore() || s.HasError()) return;
 
     const char c = s.input.Peek();
@@ -318,10 +287,7 @@ static void ParseType(DemangleState& s) noexcept {
     ParseBuiltinType(s);
 }
 
-// ---------------------------------------------------------------------------
-// ParseSourceName — <positive length><identifier>
-// ---------------------------------------------------------------------------
-static void ParseSourceName(DemangleState& s) noexcept {
+void ParseSourceName(DemangleState& s) noexcept {
     if (!IsDigit(s.input.Peek())) { s.SetError(); return; }
     const usize len = ParseNumber(s.input);
     if (len == 0 || s.input.ptr + len > s.input.end) {
@@ -332,10 +298,7 @@ static void ParseSourceName(DemangleState& s) noexcept {
     s.input.ptr += len;
 }
 
-// ---------------------------------------------------------------------------
-// ParseOperatorName — two-character codes after 'o'
-// ---------------------------------------------------------------------------
-static void ParseOperatorName(DemangleState& s) noexcept {
+void ParseOperatorName(DemangleState& s) noexcept {
     char a = s.input.Consume();
     char b = s.input.Consume();
 
@@ -379,19 +342,11 @@ static void ParseOperatorName(DemangleState& s) noexcept {
     s.output.Append("operator?");
 }
 
-// ---------------------------------------------------------------------------
-// ParseCtorDtorName — C1/C2/C3/D0/D1/D2
-// Must be called with the parent class name already emitted. We re-emit the
-// last component of the current name.
-// ---------------------------------------------------------------------------
-static void ParseCtorDtorName(DemangleState& s) noexcept {
+void ParseCtorDtorName(DemangleState& s) noexcept {
     char kind = s.input.Consume();
     char num  = s.input.Consume();
 
     if (kind == 'C') {
-        // Constructors: just print the class name again (caller wrote class name).
-        // We detect this by asking the output to re-emit the last scope segment.
-        // Since we don't have the segment readily available, we just annotate.
         switch (num) {
             case '1': s.output.Append("<ctor-complete>");  return;
             case '2': s.output.Append("<ctor-base>");      return;
@@ -411,10 +366,7 @@ static void ParseCtorDtorName(DemangleState& s) noexcept {
     s.SetError();
 }
 
-// ---------------------------------------------------------------------------
-// ParseUnqualifiedName — <source-name> | <operator-name> | <ctor-dtor-name>
-// ---------------------------------------------------------------------------
-static void ParseUnqualifiedName(DemangleState& s) noexcept {
+void ParseUnqualifiedName(DemangleState& s) noexcept {
     char c = s.input.Peek();
     if (IsDigit(c)) {
         ParseSourceName(s);
@@ -423,8 +375,6 @@ static void ParseUnqualifiedName(DemangleState& s) noexcept {
     if (c == 'o' || c == 'n' || c == 'd' || c == 'p' || c == 'm' ||
         c == 'a' || c == 'e' || c == 'r' || c == 'l' || c == 'g' ||
         c == 's' || c == 'c' || c == 'q' || c == 'i') {
-        // Might be operator — peek second character
-        // We consume optimistically; ParseOperatorName is responsible.
         ParseOperatorName(s);
         return;
     }
@@ -442,24 +392,17 @@ static void ParseUnqualifiedName(DemangleState& s) noexcept {
     s.SetError();
 }
 
-// ---------------------------------------------------------------------------
-// ParseTemplateArgs — I <type>* E  → < T1, T2, ... >
-// ---------------------------------------------------------------------------
-static void ParseTemplateArgs(DemangleState& s) noexcept {
+void ParseTemplateArgs(DemangleState& s) noexcept {
     if (!s.input.Expect('I')) { s.SetError(); return; }
     s.output.Append('<');
     bool first = true;
     while (s.input.Peek() != 'E' && s.input.HasMore() && !s.HasError()) {
         if (!first) s.output.Append(", ");
         first = false;
-        // Template argument can be a type (parsed normally), a literal 'L',
-        // or an expression 'X ... E'. We support types and literals.
         if (s.input.Peek() == 'L') {
-            // Literal argument: L <type> <value> E
             s.input.Consume();
             ParseType(s);
             s.output.Append('(');
-            // Emit numeric value
             bool neg = s.input.Peek() == 'n';
             if (neg) { s.input.Consume(); s.output.Append('-'); }
             while (IsDigit(s.input.Peek())) {
@@ -468,7 +411,6 @@ static void ParseTemplateArgs(DemangleState& s) noexcept {
             s.output.Append(')');
             s.input.Expect('E');
         } else if (s.input.Peek() == 'X') {
-            // Expression argument (simplified: just emit "expr")
             s.input.Consume();
             s.output.Append("<expr>");
             while (s.input.Peek() != 'E' && s.input.HasMore()) s.input.Consume();
@@ -478,19 +420,13 @@ static void ParseTemplateArgs(DemangleState& s) noexcept {
         }
     }
     s.input.Expect('E');
-    // Avoid >> ambiguity in nested templates: "< ... >" not "...>>"
-    // We emit a space before the closing > if the last char was '>'.
     if (s.output.written > 0 && s.output.buf[s.output.written - 1] == '>') {
         s.output.Append(' ');
     }
     s.output.Append('>');
 }
 
-// ---------------------------------------------------------------------------
-// ParseNestedName — N [cv-quals] [ref-qual] <prefix>* <unqualified-name> E
-// <prefix> ::= <name> | <template-param> | <substitution>
-// ---------------------------------------------------------------------------
-static void ParseNestedName(DemangleState& s) noexcept {
+void ParseNestedName(DemangleState& s) noexcept {
     if (!s.input.Expect('N')) { s.SetError(); return; }
 
     // Consume optional CV-qualifiers (appear before nested-name in lambdas)
@@ -542,22 +478,16 @@ static void ParseNestedName(DemangleState& s) noexcept {
             ParseUnqualifiedName(s);
         }
 
-        // If followed by template args, consume them as part of this component.
         if (s.input.Peek() == 'I' && !s.HasError()) {
-            // Record the bare name before template args as a substitution.
             RecordSubstitution(s, seg_start);
             ParseTemplateArgs(s);
         }
-        // Record full segment (name + template args) as a substitution.
         RecordSubstitution(s, seg_start);
     }
     s.input.Expect('E');
 }
 
-// ---------------------------------------------------------------------------
-// ParseUnscopedName — <unqualified-name> | St <unqualified-name>
-// ---------------------------------------------------------------------------
-static void ParseUnscopedName(DemangleState& s) noexcept {
+void ParseUnscopedName(DemangleState& s) noexcept {
     if (s.input.Peek() == 'S' && s.input.PeekAt(1) == 't') {
         s.input.Consume(); s.input.Consume();
         s.output.Append("std::");
@@ -565,10 +495,7 @@ static void ParseUnscopedName(DemangleState& s) noexcept {
     ParseUnqualifiedName(s);
 }
 
-// ---------------------------------------------------------------------------
-// ParseName — top-level <name>
-// ---------------------------------------------------------------------------
-static void ParseName(DemangleState& s) noexcept {
+void ParseName(DemangleState& s) noexcept {
     char c = s.input.Peek();
     if (c == 'N') {
         ParseNestedName(s);
@@ -588,10 +515,7 @@ static void ParseName(DemangleState& s) noexcept {
     RecordSubstitution(s, start);
 }
 
-// ---------------------------------------------------------------------------
-// ParseLocalName — Z <function encoding> E <entity or discriminator>
-// ---------------------------------------------------------------------------
-static void ParseLocalName(DemangleState& s) noexcept {
+void ParseLocalName(DemangleState& s) noexcept {
     if (!s.input.Expect('Z')) { s.SetError(); return; }
     ParseEncoding(s);
     if (!s.input.Expect('E')) { s.SetError(); return; }
@@ -611,11 +535,7 @@ static void ParseLocalName(DemangleState& s) noexcept {
     }
 }
 
-// ---------------------------------------------------------------------------
-// ParseBareFunctionType — <type>+ (parameter types; first is return type
-// for templates/conversions, absent for plain functions in some cases)
-// ---------------------------------------------------------------------------
-static void ParseBareFunctionType(DemangleState& s) noexcept {
+void ParseBareFunctionType(DemangleState& s) noexcept {
     s.output.Append('(');
     bool first = true;
 
@@ -633,11 +553,7 @@ static void ParseBareFunctionType(DemangleState& s) noexcept {
     s.output.Append(')');
 }
 
-// ---------------------------------------------------------------------------
-// ParseEncoding — top-level encoding after _Z
-// ---------------------------------------------------------------------------
-static void ParseEncoding(DemangleState& s) noexcept {
-    // Special names: TV (vtable), TT (VTT), TI (typeinfo), TS (typeinfo name)
+void ParseEncoding(DemangleState& s) noexcept {
     if (s.input.Peek() == 'T') {
         s.input.Consume();
         char sub = s.input.Peek();
@@ -647,29 +563,21 @@ static void ParseEncoding(DemangleState& s) noexcept {
         if (sub == 'S') { s.input.Consume(); s.output.Append("typeinfo name for "); ParseType(s); return; }
         if (sub == 'h') { s.input.Consume(); s.output.Append("non-virtual thunk to "); ParseEncoding(s); return; }
         if (sub == 'v') { s.input.Consume(); s.output.Append("virtual thunk to "); ParseEncoding(s); return; }
-        // Unknown T-special — back up
-        // We consumed 'T'; re-insert via error path.
         s.SetError();
         return;
     }
 
-    // Regular encoding: <name> [<bare-function-type>]
     usize name_start = s.output.written;
     (void)name_start;
     ParseName(s);
     if (s.HasError()) return;
 
-    // If there are more characters, they are the function's parameter types.
     if (s.input.HasMore()) {
         ParseBareFunctionType(s);
     }
 }
 
 } // anonymous namespace
-
-// ============================================================================
-// ParseMangledName — entry point
-// ============================================================================
 
 namespace FoundationKitCxxAbi::Demangle {
 
@@ -681,10 +589,6 @@ void ParseMangledName(DemangleState& s) noexcept {
     }
     ParseEncoding(s);
 }
-
-// ============================================================================
-// Public API: Demangle()
-// ============================================================================
 
 usize Demangle(StringView mangled, Span<char> out, DemangleStatus& status) noexcept {
     if (mangled.Data() == nullptr) {
@@ -720,10 +624,6 @@ usize Demangle(StringView mangled, Span<char> out, DemangleStatus& status) noexc
 
 } // namespace FoundationKitCxxAbi::Demangle
 
-// ============================================================================
-// extern "C" __cxa_demangle — standard ABI interface
-// ============================================================================
-
 extern "C" {
 
 char* __cxa_demangle(const char* mangled_name, char* buf,
@@ -742,9 +642,9 @@ char* __cxa_demangle(const char* mangled_name, char* buf,
         return nullptr;
     }
 
-    DemangleStatus ds = DemangleStatus::Success;
-    StringView sv{mangled_name};  // StringView from null-terminated
-    Span<char> sp{buf, static_cast<usize>(*n)};
+    auto ds = DemangleStatus::Success;
+    const StringView sv{mangled_name};  // StringView from null-terminated
+    const Span sp{buf, (*n)};
 
     const usize written = Demangle(sv, sp, ds);
 
