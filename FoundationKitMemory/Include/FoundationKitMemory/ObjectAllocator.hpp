@@ -135,10 +135,10 @@ namespace FoundationKitMemory {
     ///       if you need concurrent ForEachObject, the caller must hold a read lock.
     ///
     /// @tparam Alloc     Backing IAllocator.  Passed by reference — outlives ObjectAllocator.
-    /// @tparam MaxTypes  Maximum distinct MemoryObjectType values tracked (default: 64).
+    /// @tparam MaxTypes  Maximum distinct MemoryObjectType values tracked (default: 512).
     ///                   If a type index exceeds MaxTypes it is still allocated correctly
     ///                   but will NOT appear in ForEachObject walks.
-    template <IAllocator Alloc, usize MaxTypes = 64>
+    template <IAllocator Alloc, usize MaxTypes = 512>
     class ObjectAllocator {
     public:
         static_assert(MaxTypes >= 1,
