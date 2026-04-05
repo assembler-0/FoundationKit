@@ -57,18 +57,25 @@ namespace FoundationKitMemory {
             if (size == 0) return AllocationResult::Failure(MemoryError::InvalidSize);
 
             // We need space for: Header + Head Canary + User Payload + Tail Canary
-            // Plus extra for alignment alignment.
-            constexpr usize header_and_canary = sizeof(Header) + CanarySize;
+            // Plus extra for alignment.
+            const usize header_and_canary = sizeof(Header) + CanarySize;
             const usize alignment_buffer = align > alignof(Header) ? align : alignof(Header);
-            const usize total_requested = header_and_canary + size + CanarySize + alignment_buffer;
 
+            // Total size includes all fixed overhead and then the user payload + tail canary.
+            // Check for overflow before requesting from the base allocator.
+            const usize fixed_overhead = header_and_canary + CanarySize + alignment_buffer;
+            if (size > (~static_cast<usize>(0)) - fixed_overhead) {
+                return AllocationResult::Failure(MemoryError::AllocationTooLarge);
+            }
+
+            const usize total_requested = fixed_overhead + size;
             AllocationResult res = m_base.Allocate(total_requested, alignof(Header));
             if (!res) return res;
 
-            // Calculate user payload pointer with requested alignment
+            // Calculate user payload pointer with requested alignment using Alignment utility.
             const uptr raw_ptr = reinterpret_cast<uptr>(res.ptr);
-            const uptr user_ptr = raw_ptr + header_and_canary + align - 1 & ~(align - 1);
-            
+            const uptr user_ptr = Alignment(align).AlignUp(raw_ptr + header_and_canary);
+
             // Placement of other components relative to user_ptr
             const uptr head_canary_ptr = user_ptr - CanarySize;
             const uptr header_ptr = head_canary_ptr - sizeof(Header);
@@ -105,9 +112,9 @@ namespace FoundationKitMemory {
 
             for (usize i = 0; i < CanarySize; ++i) {
                 FK_BUG_ON(head_canary[i] != HeadCanaryValue,
-                    "SafeAllocator: Canaty corruption (underflow, expected: {} got: {})", HeadCanaryValue, head_canary[i]);
+                    "SafeAllocator: Canary corruption (underflow, expected: {} got: {})", HeadCanaryValue, head_canary[i]);
                 FK_BUG_ON(tail_canary[i] != TailCanaryValue,
-                    "SafeAllocator: Canaty corruption (overflow, expected: {} got: {})", TailCanaryValue, tail_canary[i]);
+                    "SafeAllocator: Canary corruption (overflow, expected: {} got: {})", TailCanaryValue, tail_canary[i]);
             }
 
             // Perform actual deallocation using original values

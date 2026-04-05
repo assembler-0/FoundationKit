@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKitMemory/MemoryCore.hpp>
+#include <FoundationKitMemory/MemoryCommon.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
@@ -167,7 +168,11 @@ namespace FoundationKitMemory {
     [[nodiscard]]
     Optional<T*> NewArray(Alloc& alloc, const usize count) noexcept {
         if (count == 0) return NullOpt;
-        AllocationResult r = alloc.Allocate(sizeof(T) * count, alignof(T));
+
+        const usize total_size = CalculateArrayAllocationSize<T>(count);
+        if (total_size == 0) return NullOpt; // Overflow detected
+
+        AllocationResult r = alloc.Allocate(total_size, alignof(T));
         if (!r) return NullOpt;
         
         T* arr = static_cast<T*>(r.ptr);

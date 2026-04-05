@@ -54,10 +54,11 @@ namespace FoundationKitMemory {
         /// @param start Beginning of the memory pool (must be aligned to MaxBlockSize).
         /// @param size  Must be >= MaxBlockSize.
         void Initialize(void* start, usize size) noexcept {
+            FK_BUG_ON(!start && size > 0, "BuddyAllocator::Initialize: null buffer provided with size {}", size);
             if (!start || size < MinBlockSize) {
-                FK_BUG_ON(size < MinBlockSize,
-                    "BuddyAllocator::Initialize: buffer ({}) < MinBlockSize ({})",
-                    size, MinBlockSize);
+                if (size > 0 && size < MinBlockSize) {
+                    FK_BUG("BuddyAllocator::Initialize: buffer ({}) < MinBlockSize ({})", size, MinBlockSize);
+                }
                 return;
             }
             m_start = static_cast<byte*>(start);
@@ -293,7 +294,7 @@ namespace FoundationKitMemory {
             return reinterpret_cast<byte*>(node);
         }
 
-        void RemoveFree(usize order, const byte* target) noexcept {
+        void RemoveFree(usize order, byte* target) noexcept {
             FreeNode** curr = &m_free_lists[order];
             while (*curr) {
                 if (reinterpret_cast<byte*>(*curr) == target) {

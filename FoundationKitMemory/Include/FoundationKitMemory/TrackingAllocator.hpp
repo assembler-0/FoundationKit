@@ -57,21 +57,26 @@ namespace FoundationKitMemory {
             const usize header_size = sizeof(Header);
             const usize alignment_needed = align > alignof(Header) ? align : alignof(Header);
             
-            // Total size includes header and potential padding to align the payload
+            // Total size includes header and potential padding to align the payload.
+            // Check for overflow before requesting from base allocator.
+            if (size > (~static_cast<usize>(0)) - (header_size + alignment_needed)) {
+                return AllocationResult::Failure(MemoryError::AllocationTooLarge);
+            }
+
             const usize total_size = header_size + size + alignment_needed;
 
             AllocationResult res = m_base.Allocate(total_size, alignment_needed);
             if (!res) return res;
 
-            // Align payload
+            // Align payload using Alignment utility.
             const uptr raw_ptr = reinterpret_cast<uptr>(res.ptr);
-            const uptr payload_ptr = (raw_ptr + header_size + align - 1) & ~(static_cast<uptr>(align) - 1);
+            const uptr payload_ptr = Alignment(align).AlignUp(raw_ptr + header_size);
             const uptr header_ptr = payload_ptr - header_size;
 
             auto* header = reinterpret_cast<Header*>(header_ptr);
             header->magic = HeaderMagic;
             header->padding = static_cast<u32>(payload_ptr - raw_ptr);
-            header->size = total_size;
+            header->size = res.size;
             header->user_size = size;
 
             return AllocationResult::Success(reinterpret_cast<void*>(payload_ptr), size);

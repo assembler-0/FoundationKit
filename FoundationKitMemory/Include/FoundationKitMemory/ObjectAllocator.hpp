@@ -168,13 +168,24 @@ namespace FoundationKitMemory {
         template <MemoryObjectType Type, typename T, typename... Args>
         [[nodiscard]] Expected<T*, MemoryError>
         Allocate(MemoryObjectFlags flags, Args&&... args) noexcept {
-            constexpr usize total = sizeof(MemoryObjectHeader) + sizeof(T);
+            // Check for overflow: Header + T + potential alignment padding
+            constexpr usize header_size = sizeof(MemoryObjectHeader);
+            if (sizeof(T) > (~static_cast<usize>(0)) - (header_size + alignof(T))) {
+                return Unexpected(MemoryError::AllocationTooLarge);
+            }
+
+            constexpr usize total = header_size + sizeof(T);
             constexpr usize align = alignof(T) > alignof(MemoryObjectHeader)
                                     ? alignof(T)
                                     : alignof(MemoryObjectHeader);
 
-            const AllocationResult res = m_alloc.Allocate(total, align);
+            AllocationResult res = m_alloc.Allocate(total, align);
             if (!res) return Unexpected(MemoryError::OutOfMemory);
+
+            // Ensure memory is zeroed BEFORE construction if requested.
+            if (HasFlag(flags, MemoryObjectFlags::Zeroed)) {
+                MemoryZero(res.ptr, total);
+            }
 
             auto* hdr          = static_cast<MemoryObjectHeader*>(res.ptr);
             hdr->magic         = MemoryObjectHeader::kMagic;
@@ -197,11 +208,6 @@ namespace FoundationKitMemory {
                 reinterpret_cast<T*>(hdr + 1),
                 FoundationKitCxxStl::Forward<Args>(args)...
             );
-
-            if (HasFlag(flags, MemoryObjectFlags::Zeroed)) {
-                // Zero after construction if requested (unusual but explicit).
-                MemorySet(obj, byte{0}, sizeof(T));
-            }
 
             return obj;
         }
