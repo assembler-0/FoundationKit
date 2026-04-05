@@ -86,6 +86,19 @@ namespace FoundationKitMemory {
     };
 
     // ============================================================================
+    // Bridge for operator new/delete
+    // ============================================================================
+
+    [[nodiscard]] inline void* GlobalAllocate(usize size) noexcept {
+        auto res = GlobalAllocatorSystem::GetAllocator().Allocate(size, 16);
+        return res.ptr;
+    }
+
+    inline void GlobalDeallocate(void* ptr) noexcept {
+        GlobalAllocatorSystem::GetAllocator().Deallocate(ptr);
+    }
+
+    // ============================================================================
     // Public API Aliases
     // ============================================================================
 

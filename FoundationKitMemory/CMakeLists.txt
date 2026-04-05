@@ -30,7 +30,6 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/FragmentationReport.hpp
     Include/FoundationKitMemory/PressureManager.hpp
     Include/FoundationKitMemory/RegionDescriptor.hpp
-    Include/FoundationKitMemory/PerCpuAllocator.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES

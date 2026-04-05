@@ -174,7 +174,7 @@ namespace FoundationKitMemory {
                                     : alignof(MemoryObjectHeader);
 
             const AllocationResult res = m_alloc.Allocate(total, align);
-            if (!res) return MemoryError::OutOfMemory;
+            if (!res) return Unexpected(MemoryError::OutOfMemory);
 
             auto* hdr          = static_cast<MemoryObjectHeader*>(res.ptr);
             hdr->magic         = MemoryObjectHeader::kMagic;

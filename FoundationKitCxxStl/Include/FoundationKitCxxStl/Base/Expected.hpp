@@ -59,18 +59,6 @@ namespace FoundationKitCxxStl {
         constexpr explicit Expected(InPlaceT, Args&&... args)
             : _value(FoundationKitCxxStl::Forward<Args>(args)...), _has_value(true) {}
 
-        /// @brief Construct with error (Copy).
-        template <typename U = E>
-        requires (!SameAs<T, U>)
-        [[deprecated("Use Unexpected<E> instead")]]
-        constexpr Expected(const E& error) noexcept : _error(error), _has_value(false) {}
-
-        /// @brief Construct with error (Move).
-        template <typename U = E>
-        requires (!SameAs<T, U>)
-        [[deprecated("Use Unexpected<E> instead")]]
-        constexpr Expected(E&& error) noexcept : _error(FoundationKitCxxStl::Move(error)), _has_value(false) {}
-
         ~Expected() noexcept {
             if (_has_value) {
                 if constexpr (!SameAs<T, void>) _value.~T();
@@ -136,14 +124,6 @@ namespace FoundationKitCxxStl {
 
         /// @brief Construct from Unexpected (Move).
         constexpr Expected(Unexpected<E>&& u) noexcept : _error(FoundationKitCxxStl::Move(u.Error())), _has_value(false) {}
-
-        /// @brief Construct with error (Copy).
-        [[deprecated("Use Unexpected<E> instead")]]
-        explicit constexpr Expected(const E& error) noexcept : _error(error), _has_value(false) {}
-
-        /// @brief Construct with error (Move).
-        [[deprecated("Use Unexpected<E> instead")]]
-        explicit constexpr Expected(E&& error) noexcept : _error(FoundationKitCxxStl::Move(error)), _has_value(false) {}
 
         ~Expected() noexcept {
             if (!_has_value) _error.~E();

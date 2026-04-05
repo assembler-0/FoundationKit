@@ -14,11 +14,11 @@ option(FOUNDATIONKITCXXABI_ENABLE_ATEXIT
 
 option(FOUNDATIONKITCXXABI_GUARD_USE_OSL_YIELD
     "Use OslThreadYield inside guard spin loop (only safe after scheduler is live)"
-    OFF)
+    ON)
 
 option(FOUNDATIONKITCXXABI_BRIDGE_GLOBAL_ALLOC
     "Forward operator new/delete to FoundationKitMemory GlobalAllocator (adds dependency)"
-    OFF)
+    ON)
 
 set(FOUNDATIONKITCXXABI_ATEXIT_MAX "256" CACHE STRING
     "Maximum number of __cxa_atexit registrations (each slot = 3 pointers)")

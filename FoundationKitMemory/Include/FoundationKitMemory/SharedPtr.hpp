@@ -515,37 +515,35 @@ namespace FoundationKitMemory {
     /// @param alloc  Allocator (by value; moved into CombinedControlBlock).
     /// @param args   Constructor arguments for T.
     template <typename T, IAllocator Alloc, typename... Args>
-    [[nodiscard]] FoundationKitCxxStl::Expected<SharedPtr<T>, MemoryError>
+    [[nodiscard]] Expected<SharedPtr<T>, MemoryError>
     TryAllocateShared(Alloc alloc, Args&&... args) noexcept {
         using CB = CombinedControlBlock<T, Alloc>;
         const AllocationResult res = alloc.Allocate(sizeof(CB), alignof(CB));
         if (!res.ok())
-            return static_cast<FoundationKitCxxStl::Expected<SharedPtr<T>, MemoryError>>(
-                MemoryError::OutOfMemory);
+            return Unexpected(MemoryError::OutOfMemory);
 
         CB* cb = FoundationKitCxxStl::ConstructAt<CB>(
             res.ptr,
             FoundationKitCxxStl::Move(alloc),
             FoundationKitCxxStl::Forward<Args>(args)...
         );
-        return static_cast<FoundationKitCxxStl::Expected<SharedPtr<T>, MemoryError>>(
-            SharedPtr<T>(cb->Get(), cb));
+        return SharedPtr<T>(cb->Get(), cb);
     }
 
     /// @brief Create a SharedPtr<T[]> for a heap-allocated array.
     template <typename T, IAllocator Alloc>
-    [[nodiscard]] FoundationKitCxxStl::Expected<SharedPtr<T[]>, MemoryError>
+    [[nodiscard]] Expected<SharedPtr<T[]>, MemoryError>
     TryAllocateSharedArray(Alloc alloc, usize count) noexcept {
         auto arr_res = NewArray<T>(alloc, count);
         if (!arr_res)
-            return static_cast<FoundationKitCxxStl::Expected<SharedPtr<T[]>, MemoryError>>(
+            return static_cast<Expected<SharedPtr<T[]>, MemoryError>>(
                 MemoryError::OutOfMemory);
 
         using CB = SeparateArrayControlBlock<T, Alloc>;
         const AllocationResult cb_res = alloc.Allocate(sizeof(CB), alignof(CB));
         if (!cb_res) {
             DeleteArray(alloc, arr_res.Value(), count);
-            return static_cast<FoundationKitCxxStl::Expected<SharedPtr<T[]>, MemoryError>>(
+            return static_cast<Expected<SharedPtr<T[]>, MemoryError>>(
                 MemoryError::OutOfMemory);
         }
 

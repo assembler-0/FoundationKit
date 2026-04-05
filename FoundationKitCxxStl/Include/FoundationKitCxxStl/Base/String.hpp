@@ -151,34 +151,34 @@ namespace FoundationKitCxxStl {
         }
 
         [[nodiscard]] Expected<String, FoundationKitMemory::MemoryError> SubStr(usize offset, usize count = static_cast<usize>(-1)) const noexcept {
-            if (offset > m_size) return static_cast<Expected<String, FoundationKitMemory::MemoryError>>(FoundationKitMemory::MemoryError::InvalidSize);
+            if (offset > m_size) return Unexpected(FoundationKitMemory::MemoryError::InvalidSize);
             
             const usize actual_count = count == static_cast<usize>(-1) || offset + count > m_size
                                        ? m_size - offset 
                                        : count;
             
             String result(m_allocator);
-            if (auto res = result.Append(StringView(CStr() + offset, actual_count)); !res) return res.Error();
+            if (auto res = result.Append(StringView(CStr() + offset, actual_count)); !res) return Unexpected(res.Error());
             return result;
         }
 
         [[nodiscard]] Expected<Vector<String<Alloc>>, FoundationKitMemory::MemoryError> Split(char delimiter) const noexcept {
             Vector<String<Alloc>> result(m_allocator);
-            StringView view = static_cast<StringView>(*this);
+            auto view = static_cast<StringView>(*this);
             usize start = 0;
             
             for (usize i = 0; i < view.Size(); ++i) {
                 if (view[i] == delimiter) {
                     auto sub = SubStr(start, i - start);
-                    if (!sub) return sub.Error();
-                    if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return FoundationKitMemory::MemoryError::OutOfMemory;
+                    if (!sub) return Unexpected(sub.Error());
+                    if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return Unexpected(FoundationKitMemory::MemoryError::OutOfMemory);
                     start = i + 1;
                 }
             }
 
             auto sub = SubStr(start);
-            if (!sub) return sub.Error();
-            if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return FoundationKitMemory::MemoryError::OutOfMemory;
+            if (!sub) return Unexpected(sub.Error());
+            if (!result.PushBack(FoundationKitCxxStl::Move(sub.Value()))) return Unexpected(FoundationKitMemory::MemoryError::OutOfMemory);
 
             return result;
         }
@@ -186,7 +186,7 @@ namespace FoundationKitCxxStl {
         void Trim(StringView chars = " \t\n\r") noexcept {
             if (m_size == 0) return;
 
-            StringView view = static_cast<StringView>(*this);
+            auto view = static_cast<StringView>(*this);
             StringView trimmed = view.Trim(chars);
 
             if (trimmed.Empty()) {
@@ -214,7 +214,7 @@ namespace FoundationKitCxxStl {
             if (next_cap < required) next_cap = required;
 
             const FoundationKitMemory::AllocResult res = m_allocator.Allocate(next_cap + 1, alignof(char));
-            if (!res.ok()) return Expected<void, FoundationKitMemory::MemoryError>(FoundationKitMemory::MemoryError::OutOfMemory);
+            if (!res.ok()) return Unexpected(FoundationKitMemory::MemoryError::OutOfMemory);
 
             auto new_ptr = static_cast<char*>(res.ptr);
             const char* old_ptr = CStr();

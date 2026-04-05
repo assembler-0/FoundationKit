@@ -127,8 +127,8 @@ TEST_CASE(Base_Optional_Expected) {
     ASSERT_EQ(*opt_ref, 200);
     
     auto func = [](const bool fail) -> Expected<i32, const char*> {
-        if (fail) return Expected<i32, const char *>("Error");
-        return Expected<i32, const char *>(100);
+        if (fail) return Unexpected("Error");
+        return 100;
     };
     
     auto res1 = func(false);
@@ -158,7 +158,7 @@ TEST_CASE(Memory_SmartPointers) {
     
     dtor_count = 0;
     {
-        auto res = static_cast<Expected<SharedPtr<Guard>, MemoryError>>(TryAllocateShared<Guard>(any_alloc));
+        auto res = TryAllocateShared<Guard>(any_alloc);
         ASSERT_TRUE(res.HasValue());
         auto sptr1 = Move(res.Value());
         {
