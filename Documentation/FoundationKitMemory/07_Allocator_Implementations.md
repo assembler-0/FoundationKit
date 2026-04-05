@@ -8,9 +8,13 @@
 
 ```
 Base Allocators (own memory directly):
-  BumpAllocator       — linear arena, no individual free
-  FreeListAllocator   — general-purpose with coalescing
-  PoolAllocator<N>    — fixed-size object pool
+  BumpAllocator              — linear arena, no individual free
+  BuddyAllocator<O,M>        — O(1) iterative binary buddy system
+  PoolAllocator<N>           — fixed-size object pool
+
+General Purpose:
+  PolicyFreeListAllocator<P> — free-list with First/Best/Worst/Next fit
+  FreeListAllocator          — alias for PolicyFreeListAllocator<FirstFitPolicy>
 
 Compositors (compose two allocators):
   Segregator<T,S,L>           — route by size
@@ -22,13 +26,19 @@ Decorators (wrap any IAllocator):
   TrackingAllocator   — per-allocation header tracking sizes
   SafeAllocator       — canary guard bands for overflow detection
   RegionAwareAllocator — bounds checks against MemoryRegion
+  ObjectAllocator<Alloc>     — typed objects with magic, checksums, and iterability
 
 Complex:
-  SlabAllocator<Fallback>     — 6-tier size-class pool + fallback
+  SlabAllocator<NumClasses, Fallback> — weighted configurable size-class pool + fallback
   GlobalAllocatorSystem       — thread-safe singleton global allocator
   AnyAllocator                — type-erased wrapper (delegates to global)
   AllocatorFactory            — factory from MemoryRegion
   MultiRegionAllocator        — routes across named memory regions
+
+Telemetry & Management:
+  FragmentationReport        — zero-overhead layout fragmentation analysis
+  PressureManager            — priority-sorted OOM callback chain
+  RegionDescriptor           — NUMA/DMA aware memory span metadata
 
 Thread-Safety Layer:
   AllocatorLocking.hpp        — SynchronizedAllocator policy framework
@@ -82,20 +92,24 @@ auto* gdt = New<GDT>(early_alloc).Value();
 
 ---
 
-## 7.3 `FreeListAllocator` — General-Purpose Heap
+## 7.3 `FreeListAllocator` & `PolicyFreeListAllocator<Policy>` — General-Purpose Heap
+
+The free list allocator has been generalized into `PolicyFreeListAllocator<Policy>`, allowing dynamically plugging allocation behavior: `FirstFitPolicy`, `BestFitPolicy`, `WorstFitPolicy`, and `NextFitPolicy`. `FreeListAllocator` remains an alias for `PolicyFreeListAllocator<FirstFitPolicy>` to ensure zero-change backward compatibility.
 
 ```cpp
-class FreeListAllocator {
+template <typename Policy>
+class PolicyFreeListAllocator {
 public:
     struct Node { usize size; Node* next; };
     struct AllocationHeader { u32 magic; u32 padding; usize size; };
     static constexpr u32 HeaderMagic = 0x46524545; // 'FREE'
 
-    constexpr FreeListAllocator() noexcept = default;
-    constexpr FreeListAllocator(void* start, usize size) noexcept;
+    constexpr PolicyFreeListAllocator() noexcept = default;
+    constexpr PolicyFreeListAllocator(void* start, usize size) noexcept;
 
     void Initialize(void* start, usize size) noexcept;
 
+    // Allocates based on the strategy defined by Policy
     [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept;
     void Deallocate(void* ptr, usize size) noexcept;
     void Deallocate(void* ptr) noexcept;  // size-less (uses header)
@@ -105,32 +119,39 @@ public:
 
     [[nodiscard]] usize UsedMemory() const noexcept;
 };
-static_assert(IAllocator<FreeListAllocator>);
+static_assert(IAllocator<PolicyFreeListAllocator<FirstFitPolicy>>);
 ```
 
 **Algorithm:**
-
-*Allocation — first-fit with alignment padding:*
-1. Walk the free list.
-2. For each free `Node`, compute `payload_ptr = AlignUp(node + sizeof(Header))`.
-3. If `node->size >= padding + size`, split the block if residual fits a new `Node`; otherwise, consume entirely.
-4. Write `AllocationHeader` immediately before `payload_ptr`.
-5. Return `payload_ptr`.
-
-*Deallocation:*
-1. Read `AllocationHeader` from `ptr - sizeof(Header)`.
-2. Check `magic == HeaderMagic` — `FK_BUG_ON` on mismatch (use-after-free or corruption).
-3. Reconstruct the `Node` at `block_start = ptr - header.padding`.
-4. Insert into the free list **in address order**.
-5. Call `Coalesce()` to merge adjacent blocks.
-
-**`Coalesce`** merges adjacent free blocks: if `current + current->size == next_node`, extend `current->size` and skip `next_node`.
+The allocation logic executes exactly as before, with alignment and block splitting, but delegates the *Node selection* to the chosen `Policy` type (e.g. scanning the entire list for `BestFitPolicy`).
 
 **Key properties:**
-- O(n) allocation in worst case (list traversal); typically O(1) for small free lists.
-- Supports individual deallocation.
+- O(n) allocation in worst case; overhead depends on the requested fit policy.
+- Dynamic selection: `BestFitPolicy` heavily minimises fragmentation over prolonged life-cycles compared to `FirstFitPolicy`.
 - Header magic provides corruption detection.
 - **Not thread-safe.** Wrap with `SynchronizedAllocator<FreeListAllocator, Mutex>`.
+
+---
+
+## 7.3b `BuddyAllocator<MaxOrder, MinBlockSize>` — Iterative O(1) Buddy System
+
+A robust buddy allocator operating under strict iterative boundaries (zero recursion, no `std::stack`) mapping allocations directly to per-order intrusive free lists.
+
+```cpp
+template <usize MaxOrder = 10, usize MinBlockSize = 4096>
+class BuddyAllocator {
+public:
+    constexpr BuddyAllocator() noexcept = default;
+    void Initialize(void* start, usize size) noexcept;
+    [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept;
+    void Deallocate(void* ptr, usize size) noexcept;
+};
+```
+
+**Key properties:**
+- **Zero Recursion:** Operates safely in tightly-constrained kernel stacks by unrolling tree iterations.
+- **O(1) Efficiency:** Instead of traversing tree states, it pops nodes directly off `m_free_lists` mapped to explicit array sizes.
+- **Not thread-safe.** Wrap with `SynchronizedAllocator<BuddyAllocator<>, SpinLock>`.
 
 ---
 
@@ -175,15 +196,16 @@ Delete(task_pool, t);
 
 ---
 
-## 7.5 `SlabAllocator<Fallback>` — Multi-Class Pool
+## 7.5 `SlabAllocator<NumClasses, Fallback>` — Configurable Workloads
 
-`SlabAllocator` aggregates six `PoolAllocator` instances for size classes 16, 32, 64, 128, 256, and 512 bytes. Requests above 512 bytes are forwarded to the `Fallback` allocator.
+The `SlabAllocator` implements weighted, NTTP-based configurable size-class layouts completely replacing the original hardcoded slice arrays. Buffer pools are optimally sized for target workloads avoiding extreme fragmentation overheads found in static systems.
 
 ```cpp
-template <IAllocator Fallback>
+template <usize NumClasses, IAllocator Fallback>
 class SlabAllocator {
 public:
-    void Initialize(void* buffer, usize size, Fallback&& fallback) noexcept;
+    void Initialize(void* buffer, usize size, Fallback&& fallback, 
+                    const SlabSizeClass (&workload)[NumClasses]) noexcept;
 
     [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept;
     void Deallocate(void* ptr, usize size) noexcept;
@@ -191,19 +213,22 @@ public:
 };
 ```
 
-**Routing table:**
+**Usage:**
 
-| Size range  | Dispatched to     |
-|-------------|-------------------|
-| 1–16        | `m_pool16`        |
-| 17–32       | `m_pool32`        |
-| 33–64       | `m_pool64`        |
-| 65–128      | `m_pool128`       |
-| 129–256     | `m_pool256`       |
-| 257–512     | `m_pool512`       |
-| > 512       | `m_fallback`      |
+```cpp
+// Target heavy 16-byte load
+constexpr SlabSizeClass workload[3] = {
+    {16,  70}, // 70% of memory
+    {64,  20}, // 20% of memory
+    {256, 10}, // 10% of memory
+};
 
-The six pools share the provided buffer equally (1/6 each), aligned to 16 bytes between initialization. This minimises fragmentation for the common case of many small objects.
+SlabAllocator<3, FreeListAllocator> slab;
+slab.Initialize(buffer, size, Move(freelist), workload);
+```
+
+**Key properties:**
+- Supports variable scaling targeting unique execution environments. Allocator memory guarantees precise allocation percentage distribution automatically.
 
 ---
 
@@ -400,6 +425,45 @@ static_assert(IAllocator<AnyAllocator>);
 ```
 
 `AnyAllocator` is the default allocator for `String`, `Vector`, `HashMap`, `DoublyLinkedList`, etc. It acts as a pointer to a `BasicMemoryResource`; when default-constructed, it fetches the global allocator. Passing a custom `BasicMemoryResource*` redirects all allocations from that container.
+
+---
+
+## 7.11b `ObjectAllocator<Base>` — Corrupt-Resistant Typed Store
+
+A strictly type-safe object manager decorating a base heap allocator, explicitly focused on lifetime monitoring and structure bounds validation.
+
+**Memory Layout:**
+Prepends a secure `MemoryObjectHeader` directly behind the object pointer containing:
+- `magic` bytes verification
+- Intrusive `prev` / `next` list iteration references
+- `u32 checksum` (utilizing high-speed `FNV-1a` cryptographic hash logic mapped to the type signatures)
+
+```cpp
+ObjectAllocator<FreeListAllocator> tracker(heap);
+
+// Strictly binds allocation to TaskControl signature
+auto task = tracker.Allocate<MemoryObjectType::TaskControl, Task>(...);
+
+// Diagnostics iterators point directly to currently active objects
+tracker.ForEachObject<MemoryObjectType::TaskControl, Task>([](Task* t) {
+    Log("Found live task: {}", t->id);
+});
+```
+
+---
+
+## 7.11c Telemetry & Management Structures
+
+FoundationKitMemory introduces a trio of lightweight telemetry features.
+
+**1. `AnalyzeFragmentation` (`FragmentationReport`)**
+Executes O(N) evaluation over any generic heap returning fragmentation indexes (`0.0f = perfect`, `1.0f = entirely segmented`), largest available block configurations, and raw usage data completely uncoupled from intrusive tracking implementations.
+
+**2. `PressureManager`**
+A system-scale priority-chain architecture monitoring OOM signals. Allows hierarchical sub-systems (like IO or caches) to register un-loading callbacks ranked dynamically from `1 to 10`. Evaluates chain upon critical high-watermarks safely.
+
+**3. `RegionDescriptor`**
+NUMA/DMA-aware span documentation replacing isolated memory blocks. Encodes bitwise properties `RegionFlags` documenting execution properties (`IsCacheable`, `IsDmaCoherent`), mapping ownership to distinct architectural CPUs without heavy kernel calls.
 
 ---
 

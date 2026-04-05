@@ -281,7 +281,7 @@ TEST_CASE(Base_Variant) {
 
     Complex::dtor_called = 0;
     {
-        Variant<i32, Complex> v2 = Complex(10);
+        Variant<i32, Complex> v2(Complex(10));
         ASSERT_TRUE(v2.Is<Complex>());
         v2 = 20; // Should trigger Complex dtor
     }

@@ -168,3 +168,31 @@ namespace FoundationKitMemory {
     }
 
 } // namespace FoundationKitMemory
+
+// ============================================================================
+// Formatter Specializations
+// ============================================================================
+
+namespace FoundationKitCxxStl {
+
+    template <typename T, FoundationKitMemory::IAllocator Alloc>
+    struct Formatter<FoundationKitMemory::UniquePtr<T, Alloc>> {
+        template <typename Sink>
+        void Format(Sink& sb, const FoundationKitMemory::UniquePtr<T, Alloc>& value, const FormatSpec& spec = {}) const noexcept {
+            sb.Append("UniquePtr(");
+            Formatter<T*>().Format(sb, value.Get(), spec);
+            sb.Append(')');
+        }
+    };
+
+    template <typename T, FoundationKitMemory::IAllocator Alloc>
+    struct Formatter<FoundationKitMemory::UniquePtr<T[], Alloc>> {
+        template <typename Sink>
+        void Format(Sink& sb, const FoundationKitMemory::UniquePtr<T[], Alloc>& value, const FormatSpec& spec = {}) const noexcept {
+            sb.Append("UniquePtr[](");
+            Formatter<T*>().Format(sb, value.Get(), spec);
+            sb.Append(')');
+        }
+    };
+
+} // namespace FoundationKitCxxStl

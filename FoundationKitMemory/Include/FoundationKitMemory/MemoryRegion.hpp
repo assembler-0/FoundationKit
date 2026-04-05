@@ -116,7 +116,10 @@ namespace FoundationKitMemory {
         u32   m_magic = 0;
     };
 
-    static_assert(sizeof(MemoryRegion) == sizeof(byte*) + sizeof(usize));
+    // MemoryRegion contains: byte* (8B) + usize (8B) + u32 m_magic (4B) + 4B padding = 24B on LP64.
+    // The static_assert enforces that no surprise fields have been added.
+    static_assert(sizeof(MemoryRegion) == sizeof(byte*) + sizeof(usize) + sizeof(u32) + sizeof(u32),
+        "MemoryRegion: layout changed unexpectedly (expected ptr + usize + u32 + u32 padding)");
 
     // ============================================================================
     // Concept: Region-Aware Allocator
@@ -236,24 +239,31 @@ namespace FoundationKitMemory {
         MemoryRegion m_regions[NumRegions];
     };
 
-    /// @brief Formatter for MemoryRegion.
+} // namespace FoundationKitMemory
+
+// ============================================================================
+// Formatter<MemoryRegion> — must live in the namespace where Formatter<T> is
+//                           defined (FoundationKitCxxStl), not in FoundationKitMemory.
+// ============================================================================
+
+namespace FoundationKitCxxStl {
+    /// @brief Formatter for FoundationKitMemory::MemoryRegion.
     template <>
-    struct Formatter<MemoryRegion> {
+    struct Formatter<FoundationKitMemory::MemoryRegion> {
         template <typename Sink>
-        void Format(Sink& sb, const MemoryRegion& value, const FormatSpec& spec = {}) {
-            // Note: We access private members directly to avoid calling Verify() recursively during crash trace
-            if (value.m_base == nullptr && value.m_size == 0) {
+        void Format(Sink& sb, const FoundationKitMemory::MemoryRegion& value,
+                    const FormatSpec& spec = {}) const noexcept {
+            if (!value.IsValid()) {
                 sb.Append("[Empty Region]", 14);
                 return;
             }
             sb.Append('[');
-            Formatter<byte*>().Format(sb, value.m_base, spec);
+            Formatter<FoundationKitMemory::byte*>().Format(sb, value.Base(), spec);
             sb.Append('-');
-            Formatter<byte*>().Format(sb, value.m_base + value.m_size, spec);
+            Formatter<FoundationKitMemory::byte*>().Format(sb, value.End(), spec);
             sb.Append(" (", 2);
-            Formatter<usize>().Format(sb, value.m_size, spec);
+            Formatter<FoundationKitMemory::usize>().Format(sb, value.Size(), spec);
             sb.Append(")]", 2);
         }
     };
-
-} // namespace FoundationKitMemory
+} // namespace FoundationKitCxxStl

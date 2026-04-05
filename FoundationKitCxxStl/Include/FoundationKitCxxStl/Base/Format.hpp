@@ -18,13 +18,6 @@ namespace FoundationKitCxxStl {
         bool  zero_pad   = false; // Short-hand for fill='0'
     };
 
-    template <typename T>
-    struct Formatter {
-        /// @brief Format a value into a sink with optional specification.
-        template <typename Sink>
-        void Format(Sink& sb, const T& value, const FormatSpec& spec = {});
-    };
-
     namespace Detail {
         template <Unsigned T>
         constexpr usize UnsignedToChars(T value, char* buffer, u32 base = 10, bool uppercase = false) {
@@ -85,6 +78,20 @@ namespace FoundationKitCxxStl {
             }
         }
     }
+
+
+    template <typename T>
+    struct Formatter {
+        /// @brief Format a value into a sink with optional specification.
+        template <typename Sink>
+        void Format(Sink& sb, const T& /*value*/, const FormatSpec& spec = {}) const noexcept {
+            const char str[] = "[Object]";
+            if (!spec.align_left) Detail::Pad(sb, 8, spec);
+            sb.Append(str, 8);
+            if (spec.align_left) Detail::Pad(sb, 8, spec);
+        }
+    };
+
 
     // --- Basic Specializations ---
 

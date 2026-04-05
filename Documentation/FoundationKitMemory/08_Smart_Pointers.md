@@ -111,11 +111,14 @@ ControlBlock (abstract base)
 ```
 
 All control blocks carry two counters:
-- `use_count` — number of `SharedPtr` owners.
+- `use_count` — number of `SharedPtr` owners (managed via `Sync::Atomic<usize>`).
 - `weak_count` — number of `WeakPtr` references + 1 (held by SharedPtr until last SharedPtr is released, then decremented).
 
-**Object lifetime:** Destroyed when `use_count` reaches 0 (calls `DestroyObject()`).
-**Control block lifetime:** Destroyed when `weak_count` reaches 0 (calls `DestroySelf()`).
+### Zero VTable & RTTI Overhead
+FoundationKit's smart pointers bypass `vtable` virtual dispatch execution entirely by substituting virtual subclassing with direct inline hardware function pointers (`destroy_object`, `destroy_self`). Assertions universally execute compile-time `__is_standard_layout` verification securing deterministic ABI-compatibility absent of explicit `__cxa` subroutines.
+
+**Object lifetime:** Destroyed when `use_count` reaches 0 (calls mapped `destroy_object()` pointer).
+**Control block lifetime:** Destroyed when `weak_count` reaches 0 (calls mapped `destroy_self()` pointer).
 
 ### `SharedPtr<T>` Interface
 
@@ -167,7 +170,7 @@ public:
 };
 ```
 
-**`Lock()` race safety:** Checks `use_count > 0` before incrementing. If the last `SharedPtr` dropped between the check and the increment, `Lock()` returns an empty `SharedPtr` — the object is not resurrected.
+**`Lock()` race safety:** Upgrades into `SharedPtr` representations deterministically via atomic execution bounded inside a tight loop bypassing thread interference safely. It utilizes `CompareExchange` with `MemoryOrder::Acquire` and `MemoryOrder::Relaxed` strictly checking `use_count > 0` before incrementing. If the last `SharedPtr` dropped between the check and the increment, `Lock()` returns an empty `SharedPtr` — the object is not resurrected.
 
 ### Array Specialisation `SharedPtr<T[]>`
 
@@ -215,7 +218,22 @@ W expires / goes out of scope   weak_count=0
 
 ---
 
-## 8.3 `AllocationStats` — Allocator Diagnostics
+## 8.3 Formatter Integrations (`FoundationKitCxxStl::Formatter`)
+
+FoundationKit extends full diagnostic printing integrations resolving undefined linkages completely across all smart structures identically. Logging sub-systems format memory addresses elegantly preventing memory faults in evaluations.
+
+```cpp
+UniquePtr<Process> p = TryMakeUnique<Process>(alloc);
+SharedPtr<Data> d = TryAllocateShared<Data>(alloc);
+
+// Accurately logs string translations identical to raw memory blocks
+FK_LOG_INFO("Process Address: {}", p); // Output: UniquePtr(0x400A9F)
+FK_LOG_INFO("Data Address: {}", d);    // Output: SharedPtr(0x400A2C)
+```
+
+---
+
+## 8.4 `AllocationStats` — Allocator Diagnostics
 
 ```cpp
 struct AllocationStats {

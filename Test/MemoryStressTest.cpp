@@ -21,6 +21,11 @@
 #include <FoundationKitMemory/Segregator.hpp>
 #include <FoundationKitMemory/UniquePtr.hpp>
 #include <FoundationKitMemory/BuddyAllocator.hpp>
+#include <FoundationKitMemory/SharedPtr.hpp>
+#include <FoundationKitMemory/ObjectAllocator.hpp>
+#include <FoundationKitMemory/FragmentationReport.hpp>
+#include <FoundationKitMemory/PressureManager.hpp>
+#include <FoundationKitMemory/RegionDescriptor.hpp>
 #include <FoundationKitCxxStl/Sync/TicketLock.hpp>
 #include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
@@ -219,14 +224,15 @@ TEST_CASE(Memory_SlabAllocator_SizeClasses) {
     static byte slab_buffer[32 * 1024];
     static byte fallback_buffer[32 * 1024];
     FreeListAllocator fallback(fallback_buffer, sizeof(fallback_buffer));
-    
-    SlabAllocator<FreeListAllocator> slab;
-    slab.Initialize(slab_buffer, sizeof(slab_buffer), Move(fallback));
+
+    // New API: SlabAllocator<NumClasses, Fallback> with per-class weights via SlabSizeClass[].
+    SlabAllocator<6, FreeListAllocator> slab;
+    slab.Initialize(slab_buffer, sizeof(slab_buffer), Move(fallback), DefaultSlabClasses);
 
     // Test small allocations (should go to slabs)
     auto res1 = slab.Allocate(12, 4);  // Fits in 16-byte slab
     ASSERT_TRUE(res1);
-    
+
     auto res2 = slab.Allocate(100, 8); // Fits in 128-byte slab
     ASSERT_TRUE(res2);
 
@@ -725,8 +731,8 @@ TEST_CASE(Memory_AllAllocators_Comprehensive) {
         static byte slab_buf[8192];
         static byte fb_buf[4096];
         FreeListAllocator fb(fb_buf, sizeof(fb_buf));
-        SlabAllocator<FreeListAllocator> slab;
-        slab.Initialize(slab_buf, sizeof(slab_buf), Move(fb));
+        SlabAllocator<6, FreeListAllocator> slab;
+        slab.Initialize(slab_buf, sizeof(slab_buf), Move(fb), DefaultSlabClasses);
         auto res = slab.Allocate(128, 8);
         ASSERT_TRUE(res);
         slab.Deallocate(res.ptr, 128);
@@ -808,7 +814,7 @@ TEST_CASE(Memory_SynchronizedAllocator_PoolWithSpinLock) {
 }
 
 TEST_CASE(Memory_SynchronizedAllocator_BuddyWithSpinLock) {
-    static byte buddy_buffer[2 * 1024 * 1024];  // 2MB for buddy
+    static byte buddy_buffer[4 * 1024 * 1024];  // 4MB for buddy to match MaxBlockSize default
     BuddyAllocator<> buddy;
     buddy.Initialize(buddy_buffer, sizeof(buddy_buffer));
     
@@ -901,4 +907,296 @@ TEST_CASE(Memory_AllocatorLocking_ConceptValidation) {
     static_assert(SameAs<SelectAllocatorLockType<true, false>, Sync::NullLock>);
     static_assert(SameAs<SelectAllocatorLockType<false, true>, Sync::Mutex>);
     static_assert(SameAs<SelectAllocatorLockType<false, false>, Sync::InterruptSafeTicketLock>);
+}
+
+// ============================================================================
+// TEST: PolicyFreeListAllocator — Best/Next/Worst Fit Policies
+// ============================================================================
+
+TEST_CASE(Memory_BestFitAllocator_ReducesFragmentation) {
+    static byte bf_buf[8 * 1024];
+    PolicyFreeListAllocator<BestFitPolicy> best(bf_buf, sizeof(bf_buf));
+
+    auto r1 = best.Allocate(128, 8); ASSERT_TRUE(r1);
+    auto r2 = best.Allocate(512, 8); ASSERT_TRUE(r2);
+    auto r3 = best.Allocate(64,  8); ASSERT_TRUE(r3);
+    auto r4 = best.Allocate(256, 8); ASSERT_TRUE(r4);
+
+    best.Deallocate(r1.ptr, 128);
+    best.Deallocate(r3.ptr, 64);
+    best.Deallocate(r2.ptr, 512);
+    best.Deallocate(r4.ptr, 256);
+
+    // After coalescing, a large allocation should succeed.
+    auto r5 = best.Allocate(4096, 8); ASSERT_TRUE(r5);
+    best.Deallocate(r5.ptr, 4096);
+}
+
+TEST_CASE(Memory_NextFitAllocator_BasicCorrectness) {
+    static byte nf_buf[4 * 1024];
+    PolicyFreeListAllocator<NextFitPolicy> next_fit(nf_buf, sizeof(nf_buf));
+
+    auto r1 = next_fit.Allocate(128, 8); ASSERT_TRUE(r1);
+    auto r2 = next_fit.Allocate(256, 8); ASSERT_TRUE(r2);
+    next_fit.Deallocate(r1.ptr, 128);
+    next_fit.Deallocate(r2.ptr, 256);
+
+    auto r3 = next_fit.Allocate(64, 8); ASSERT_TRUE(r3);
+    next_fit.Deallocate(r3.ptr, 64);
+}
+
+TEST_CASE(Memory_PolicyAllocator_ConceptValidation) {
+    static_assert(IAllocator<PolicyFreeListAllocator<FirstFitPolicy>>);
+    static_assert(IAllocator<PolicyFreeListAllocator<BestFitPolicy>>);
+    static_assert(IAllocator<PolicyFreeListAllocator<WorstFitPolicy>>);
+    static_assert(IAllocator<PolicyFreeListAllocator<NextFitPolicy>>);
+    static_assert(IAllocator<FreeListAllocator>); // alias still works
+    ASSERT_TRUE(true);
+}
+
+// ============================================================================
+// TEST: SlabAllocator — Configurable Weights
+// ============================================================================
+
+TEST_CASE(Memory_SlabAllocator_ConfigurableWeights) {
+    static byte weighted_buf[32 * 1024];
+    static byte wb_fb[4096];
+    FreeListAllocator wfb(wb_fb, sizeof(wb_fb));
+
+    // Heavy 16-byte workload: 70% of slab buffer for 16B objects.
+    constexpr SlabSizeClass heavy_small[3] = {
+        {16,  70},
+        {64,  20},
+        {256, 10},
+    };
+
+    SlabAllocator<3, FreeListAllocator> slab;
+    slab.Initialize(weighted_buf, sizeof(weighted_buf), Move(wfb), heavy_small);
+
+    ASSERT_EQ(slab.ClassCount(), 3);
+    ASSERT_EQ(slab.MaxSlabSize(), 256);
+
+    // 16-byte tier should have plenty of capacity.
+    void* ptrs[64];
+    for (int i = 0; i < 64; ++i) {
+        auto r = slab.Allocate(16, 8);
+        ASSERT_TRUE(r);
+        ptrs[i] = r.ptr;
+    }
+    for (int i = 0; i < 64; ++i) {
+        slab.Deallocate(ptrs[i], 16);
+    }
+}
+
+// ============================================================================
+// TEST: ObjectAllocator — Typed, Tagged Allocation
+// ============================================================================
+
+TEST_CASE(Memory_ObjectAllocator_TypedAllocation) {
+    static byte obj_buf[32 * 1024];
+    FreeListAllocator heap(obj_buf, sizeof(obj_buf));
+    ObjectAllocator<FreeListAllocator> obj_alloc(heap);
+
+    struct Task { i32 id; i32 priority; };
+
+    auto r1 = obj_alloc.Allocate<MemoryObjectType::TaskControl, Task>(42, 10);
+    ASSERT_TRUE(r1);
+    ASSERT_EQ(r1.Value()->id, 42);
+    ASSERT_EQ(r1.Value()->priority, 10);
+
+    auto r2 = obj_alloc.Allocate<MemoryObjectType::TaskControl, Task>(99, 5);
+    ASSERT_TRUE(r2);
+
+    ASSERT_EQ(obj_alloc.CountObjects(MemoryObjectType::TaskControl), 2);
+
+    usize walked = 0;
+    obj_alloc.ForEachObject<MemoryObjectType::TaskControl, Task>(
+        [&](Task*) { ++walked; }
+    );
+    ASSERT_EQ(walked, 2);
+
+    obj_alloc.Deallocate(r1.Value());
+    ASSERT_EQ(obj_alloc.CountObjects(MemoryObjectType::TaskControl), 1);
+
+    obj_alloc.Deallocate(r2.Value());
+    ASSERT_EQ(obj_alloc.CountObjects(MemoryObjectType::TaskControl), 0);
+}
+
+// ============================================================================
+// TEST: FragmentationReport — Heap Analysis
+// ============================================================================
+
+TEST_CASE(Memory_FragmentationReport_FreeListAnalysis) {
+    static byte fr_buf[8 * 1024];
+    FreeListAllocator heap(fr_buf, sizeof(fr_buf));
+
+    auto report_full = AnalyzeFragmentation(heap);
+    ASSERT_EQ(report_full.free_block_count, 1);
+    ASSERT_EQ(report_full.used_bytes, 0);
+    ASSERT_EQ(report_full.FragmentationIndex(), 0.0f);
+
+    auto r1 = heap.Allocate(128, 8);
+    auto r2 = heap.Allocate(512, 8);
+    auto r3 = heap.Allocate(128, 8);
+    heap.Deallocate(r2.ptr, 512); // hole in the middle
+
+    auto report_frag = AnalyzeFragmentation(heap);
+    ASSERT_TRUE(report_frag.free_block_count >= 1);
+    ASSERT_TRUE(report_frag.largest_free_block > 0);
+
+    heap.Deallocate(r1.ptr, 128);
+    heap.Deallocate(r3.ptr, 128);
+
+    auto report_clean = AnalyzeFragmentation(heap);
+    ASSERT_EQ(report_clean.free_block_count, 1);
+    ASSERT_EQ(report_clean.FragmentationIndex(), 0.0f);
+}
+
+// ============================================================================
+// TEST: PressureManager — OOM Callback Chain
+// ============================================================================
+
+TEST_CASE(Memory_PressureManager_CallbackChain) {
+    PressureManager<4> pm;
+
+    static usize s_a_calls = 0;
+    static usize s_b_calls = 0;
+
+    const auto cb_a = [](usize, void*) noexcept { ++s_a_calls; };
+    const auto cb_b = [](usize, void*) noexcept { ++s_b_calls; };
+
+    pm.RegisterCallback(+cb_a, nullptr, 5);
+    pm.RegisterCallback(+cb_b, nullptr, 2);
+
+    ASSERT_EQ(pm.CallbackCount(), 2);
+
+    bool notified = pm.NotifyPressure(4096);
+    ASSERT_TRUE(notified);
+    ASSERT_EQ(s_a_calls, 1);
+    ASSERT_EQ(s_b_calls, 1);
+
+    pm.UnregisterCallback(+cb_a);
+    ASSERT_EQ(pm.CallbackCount(), 1);
+
+    pm.NotifyPressure(1024);
+    ASSERT_EQ(s_a_calls, 1); // was unregistered
+    ASSERT_EQ(s_b_calls, 2); // still registered
+}
+
+// ============================================================================
+// TEST: RegionDescriptor — NUMA-Aware Region Metadata
+// ============================================================================
+
+TEST_CASE(Memory_RegionDescriptor_Creation) {
+    static byte rd_buf[4096];
+    RegionDescriptor desc(
+        rd_buf, sizeof(rd_buf),
+        RegionType::Generic,
+        RegionFlags::Readable | RegionFlags::Writable | RegionFlags::Cacheable,
+        /*numa_node=*/0,
+        /*owner_id=*/0x1001
+    );
+
+    ASSERT_TRUE(desc.IsValid());
+    ASSERT_TRUE(desc.IsReadable());
+    ASSERT_TRUE(desc.IsWritable());
+    ASSERT_TRUE(desc.IsCacheable());
+    ASSERT_FALSE(desc.IsExecutable());
+    ASSERT_TRUE(desc.IsNumaAware());
+    ASSERT_TRUE(desc.IsOwned());
+    ASSERT_TRUE(desc.Contains(rd_buf));
+    ASSERT_FALSE(desc.IsDmaCoherent());
+
+    RegionDescriptor sub = desc.SubDescriptor(0, 1024);
+    ASSERT_EQ(sub.Size(), 1024);
+    ASSERT_EQ(sub.numa_node, 0ULL);
+}
+
+TEST_CASE(Memory_RegionDescriptorPool_Registration) {
+    static byte pool_buf[4096];
+    static byte dma_buf[4096];
+
+    RegionDescriptorPool<4> pool;
+    [[maybe_unused]] auto idx0 = pool.Register({pool_buf, sizeof(pool_buf), RegionType::Generic});
+    [[maybe_unused]] auto idx1 = pool.Register({dma_buf,  sizeof(dma_buf),  RegionType::DmaCoherent});
+
+    ASSERT_EQ(pool.Count(), 2);
+
+    const RegionDescriptor* found = pool.FindContaining(pool_buf + 10);
+    ASSERT_TRUE(found != nullptr);
+    ASSERT_EQ(found->type, RegionType::Generic);
+
+    const RegionDescriptor* dma = pool.FindByType(RegionType::DmaCoherent);
+    ASSERT_TRUE(dma != nullptr);
+    ASSERT_TRUE(dma->Contains(dma_buf));
+}
+
+// ============================================================================
+// TEST: SharedPtr — Atomic reference count correctness
+// ============================================================================
+
+TEST_CASE(Memory_SharedPtr_AtomicRefCounts) {
+    static byte sp_buf[4096];
+    BumpAllocator bump(sp_buf, sizeof(sp_buf));
+
+    struct Counter { i32 val; };
+
+    auto r = TryAllocateShared<Counter>(bump, 42);
+    ASSERT_TRUE(r);
+
+    SharedPtr<Counter> a = FoundationKitCxxStl::Move(r.Value());
+    ASSERT_EQ(a.UseCount(), 1);
+
+    {
+        SharedPtr<Counter> b = a;       // copy — FetchAdd
+        ASSERT_EQ(a.UseCount(), 2);
+        ASSERT_EQ(b.UseCount(), 2);
+        ASSERT_EQ(a->val, 42);
+    }                                   // b destructs — FetchSub
+
+    ASSERT_EQ(a.UseCount(), 1);
+
+    WeakPtr<Counter> w(a);
+    ASSERT_FALSE(w.Expired());
+
+    {
+        SharedPtr<Counter> locked = w.Lock();
+        ASSERT_TRUE(locked);
+        ASSERT_EQ(locked.UseCount(), 2);
+        ASSERT_EQ(locked->val, 42);
+    }
+
+    ASSERT_EQ(a.UseCount(), 1);
+    a.Reset();
+    ASSERT_TRUE(w.Expired());
+    ASSERT_EQ(w.Lock().UseCount(), 0);
+}
+
+// ============================================================================
+// TEST: BuddyAllocator — Iterative free-list based (no recursion)
+// ============================================================================
+
+TEST_CASE(Memory_BuddyAllocator_Iterative_FreeList) {
+    using SmallBuddy = BuddyAllocator<4, 64>; // MaxBlockSize = 64 << 4 = 1024 bytes
+    static byte buddy_buf[SmallBuddy::MaxBlockSize];
+    SmallBuddy buddy;
+    buddy.Initialize(buddy_buf, sizeof(buddy_buf));
+
+    auto r1 = buddy.Allocate(64, 64);  ASSERT_TRUE(r1);
+    auto r2 = buddy.Allocate(64, 64);  ASSERT_TRUE(r2);
+    auto r3 = buddy.Allocate(128, 64); ASSERT_TRUE(r3);
+
+    // r1 and r2 are adjacent 64-byte blocks — freeing both should coalesce.
+    buddy.Deallocate(r1.ptr, 64);
+    buddy.Deallocate(r2.ptr, 64);
+
+    // Now a 128-byte allocation should fit in the merged block.
+    auto r4 = buddy.Allocate(128, 64); ASSERT_TRUE(r4);
+
+    buddy.Deallocate(r3.ptr, 128);
+    buddy.Deallocate(r4.ptr, 128);
+
+    // All memory released — full MaxBlockSize should be available.
+    auto r5 = buddy.Allocate(SmallBuddy::MaxBlockSize, 64); ASSERT_TRUE(r5);
+    buddy.Deallocate(r5.ptr, SmallBuddy::MaxBlockSize);
 }
