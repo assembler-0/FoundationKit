@@ -102,6 +102,7 @@ namespace FoundationKitCxxStl {
         [[nodiscard]] constexpr bool Empty() const noexcept { return m_size == 0; }
 
         [[nodiscard]] char operator[](SizeType index) const noexcept {
+            FK_BUG_ON(index >= m_size, "String: operator[] index ({}) out of bounds ({})", index, m_size);
             return CStr()[index];
         }
 

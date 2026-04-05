@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -55,6 +56,7 @@ namespace FoundationKitCxxStl {
 
     template <typename... Ts>
     class Tuple : public Detail::TupleImpl<0, Ts...> {
+        static constexpr int _checks[] = { (TypeSanityCheck<Ts>{}, 0)... };
         using Base = Detail::TupleImpl<0, Ts...>;
     public:
         constexpr Tuple() = default;
@@ -67,15 +69,15 @@ namespace FoundationKitCxxStl {
     class Tuple<> {};
 
     template <usize Index, typename... Ts>
-    [[nodiscard]] constexpr typename Detail::TupleElement<Index, Ts...>::Type& Get(Tuple<Ts...>& t) noexcept {
-        using T = typename Detail::TupleElement<Index, Ts...>::Type;
+    [[nodiscard]] constexpr Detail::TupleElement<Index, Ts...>::Type& Get(Tuple<Ts...>& t) noexcept {
+        using T = Detail::TupleElement<Index, Ts...>::Type;
         using Leaf = Detail::TupleLeaf<Index, T>;
         return static_cast<Leaf&>(t).Get();
     }
 
     template <usize Index, typename... Ts>
-    [[nodiscard]] constexpr const typename Detail::TupleElement<Index, Ts...>::Type& Get(const Tuple<Ts...>& t) noexcept {
-        using T = typename Detail::TupleElement<Index, Ts...>::Type;
+    [[nodiscard]] constexpr const Detail::TupleElement<Index, Ts...>::Type& Get(const Tuple<Ts...>& t) noexcept {
+        using T = Detail::TupleElement<Index, Ts...>::Type;
         using Leaf = Detail::TupleLeaf<Index, T>;
         return static_cast<const Leaf&>(t).Get();
     }

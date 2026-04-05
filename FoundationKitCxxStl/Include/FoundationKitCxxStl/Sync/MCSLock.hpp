@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 
@@ -30,6 +31,12 @@ namespace FoundationKitCxxStl::Sync {
         /// @param node Reference to a node (must remain valid until Unlock).
         void Lock(MCSNode& node) noexcept {
             node.Next.Store(nullptr, MemoryOrder::Relaxed);
+            // Setting Locked=true marks this node as "waiting"; the predecessor
+            // will clear it when passing the lock. If it is already true here,
+            // the same node is being reused before the previous Lock/Unlock cycle
+            // completed — a serious concurrency bug.
+            FK_BUG_ON(node.Locked.Load(MemoryOrder::Relaxed),
+                "MCSLock::Lock: node is already in the locked state (node reuse before previous cycle completed)");
             node.Locked.Store(true, MemoryOrder::Relaxed);
 
             MCSNode* prev = m_tail.Exchange(&node, MemoryOrder::Acquire);
@@ -49,6 +56,10 @@ namespace FoundationKitCxxStl::Sync {
         /// @brief Release the lock using the same node provided to Lock.
         /// @param node Reference to the node used during acquisition.
         void Unlock(MCSNode& node) noexcept {
+            // If the tail is not our node and our Next is null, we are not the
+            // current lock holder — unlock without a matching lock.
+            FK_BUG_ON(m_tail.Load(MemoryOrder::Relaxed) == nullptr,
+                "MCSLock::Unlock: tail is null (unlock called without a prior Lock)");
             if (node.Next.Load(MemoryOrder::Relaxed) == nullptr) {
                 // We seem to be at the tail of the queue.
                 MCSNode* expected = &node;

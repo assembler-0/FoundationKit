@@ -5,11 +5,15 @@ set(FKPLATFORM_MACHINE_WIDTH_OVERRIDE "64" CACHE STRING "Machine width override"
 set(FOUNDATIONKITPLATFORM_HEADERS
     Include/FoundationKitPlatform/HostArchitecture.hpp
     Include/FoundationKitPlatform/MachineWidth.hpp
+    Include/FoundationKitPlatform/Amd64/ControlRegs.hpp
+    Include/FoundationKitPlatform/Amd64/Paging.hpp
 )
 
 add_library(FoundationKitPlatform INTERFACE ${FOUNDATIONKITPLATFORM_HEADERS})
 
 target_include_directories(FoundationKitPlatform INTERFACE Include)
+
+target_link_libraries(FoundationKitPlatform INTERFACE FoundationKitMemory)
 
 target_compile_definitions(FoundationKitPlatform INTERFACE
     FOUNDATIONKITPLATFORM_MACHINE_WIDTH_${FKPLATFORM_MACHINE_WIDTH_OVERRIDE}

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
-
 #include <FoundationKitCxxStl/Base/CharType.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::StringUtil {
 
@@ -16,6 +16,8 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Compare two null-terminated strings.
     constexpr i32 StrCmp(const char* s1, const char* s2) noexcept {
+        FK_BUG_ON(s1 == nullptr, "StringUtil::StrCmp: s1 is null");
+        FK_BUG_ON(s2 == nullptr, "StringUtil::StrCmp: s2 is null");
         while (*s1 && (*s1 == *s2)) {
             s1++;
             s2++;
@@ -25,6 +27,8 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Compare two null-terminated strings up to n characters.
     constexpr i32 StrNCmp(const char* s1, const char* s2, usize n) noexcept {
+        FK_BUG_ON(s1 == nullptr, "StringUtil::StrNCmp: s1 is null");
+        FK_BUG_ON(s2 == nullptr, "StringUtil::StrNCmp: s2 is null");
         if (n == 0) return 0;
         while (n-- > 0 && *s1 && (*s1 == *s2)) {
             if (n == 0) break;
@@ -36,6 +40,8 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Copy a null-terminated string.
     constexpr char* StrCpy(char* dest, const char* src) noexcept {
+        FK_BUG_ON(dest == nullptr, "StringUtil::StrCpy: dest is null");
+        FK_BUG_ON(src  == nullptr, "StringUtil::StrCpy: src is null");
         char* d = dest;
         while ((*d++ = *src++));
         return dest;
@@ -43,6 +49,8 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Copy up to n characters of a null-terminated string.
     constexpr char* StrNCpy(char* dest, const char* src, usize n) noexcept {
+        FK_BUG_ON(dest == nullptr, "StringUtil::StrNCpy: dest is null");
+        FK_BUG_ON(src  == nullptr, "StringUtil::StrNCpy: src is null");
         char* d = dest;
         while (n > 0 && *src) {
             *d++ = *src++;
@@ -57,6 +65,7 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Find character in string.
     constexpr const char* StrChr(const char* s, int c) noexcept {
+        FK_BUG_ON(s == nullptr, "StringUtil::StrChr: s is null");
         while (*s != static_cast<char>(c)) {
             if (!*s++) return nullptr;
         }
@@ -65,6 +74,7 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Find character in string (reverse).
     constexpr const char* StrRChr(const char* s, int c) noexcept {
+        FK_BUG_ON(s == nullptr, "StringUtil::StrRChr: s is null");
         const char* res = nullptr;
         do {
             if (*s == static_cast<char>(c)) res = s;
@@ -74,6 +84,8 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Find substring.
     constexpr const char* StrStr(const char* haystack, const char* needle) noexcept {
+        FK_BUG_ON(haystack == nullptr, "StringUtil::StrStr: haystack is null");
+        FK_BUG_ON(needle   == nullptr, "StringUtil::StrStr: needle is null");
         if (!*needle) return haystack;
         for (; *haystack; haystack++) {
             if (*haystack == *needle) {
@@ -100,6 +112,8 @@ namespace FoundationKitCxxStl::StringUtil {
 
     /// @brief Compare two null-terminated strings case-insensitively.
     constexpr i32 StrCaseCmp(const char* s1, const char* s2) noexcept {
+        FK_BUG_ON(s1 == nullptr, "StringUtil::StrCaseCmp: s1 is null");
+        FK_BUG_ON(s2 == nullptr, "StringUtil::StrCaseCmp: s2 is null");
         while (*s1 && (CharType::ToLower(*s1) == CharType::ToLower(*s2))) {
             s1++;
             s2++;

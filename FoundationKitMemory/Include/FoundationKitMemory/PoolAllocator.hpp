@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/MemorySafety.hpp>
 #include <FoundationKitCxxStl/Structure/IntrusiveSinglyLinkedList.hpp>
 
 namespace FoundationKitMemory {
@@ -29,6 +30,17 @@ namespace FoundationKitMemory {
 
             if (!buffer || size == 0 || chunk_size == 0) return;
 
+            // Alignment must be a power of two.
+            FK_BUG_ON((align & (align - 1)) != 0,
+                "PoolAllocator::Initialize: alignment ({}) must be a power of two", align);
+            // chunk_size must be large enough to hold the free-list pointer.
+            FK_BUG_ON(chunk_size < sizeof(void*),
+                "PoolAllocator::Initialize: chunk_size ({}) is smaller than sizeof(void*) ({})",
+                chunk_size, sizeof(void*));
+            // Wraparound guard.
+            FK_BUG_ON(reinterpret_cast<uptr>(buffer) + size < reinterpret_cast<uptr>(buffer),
+                "PoolAllocator::Initialize: buffer range wraps around address space");
+
             if constexpr (ChunkSize != 0) {
                 FK_BUG_ON(chunk_size != ChunkSize,
                     "PoolAllocator: runtime chunk_size ({}) mismatch with template ({})",
@@ -41,12 +53,17 @@ namespace FoundationKitMemory {
             usize offset = 0;
             while (offset + aligned_chunk_size <= size) {
                 auto* node = reinterpret_cast<Node*>(m_buffer + offset);
+                // Zero the node before pushing: the raw buffer contains garbage,
+                // so node->next would be non-null and trigger the already-linked
+                // check in PushFront. Zeroing makes the invariant hold correctly.
+                node->next = nullptr;
                 m_free_list.PushFront(node);
                 offset += aligned_chunk_size;
             }
         }
 
         [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept {
+            FK_BUG_ON(size == 0, "PoolAllocator::Allocate: zero-size allocation requested");
             if (size > m_chunk_size || align > m_alignment || m_free_list.Empty()) {
                 return AllocationResult::Failure();
             }
@@ -56,9 +73,16 @@ namespace FoundationKitMemory {
         }
 
         void Deallocate(void* ptr, usize size) noexcept {
-            if (!ptr || size > m_chunk_size) return;
-
+            if (!ptr) return;
+            FK_BUG_ON(!Owns(ptr),
+                "PoolAllocator::Deallocate: pointer {} does not belong to this pool", ptr);
+            FK_BUG_ON(size > m_chunk_size,
+                "PoolAllocator::Deallocate: size ({}) exceeds chunk_size ({})", size, m_chunk_size);
             auto* node = static_cast<Node*>(ptr);
+            // The user may have written arbitrary data into this chunk during its
+            // lifetime, leaving node->next as garbage. Zero it before PushFront
+            // so the already-linked invariant check does not false-positive.
+            node->next = nullptr;
             m_free_list.PushFront(node);
         }
 

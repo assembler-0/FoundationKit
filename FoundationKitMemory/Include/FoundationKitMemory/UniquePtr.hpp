@@ -8,6 +8,7 @@ namespace FoundationKitMemory {
     /// @brief Smart pointer that owns a resource and deallocates it using a specific allocator.
     template <typename T, IAllocator Alloc = AnyAllocator>
     class UniquePtr {
+        using _check = TypeSanityCheck<T>;
     public:
         using Pointer = T*;
         using ElementType = T;
@@ -77,6 +78,7 @@ namespace FoundationKitMemory {
     /// @brief Specialization for arrays.
     template <typename T, IAllocator Alloc>
     class UniquePtr<T[], Alloc> {
+        using _check = TypeSanityCheck<T>;
     public:
         using Pointer = T*;
         using ElementType = T;
@@ -113,6 +115,8 @@ namespace FoundationKitMemory {
         }
 
         void Reset(T* ptr = nullptr, const usize count = 0) noexcept {
+            FK_BUG_ON(ptr != nullptr && count == 0,
+                "UniquePtr[]::Reset: non-null pointer with zero count is a logic error");
             if (m_ptr) {
                 DeleteArray(m_alloc, m_ptr, m_count);
             }

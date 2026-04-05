@@ -178,6 +178,7 @@ namespace FoundationKitMemory {
     ///       The managed object and control block need not be allocated on the same heap.
     template <typename T>
     class SharedPtr {
+        using _check = TypeSanityCheck<T>;
     public:
         using ElementType = T;
 
@@ -270,22 +271,29 @@ namespace FoundationKitMemory {
         void Release() noexcept {
             if (!m_control) return;
 
+            FK_BUG_ON(m_control->destroy_object == nullptr,
+                "SharedPtr::Release: destroy_object function pointer is null (control block corruption)");
+            FK_BUG_ON(m_control->destroy_self == nullptr,
+                "SharedPtr::Release: destroy_self function pointer is null (control block corruption)");
+
             // AcqRel: Release our writes (object state), Acquire the writes of the
             // thread that decremented before us so we don't destroy a half-written object.
             const usize prev_use = m_control->use_count.FetchSub(
                 1, FoundationKitCxxStl::Sync::MemoryOrder::AcqRel
             );
 
+            FK_BUG_ON(prev_use == 0,
+                "SharedPtr::Release: use_count was already zero before decrement (double-release or corrupted control block)");
+
             if (prev_use == 1) {
-                // We were the last strong owner — destroy the managed object.
                 m_control->destroy_object(m_control);
 
-                // Now release the implicit weak reference held by the SharedPtr group.
                 const usize prev_weak = m_control->weak_count.FetchSub(
                     1, FoundationKitCxxStl::Sync::MemoryOrder::AcqRel
                 );
+                FK_BUG_ON(prev_weak == 0,
+                    "SharedPtr::Release: weak_count was already zero before decrement (control block corruption)");
                 if (prev_weak == 1) {
-                    // No WeakPtrs remain — destroy the control block.
                     m_control->destroy_self(m_control);
                 }
             }
@@ -397,9 +405,14 @@ namespace FoundationKitMemory {
         void Release() noexcept {
             if (!m_control) return;
 
+            FK_BUG_ON(m_control->destroy_self == nullptr,
+                "WeakPtr::Release: destroy_self function pointer is null (control block corruption)");
+
             const usize prev_weak = m_control->weak_count.FetchSub(
                 1, FoundationKitCxxStl::Sync::MemoryOrder::AcqRel
             );
+            FK_BUG_ON(prev_weak == 0,
+                "WeakPtr::Release: weak_count was already zero before decrement (double-release or corrupted control block)");
             if (prev_weak == 1) {
                 m_control->destroy_self(m_control);
             }
@@ -416,6 +429,7 @@ namespace FoundationKitMemory {
     /// @brief Array specialization for SharedPtr.
     template <typename T>
     class SharedPtr<T[]> {
+        using _check = TypeSanityCheck<T>;
     public:
         using ElementType = T;
 
@@ -466,6 +480,8 @@ namespace FoundationKitMemory {
 
         [[nodiscard]] T& operator[](usize index) const noexcept {
             FK_BUG_ON(!m_ptr, "SharedPtr[]: access via null pointer");
+            FK_BUG_ON(index >= m_count,
+                "SharedPtr[]: index ({}) out of bounds (count: {})", index, m_count);
             return m_ptr[index];
         }
 
@@ -482,20 +498,29 @@ namespace FoundationKitMemory {
         friend FoundationKitCxxStl::Expected<SharedPtr<U[]>, MemoryError>
         TryAllocateSharedArray(Alloc alloc, usize count) noexcept;
 
-        SharedPtr(T* ptr, ControlBlock* control) noexcept
-            : m_ptr(ptr), m_control(control) {}
+        SharedPtr(T* ptr, ControlBlock* control, usize count) noexcept
+            : m_ptr(ptr), m_control(control), m_count(count) {}
 
         void Release() noexcept {
             if (!m_control) return;
 
+            FK_BUG_ON(m_control->destroy_object == nullptr,
+                "SharedPtr[]::Release: destroy_object function pointer is null (control block corruption)");
+            FK_BUG_ON(m_control->destroy_self == nullptr,
+                "SharedPtr[]::Release: destroy_self function pointer is null (control block corruption)");
+
             const usize prev_use = m_control->use_count.FetchSub(
                 1, FoundationKitCxxStl::Sync::MemoryOrder::AcqRel
             );
+            FK_BUG_ON(prev_use == 0,
+                "SharedPtr[]::Release: use_count was already zero before decrement (double-release or corrupted control block)");
             if (prev_use == 1) {
                 m_control->destroy_object(m_control);
                 const usize prev_weak = m_control->weak_count.FetchSub(
                     1, FoundationKitCxxStl::Sync::MemoryOrder::AcqRel
                 );
+                FK_BUG_ON(prev_weak == 0,
+                    "SharedPtr[]::Release: weak_count was already zero before decrement (control block corruption)");
                 if (prev_weak == 1)
                     m_control->destroy_self(m_control);
             }
@@ -503,6 +528,7 @@ namespace FoundationKitMemory {
 
         T*            m_ptr     = nullptr;
         ControlBlock* m_control = nullptr;
+        usize         m_count   = 0;
     };
 
     // ============================================================================
@@ -553,7 +579,7 @@ namespace FoundationKitMemory {
             count,
             FoundationKitCxxStl::Move(alloc)
         );
-        return SharedPtr<T[]>(arr_res.Value(), cb);
+        return SharedPtr<T[]>(arr_res.Value(), cb, count);
     }
 
     // ============================================================================

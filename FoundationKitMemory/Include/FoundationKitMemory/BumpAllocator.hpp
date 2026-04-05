@@ -2,6 +2,7 @@
 
 
 #include <FoundationKitMemory/MemoryCore.hpp>
+#include <FoundationKitMemory/MemorySafety.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitMemory {
@@ -16,10 +17,15 @@ namespace FoundationKitMemory {
         constexpr BumpAllocator(void* start, const usize size) noexcept
             : m_start(static_cast<byte*>(start)), m_current(m_start), m_end(m_start + size) {
             FK_BUG_ON(start == nullptr && size > 0, "BumpAllocator: null start with non-zero size ({})", size);
+            // Wraparound: m_start + size must not overflow.
+            FK_BUG_ON(size > 0 && reinterpret_cast<uptr>(m_start) + size < reinterpret_cast<uptr>(m_start),
+                "BumpAllocator: buffer range wraps around address space (start: {}, size: {})", start, size);
         }
 
         [[nodiscard]] AllocationResult Allocate(const usize size, const usize align) noexcept {
             FK_BUG_ON(align == 0 || (align & (align - 1)) != 0, "BumpAllocator: alignment must be a power of two");
+            FK_BUG_ON(size == 0, "BumpAllocator: zero-size allocation requested");
+            FK_BUG_ON(m_start == nullptr, "BumpAllocator: Allocate called on uninitialised allocator");
             
             const uptr current_ptr = reinterpret_cast<uptr>(m_current);
             const uptr aligned_ptr = (current_ptr + align - 1) & ~(static_cast<uptr>(align) - 1);

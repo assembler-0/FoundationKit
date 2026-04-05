@@ -2,6 +2,7 @@
 
 #include <FoundationKitMemory/MemoryCore.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/MemorySafety.hpp>
 
 namespace FoundationKitMemory {
 
@@ -19,14 +20,22 @@ namespace FoundationKitMemory {
         explicit constexpr PoisoningAllocator(Alloc& alloc) noexcept : m_alloc(alloc) {}
 
         [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept {
+            FK_BUG_ON(size == 0, "PoisoningAllocator::Allocate: zero-size allocation requested");
+            FK_BUG_ON(align == 0 || (align & (align - 1)) != 0,
+                "PoisoningAllocator::Allocate: alignment ({}) must be a non-zero power of two", align);
             AllocationResult res = m_alloc.Allocate(size, align);
             if (res.ok()) {
+                AssertAllocResultValid(res, size, align);
                 MemorySet(res.ptr, PoisonAlloc, res.size);
             }
             return res;
         }
 
         void Deallocate(void* ptr, usize size) noexcept {
+            FK_BUG_ON(ptr == nullptr && size > 0,
+                "PoisoningAllocator::Deallocate: null pointer with non-zero size ({})", size);
+            FK_BUG_ON(ptr != nullptr && !m_alloc.Owns(ptr),
+                "PoisoningAllocator::Deallocate: pointer {} does not belong to the underlying allocator", ptr);
             if (ptr && size > 0) {
                 MemorySet(ptr, PoisonFree, size);
             }

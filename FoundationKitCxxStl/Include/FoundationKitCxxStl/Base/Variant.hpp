@@ -4,6 +4,7 @@
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {
     namespace Detail {
@@ -41,6 +42,10 @@ namespace FoundationKitCxxStl {
     /// @tparam Ts Types that the variant can hold.
     template<typename... Ts>
     class Variant {
+        static_assert(sizeof...(Ts) > 0, "Variant: must have at least one type");
+        // Expand TypeSanityCheck for every type in the pack via a dummy array.
+        // Each instantiation fires its static_asserts (void, reference, abstract, incomplete).
+        static constexpr int _checks[] = { (TypeSanityCheck<Ts>{}, 0)... };
     public:
         static constexpr usize InvalidIndex = static_cast<usize>(-1);
 
@@ -138,6 +143,11 @@ namespace FoundationKitCxxStl {
     private:
         static constexpr usize StorageSize = Detail::Max<sizeof(Ts)...>::Value;
         static constexpr usize StorageAlign = Detail::Max<alignof(Ts)...>::Value;
+
+        // AlignedStorageCheck: verify the storage array is large/aligned enough for
+        // every type in the pack. This fires at instantiation, not at runtime.
+        static_assert(((sizeof(Ts) <= StorageSize) && ...), "Variant: StorageSize computation is wrong");
+        static_assert(((alignof(Ts) <= StorageAlign) && ...), "Variant: StorageAlign computation is wrong");
 
         alignas(StorageAlign) byte m_storage[StorageSize]{};
         usize m_index;

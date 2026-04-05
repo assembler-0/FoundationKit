@@ -3,6 +3,8 @@
 namespace FoundationKitCxxStl {
 
     void RbTreeBase::Insert(RbNode* node, RbNode* parent, RbNode** link) noexcept {
+        FK_BUG_ON(node == nullptr, "RbTreeBase::Insert: null node");
+        FK_BUG_ON(link == nullptr, "RbTreeBase::Insert: null link pointer");
         node->SetParent(parent);
         node->left = node->right = nullptr;
         node->SetRed();
@@ -96,6 +98,8 @@ namespace FoundationKitCxxStl {
     }
 
     void RbTreeBase::Remove(RbNode* node) noexcept {
+        FK_BUG_ON(node == nullptr, "RbTreeBase::Remove: null node");
+        FK_BUG_ON(m_size == 0, "RbTreeBase::Remove: size is zero (removing from empty tree)");
         RbNode* child;
         RbNode* parent;
         RbColor color;
@@ -216,6 +220,7 @@ namespace FoundationKitCxxStl {
     }
 
     RbNode* RbTreeBase::Next(RbNode* node) noexcept {
+        FK_BUG_ON(node == nullptr, "RbTreeBase::Next: null node");
         if (node->right) {
             node = node->right;
             while (node->left) node = node->left;
@@ -230,6 +235,7 @@ namespace FoundationKitCxxStl {
     }
 
     RbNode* RbTreeBase::Prev(RbNode* node) noexcept {
+        FK_BUG_ON(node == nullptr, "RbTreeBase::Prev: null node");
         if (node->left) {
             node = node->left;
             while (node->right) node = node->right;

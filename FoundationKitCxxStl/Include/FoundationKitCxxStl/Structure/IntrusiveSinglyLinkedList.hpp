@@ -17,6 +17,11 @@ namespace FoundationKitCxxStl::Structure {
         IntrusiveSinglyLinkedList() : m_head(nullptr), m_size(0) {}
 
         void PushFront(Node* node) {
+            FK_BUG_ON(node == nullptr, "IntrusiveSinglyLinkedList::PushFront: null node");
+            // A node whose next pointer is non-null is already in a list.
+            // Inserting it again would corrupt both lists.
+            FK_BUG_ON(node->next != nullptr,
+                "IntrusiveSinglyLinkedList::PushFront: node->next is non-null (node already linked or not zeroed after PopFront)");
             node->next = m_head;
             m_head = node;
             m_size++;
@@ -27,6 +32,9 @@ namespace FoundationKitCxxStl::Structure {
             if (!m_head) return nullptr;
             Node* node = m_head;
             m_head = m_head->next;
+            // Zero the popped node's next pointer so a subsequent PushFront
+            // of the same node doesn't falsely trigger the already-linked check.
+            node->next = nullptr;
             m_size--;
             return node;
         }

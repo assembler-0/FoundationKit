@@ -53,6 +53,9 @@ namespace FoundationKitCxxStl {
                     usize j = i + 1;
                     while (j < size && data[j] != '}') j++;
 
+                    FK_BUG_ON(j >= size,
+                        "StringBuilder::Format: unclosed '{{' in format string at position ({})", i);
+
                     if (j < size) {
                         // We found { ... }
                         // Parse spec if any

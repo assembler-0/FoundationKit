@@ -30,6 +30,7 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/FragmentationReport.hpp
     Include/FoundationKitMemory/PressureManager.hpp
     Include/FoundationKitMemory/RegionDescriptor.hpp
+    Include/FoundationKitMemory/MemorySafety.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES
@@ -45,7 +46,6 @@ target_link_libraries(FoundationKitMemory PUBLIC FoundationKitCxxStl)
 target_compile_options(FoundationKitMemory PRIVATE
     -fPIC
     -fPIE
-    -fno-plt
     -fno-rtti
     -fno-exceptions
     -fno-builtin

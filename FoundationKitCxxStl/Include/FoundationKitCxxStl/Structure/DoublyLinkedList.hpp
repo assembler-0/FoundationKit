@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
 #include <FoundationKitMemory/AnyAllocator.hpp>
 
@@ -13,6 +14,7 @@ namespace FoundationKitCxxStl::Structure {
     /// @tparam Alloc The allocator to use for nodes.
     template <typename T, FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class DoublyLinkedList {
+        using _check = TypeSanityCheck<T>;
     public:
         struct Node {
             T value;

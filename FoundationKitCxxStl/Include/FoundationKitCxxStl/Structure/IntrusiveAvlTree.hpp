@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Algorithm.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -52,6 +53,9 @@ namespace FoundationKitCxxStl {
 
     template <typename T, usize NodeOffset>
     class IntrusiveAvlTree : public AvlTreeBase {
+        // NodeOffset must be within a plausible struct size — catches transposed arguments.
+        static_assert(NodeOffset < 65536,
+            "IntrusiveAvlTree: NodeOffset exceeds 65535 bytes — did you swap T and NodeOffset?");
     public:
         static T* ToEntry(AvlNode* node) noexcept {
             if (!node) return nullptr;
@@ -77,9 +81,13 @@ namespace FoundationKitCxxStl {
 
         template <typename Comparator>
         void Insert(T* entry, Comparator&& comp) noexcept {
+            FK_BUG_ON(entry == nullptr, "IntrusiveAvlTree::Insert: null entry");
+            AvlNode* node = ToNode(entry);
+            // A node already linked into a tree has a non-null parent or is the root.
+            FK_BUG_ON(node->parent != nullptr || node->left != nullptr || node->right != nullptr,
+                "IntrusiveAvlTree::Insert: node appears already linked (parent/children non-null)");
             AvlNode** link = &m_root;
             AvlNode* parent = nullptr;
-            AvlNode* node = ToNode(entry);
 
             while (*link) {
                 parent = *link;
@@ -92,6 +100,7 @@ namespace FoundationKitCxxStl {
         }
 
         void Remove(T* entry) noexcept {
+            FK_BUG_ON(entry == nullptr, "IntrusiveAvlTree::Remove: null entry");
             AvlTreeBase::Remove(ToNode(entry));
         }
 

@@ -2,6 +2,7 @@
 
 #include <FoundationKitMemory/MemoryCore.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/MemorySafety.hpp>
 
 namespace FoundationKitMemory {
 
@@ -51,14 +52,12 @@ namespace FoundationKitMemory {
         /// @brief Allocate memory with a tracking header.
         [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept {
             if (size == 0) return AllocationResult::Failure(MemoryError::InvalidSize);
+            FK_BUG_ON(align == 0 || (align & (align - 1)) != 0,
+                "TrackingAllocator::Allocate: alignment ({}) must be a non-zero power of two", align);
 
-            // We need space for the header, and it must be aligned.
-            // The user payload must also be aligned to 'align'.
             const usize header_size = sizeof(Header);
             const usize alignment_needed = align > alignof(Header) ? align : alignof(Header);
-            
-            // Total size includes header and potential padding to align the payload.
-            // Check for overflow before requesting from base allocator.
+
             if (size > (~static_cast<usize>(0)) - (header_size + alignment_needed)) {
                 return AllocationResult::Failure(MemoryError::AllocationTooLarge);
             }
@@ -67,11 +66,15 @@ namespace FoundationKitMemory {
 
             AllocationResult res = m_base.Allocate(total_size, alignment_needed);
             if (!res) return res;
+            AssertAllocResultValid(res, total_size, alignment_needed);
 
-            // Align payload using Alignment utility.
             const uptr raw_ptr = reinterpret_cast<uptr>(res.ptr);
             const uptr payload_ptr = Alignment(align).AlignUp(raw_ptr + header_size);
             const uptr header_ptr = payload_ptr - header_size;
+
+            // Sanity: header must fit between raw_ptr and payload_ptr.
+            FK_BUG_ON(header_ptr < raw_ptr,
+                "TrackingAllocator::Allocate: header placement underflows raw allocation");
 
             auto* header = reinterpret_cast<Header*>(header_ptr);
             header->magic = HeaderMagic;
@@ -110,7 +113,7 @@ namespace FoundationKitMemory {
             if (!m_base.Owns(ptr)) return false;
 
             const auto* header = reinterpret_cast<const Header*>(
-                reinterpret_cast<const byte*>(ptr) - sizeof(Header)
+                static_cast<const byte*>(ptr) - sizeof(Header)
             );
             
             if (header->magic != HeaderMagic) return false;
@@ -124,6 +127,9 @@ namespace FoundationKitMemory {
         // ====================================================================
 
         [[nodiscard]] AllocationResult Reallocate(void* ptr, usize old_size, usize new_size, usize align) noexcept {
+            FK_BUG_ON(ptr == nullptr && old_size > 0,
+                "TrackingAllocator::Reallocate: null ptr with non-zero old_size ({})", old_size);
+
             if (new_size == 0) {
                 Deallocate(ptr, old_size);
                 return AllocationResult::Failure();
@@ -133,19 +139,21 @@ namespace FoundationKitMemory {
 
             Header* header = GetHeader(ptr);
             FK_BUG_ON(header->magic != HeaderMagic,
-                "TrackingAllocator: Header magic mismatch (expected: {} got:{})", HeaderMagic, header->magic);
+                "TrackingAllocator::Reallocate: header magic mismatch (expected: {} got: {})", HeaderMagic, header->magic);
+            FK_BUG_ON(old_size != 0 && old_size != header->user_size,
+                "TrackingAllocator::Reallocate: old_size ({}) does not match tracked size ({})", old_size, header->user_size);
 
-            // If new size fits in current allocation and isn't significantly smaller, we can just update
             if (new_size <= header->user_size && new_size > header->user_size / 2) {
                 header->user_size = new_size;
                 return AllocationResult::Success(ptr, new_size);
             }
 
-            // Otherwise, allocate new and copy
             AllocationResult new_alloc = Allocate(new_size, align);
             if (!new_alloc) return new_alloc;
 
+            // AssertNoOverlap: old and new buffers must not overlap before the copy.
             const usize copy_size = old_size < new_size ? old_size : new_size;
+            AssertNoOverlap(ptr, copy_size, new_alloc.ptr, new_alloc.size);
             MemoryCopy(new_alloc.ptr, ptr, copy_size);
 
             Deallocate(ptr, old_size);

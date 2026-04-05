@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 
@@ -53,6 +54,9 @@ namespace FoundationKitCxxStl::Sync {
         }
 
         void UnlockShared() noexcept {
+            // Decrementing below zero means an extra UnlockShared was called — always a bug.
+            FK_BUG_ON(m_state.Load(MemoryOrder::Relaxed) == 0,
+                "SharedSpinLock::UnlockShared: reader count is already zero (extra UnlockShared)");
             m_state.FetchSub(1, MemoryOrder::Release);
         }
 

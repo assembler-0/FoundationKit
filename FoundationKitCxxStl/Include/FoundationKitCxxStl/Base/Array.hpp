@@ -4,6 +4,7 @@
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -12,6 +13,8 @@ namespace FoundationKitCxxStl {
     /// @tparam N The number of elements.
     template <typename T, usize N>
     struct FixedArray {
+        using _check = TypeSanityCheck<T>;
+        static_assert(N > 0, "FixedArray: size N must be greater than zero; use the N==0 specialisation explicitly");
         using ValueType      = T;
         using SizeType       = usize;
         using DifferenceType = isize;

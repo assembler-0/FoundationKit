@@ -21,6 +21,7 @@ namespace FoundationKitCxxStl::Sync {
         }
 
         void Unlock() noexcept {
+
             CompilerBuiltins::AtomicClear(&m_locked, __ATOMIC_RELEASE);
         }
 

@@ -7,6 +7,7 @@
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Pair.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 
@@ -17,6 +18,11 @@ namespace FoundationKitCxxStl::Structure {
     /// @tparam Alloc Allocator for the underlying storage.
     template <typename K, typename V, typename H = Hash, FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class HashMap {
+        using _checkK = TypeSanityCheck<K>;
+        using _checkV = TypeSanityCheck<V>;
+        // K must support == for the open-addressing probe loop.
+        static_assert(EqualityComparable<K>,
+            "HashMap: key type K must satisfy EqualityComparable (operator== required for probing)");
     public:
         enum class BucketStatus : u8 {
             Empty,

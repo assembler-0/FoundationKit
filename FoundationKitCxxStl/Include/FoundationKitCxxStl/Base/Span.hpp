@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -10,6 +11,7 @@ namespace FoundationKitCxxStl {
     /// @tparam T Type of the elements in the span.
     template <typename T>
     class Span {
+        using _check = TypeSanityCheck<T>;
     public:
         using ElementType     = T;
         using ValueType       = Unqualified<T>;
@@ -24,10 +26,20 @@ namespace FoundationKitCxxStl {
         constexpr Span() noexcept : m_data(nullptr), m_size(0) {}
 
         constexpr Span(Pointer ptr, SizeType count) noexcept
-            : m_data(ptr), m_size(count) {}
+            : m_data(ptr), m_size(count) {
+            // Warn rather than crash: some APIs (e.g. demangler) intentionally
+            // construct Span(nullptr, N) to signal "no output buffer" and check
+            // Data() == nullptr themselves. A null+nonzero span is still suspicious
+            // and worth logging, but not a hard crash.
+            FK_WARN_ON(ptr == nullptr && count > 0,
+                "Span: constructed with null pointer and non-zero count ({}) — Data() checks required before use", count);
+        }
 
         constexpr Span(Pointer first, Pointer last) noexcept
-            : m_data(first), m_size(static_cast<SizeType>(last - first)) {}
+            : m_data(first), m_size(static_cast<SizeType>(last - first)) {
+            FK_BUG_ON(last < first,
+                "Span: last pointer is before first (negative range)");
+        }
 
         template <usize N>
         explicit constexpr Span(T (&arr)[N]) noexcept

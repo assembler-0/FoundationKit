@@ -11,6 +11,7 @@ namespace FoundationKitCxxStl::Structure {
     /// @tparam N Number of bits.
     template <usize N>
     class BitSet {
+        static_assert(N > 0, "BitSet: N must be greater than zero");
     public:
         static constexpr usize WordSize = sizeof(usize) * 8;
         static constexpr usize WordCount = (N + WordSize - 1) / WordSize;

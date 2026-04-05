@@ -2,6 +2,7 @@
 
 #include <FoundationKitMemory/MemoryCore.hpp>
 #include <FoundationKitMemory/MemoryCommon.hpp>
+#include <FoundationKitMemory/MemorySafety.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
@@ -137,9 +138,13 @@ namespace FoundationKitMemory {
     template <typename T, IAllocator Alloc, typename... Args>
     [[nodiscard]]
     Optional<T*> New(Alloc& alloc, Args&&... args) noexcept {
-        AllocationResult r = alloc.Allocate(sizeof(T), alignof(T));
+        constexpr usize sz = SafeSizeOf<T>;
+        constexpr usize al = SafeAlignOf<T>;
+        AllocationResult r = alloc.Allocate(sz, al);
         if (!r) return NullOpt;
-        
+        AssertAllocResultValid(r, sz, al);
+        // Runtime alignment check on the returned pointer before placement-new.
+        AssertAlignedFor<T>(r.ptr);
         T* ptr = FoundationKitCxxStl::ConstructAt<T>(r.ptr, FoundationKitCxxStl::Forward<Args>(args)...);
         return ptr;
     }
@@ -148,9 +153,12 @@ namespace FoundationKitMemory {
     template <typename T, IAllocator Alloc, typename... Args>
     [[nodiscard]]
     Expected<T*, MemoryError> TryNew(Alloc& alloc, Args&&... args) noexcept {
-        AllocationResult r = alloc.Allocate(sizeof(T), alignof(T));
+        constexpr usize sz = SafeSizeOf<T>;
+        constexpr usize al = SafeAlignOf<T>;
+        AllocationResult r = alloc.Allocate(sz, al);
         if (!r) return MemoryError::OutOfMemory;
-        
+        AssertAllocResultValid(r, sz, al);
+        AssertAlignedFor<T>(r.ptr);
         T* ptr = FoundationKitCxxStl::ConstructAt<T>(r.ptr, FoundationKitCxxStl::Forward<Args>(args)...);
         return ptr;
     }
@@ -168,13 +176,15 @@ namespace FoundationKitMemory {
     [[nodiscard]]
     Optional<T*> NewArray(Alloc& alloc, const usize count) noexcept {
         if (count == 0) return NullOpt;
-
+        // Overflow-safe: CalculateArrayAllocationSize returns 0 on overflow.
         const usize total_size = CalculateArrayAllocationSize<T>(count);
-        if (total_size == 0) return NullOpt; // Overflow detected
+        FK_BUG_ON(total_size == 0,
+            "NewArray: size overflow computing {} elements of size {}", count, SafeSizeOf<T>);
 
-        AllocationResult r = alloc.Allocate(total_size, alignof(T));
+        AllocationResult r = alloc.Allocate(total_size, SafeAlignOf<T>);
         if (!r) return NullOpt;
-        
+        AssertAllocResultValid(r, total_size, SafeAlignOf<T>);
+
         T* arr = static_cast<T*>(r.ptr);
         for (usize i = 0; i < count; ++i)
             FoundationKitCxxStl::ConstructAt<T>(arr + i);

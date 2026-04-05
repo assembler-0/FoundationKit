@@ -25,6 +25,7 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/Vector.hpp
     Include/FoundationKitCxxStl/Base/StaticVector.hpp
     Include/FoundationKitCxxStl/Base/PlacementNew.hpp
+    Include/FoundationKitCxxStl/Base/Safety.hpp
     Include/FoundationKitCxxStl/Meta/Concepts.hpp
     Include/FoundationKitCxxStl/Std/initializer_list
     Include/FoundationKitCxxStl/Structure/BitSet.hpp

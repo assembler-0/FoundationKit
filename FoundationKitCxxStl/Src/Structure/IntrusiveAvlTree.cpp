@@ -1,4 +1,5 @@
 #include <FoundationKitCxxStl/Structure/IntrusiveAvlTree.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -67,6 +68,8 @@ namespace FoundationKitCxxStl {
     }
 
     void AvlTreeBase::Insert(AvlNode* node, AvlNode* parent, AvlNode** link) noexcept {
+        FK_BUG_ON(node == nullptr, "AvlTreeBase::Insert: null node");
+        FK_BUG_ON(link == nullptr, "AvlTreeBase::Insert: null link pointer");
         node->parent = parent;
         node->left = node->right = nullptr;
         node->height = 1;
@@ -76,6 +79,8 @@ namespace FoundationKitCxxStl {
     }
 
     void AvlTreeBase::Remove(AvlNode* node) noexcept {
+        FK_BUG_ON(node == nullptr, "AvlTreeBase::Remove: null node");
+        FK_BUG_ON(m_size == 0, "AvlTreeBase::Remove: size is zero (removing from empty tree)");
         AvlNode* child;
         AvlNode* parent;
 
@@ -131,6 +136,7 @@ namespace FoundationKitCxxStl {
     }
 
     AvlNode* AvlTreeBase::Next(AvlNode* node) noexcept {
+        FK_BUG_ON(node == nullptr, "AvlTreeBase::Next: null node");
         if (node->right) {
             node = node->right;
             while (node->left) node = node->left;
@@ -145,6 +151,7 @@ namespace FoundationKitCxxStl {
     }
 
     AvlNode* AvlTreeBase::Prev(AvlNode* node) noexcept {
+        FK_BUG_ON(node == nullptr, "AvlTreeBase::Prev: null node");
         if (node->left) {
             node = node->left;
             while (node->right) node = node->right;

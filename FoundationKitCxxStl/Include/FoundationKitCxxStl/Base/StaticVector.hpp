@@ -4,6 +4,7 @@
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -12,6 +13,7 @@ namespace FoundationKitCxxStl {
     /// @tparam Capacity The maximum number of elements.
     template <typename T, usize Capacity>
     class StaticVector {
+        using _check = TypeSanityCheck<T>;
     public:
         using ValueType      = T;
         using SizeType       = usize;
@@ -64,6 +66,9 @@ namespace FoundationKitCxxStl {
 
         template <typename... Args>
         constexpr bool PushBack(Args&&... args) noexcept {
+            // Capacity == 0 is caught by the class-level static_assert, but guard
+            // the runtime path too in case someone bypasses the template check.
+            FK_BUG_ON(Capacity == 0, "StaticVector: PushBack on zero-capacity vector");
             if (m_size >= Capacity) return false;
             new (&m_data[m_size]) T(FoundationKitCxxStl::Forward<Args>(args)...);
             m_size++;

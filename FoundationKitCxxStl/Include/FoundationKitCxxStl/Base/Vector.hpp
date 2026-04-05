@@ -6,6 +6,7 @@
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
 #include <FoundationKitMemory/AnyAllocator.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {
 
@@ -14,6 +15,7 @@ namespace FoundationKitCxxStl {
     /// @tparam Alloc The allocator to use.
     template <typename T, FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class Vector {
+        using _check = TypeSanityCheck<T>;
     public:
         using SizeType = usize;
         using Iterator = T*;
@@ -78,6 +80,9 @@ namespace FoundationKitCxxStl {
 
         bool Reserve(SizeType new_capacity) {
             if (new_capacity <= m_capacity) return true;
+            // Overflow check: new_capacity * sizeof(T) must not wrap.
+            FK_BUG_ON(new_capacity > static_cast<SizeType>(-1) / sizeof(T),
+                "Vector::Reserve: requested capacity ({}) would overflow size_t", new_capacity);
 
             auto res = m_allocator.Allocate(new_capacity * sizeof(T), alignof(T));
             if (!res.ok()) return false;

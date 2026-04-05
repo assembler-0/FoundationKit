@@ -3,6 +3,7 @@
 #include <FoundationKitMemory/MemoryCore.hpp>
 #include <FoundationKitCxxStl/Base/Bit.hpp>
 #include <FoundationKitCxxStl/Structure/BitSet.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitMemory {
 
@@ -33,10 +34,13 @@ namespace FoundationKitMemory {
     ///          SynchronizedAllocator<BuddyAllocator<>, SpinLock>
     template <usize MaxOrder = 10, usize MinBlockSize = 4096>
     class BuddyAllocator {
+        // AssertPowerOfTwo fires at instantiation for bad MinBlockSize values.
         static_assert((MinBlockSize & (MinBlockSize - 1)) == 0,
             "BuddyAllocator: MinBlockSize must be a power of two");
         static_assert(MinBlockSize >= sizeof(void*),
             "BuddyAllocator: MinBlockSize must be large enough to hold a free-list pointer");
+        static_assert(MaxOrder >= 1,
+            "BuddyAllocator: MaxOrder must be at least 1");
         static_assert(MaxOrder <= 20,
             "BuddyAllocator: MaxOrder > 20 is unreasonably large");
 

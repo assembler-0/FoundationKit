@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 /// @brief sets the default lock
 #define FOUNDATIONKIT_DEFAULT_LOCK ::FoundationKitCxxStl::Sync::SpinLock
@@ -33,7 +34,6 @@ namespace FoundationKitCxxStl::Sync {
             m_lock.Unlock();
         }
 
-        // Non-copyable
         LockGuard(const LockGuard&) = delete;
         LockGuard& operator=(const LockGuard&) = delete;
 
@@ -80,6 +80,7 @@ namespace FoundationKitCxxStl::Sync {
         }
 
         void Lock() noexcept {
+            FK_BUG_ON(m_owned, "UniqueLock::Lock: already owns the lock (double-lock)");
             if (m_lock && !m_owned) {
                 m_lock->Lock();
                 m_owned = true;
@@ -94,6 +95,7 @@ namespace FoundationKitCxxStl::Sync {
         }
 
         void Unlock() noexcept {
+            FK_BUG_ON(m_lock && !m_owned, "UniqueLock::Unlock: does not own the lock (unlock without lock)");
             if (m_lock && m_owned) {
                 m_lock->Unlock();
                 m_owned = false;

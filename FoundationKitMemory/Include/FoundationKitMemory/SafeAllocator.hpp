@@ -2,6 +2,7 @@
 
 #include <FoundationKitMemory/MemoryCore.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/MemorySafety.hpp>
 
 namespace FoundationKitMemory {
 
@@ -55,6 +56,9 @@ namespace FoundationKitMemory {
         /// @brief Allocate memory with guard bands and metadata.
         [[nodiscard]] AllocationResult Allocate(usize size, const usize align) noexcept {
             if (size == 0) return AllocationResult::Failure(MemoryError::InvalidSize);
+            FK_BUG_ON(align == 0 || (align & (align - 1)) != 0,
+                "SafeAllocator::Allocate: alignment ({}) must be a non-zero power of two", align);
+            FK_BUG_ON(CanarySize == 0, "SafeAllocator: CanarySize must be > 0");
 
             // We need space for: Header + Head Canary + User Payload + Tail Canary
             // Plus extra for alignment.
@@ -71,6 +75,7 @@ namespace FoundationKitMemory {
             const usize total_requested = fixed_overhead + size;
             AllocationResult res = m_base.Allocate(total_requested, alignof(Header));
             if (!res) return res;
+            AssertAllocResultValid(res, total_requested, alignof(Header));
 
             // Calculate user payload pointer with requested alignment using Alignment utility.
             const uptr raw_ptr = reinterpret_cast<uptr>(res.ptr);

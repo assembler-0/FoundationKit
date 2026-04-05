@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 
@@ -22,6 +23,9 @@ namespace FoundationKitCxxStl::Sync {
 
         void Unlock() noexcept {
             const u32 current = m_now_serving.Load(MemoryOrder::Relaxed);
+            // If now_serving == next_ticket the queue is empty — unlocking again is a bug.
+            FK_BUG_ON(current == m_next_ticket.Load(MemoryOrder::Relaxed),
+                "TicketLock::Unlock: no ticket is being served (unlock without matching lock)");
             m_now_serving.Store(current + 1, MemoryOrder::Release);
         }
 

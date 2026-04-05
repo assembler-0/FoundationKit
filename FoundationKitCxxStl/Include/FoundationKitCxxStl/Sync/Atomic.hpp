@@ -1,6 +1,6 @@
 #pragma once
 
-#include <FoundationKitCxxStl/Base/Types.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
@@ -22,6 +22,11 @@ namespace FoundationKitCxxStl::Sync {
     /// @tparam T Must be a trivially copyable type (ideally integral or pointer).
     template <typename T>
     class Atomic {
+        static_assert(TriviallyCopyable<T>,
+            "Atomic<T>: T must be trivially copyable (required by all atomic hardware implementations)");
+        static_assert(sizeof(T) <= 8,
+            "Atomic<T>: T must be at most 8 bytes (64-bit atomic operations are the widest guaranteed lock-free)");
+        using _check = TypeSanityCheck<T>;
     public:
         constexpr Atomic() noexcept : m_value{} {}
         constexpr Atomic(T value) noexcept : m_value(value) {}

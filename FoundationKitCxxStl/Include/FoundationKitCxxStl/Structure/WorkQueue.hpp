@@ -27,6 +27,11 @@ namespace FoundationKitCxxStl {
 
         /// @brief Enqueue a work item.
         void Enqueue(WorkItem* item) noexcept {
+            FK_BUG_ON(item == nullptr, "WorkQueue::Enqueue: null item");
+            FK_BUG_ON(item->func == nullptr, "WorkQueue::Enqueue: item has null func pointer");
+            // An item whose node is already shared is already in a queue.
+            FK_BUG_ON(item->node.IsShared(),
+                "WorkQueue::Enqueue: item is already enqueued (double-enqueue detected)");
             Sync::UniqueLock lock(m_mutex);
             m_list.PushBack(&item->node);
             m_cv.NotifyOne();

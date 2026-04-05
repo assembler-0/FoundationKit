@@ -3,6 +3,7 @@
 #include <FoundationKitMemory/MemoryCore.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitMemory {
 
@@ -79,17 +80,22 @@ namespace FoundationKitMemory {
     /// @return Total size including padding, or 0 if overflow detected
     [[nodiscard]] constexpr usize CalculateArraySize(usize count, usize element_size, usize alignment = 1) noexcept {
         constexpr usize USIZE_MAX_VAL = static_cast<usize>(-1);
-        
-        // Check for multiplication overflow
-        if (count > 0 && element_size > 0) {
-            if (element_size > USIZE_MAX_VAL / count) {
-                return 0; // Overflow detected
-            }
+
+        FK_BUG_ON(element_size == 0 && count > 0,
+            "CalculateArraySize: element_size is zero with non-zero count ({})", count);
+        FK_BUG_ON(alignment == 0,
+            "CalculateArraySize: alignment must be >= 1");
+        FK_BUG_ON(alignment > 1 && (alignment & (alignment - 1)) != 0,
+            "CalculateArraySize: alignment ({}) must be a power of two", alignment);
+
+        if (count == 0 || element_size == 0) return 0;
+
+        if (element_size > USIZE_MAX_VAL / count) {
+            return 0; // Overflow detected
         }
 
         usize base_size = count * element_size;
 
-        // Add alignment padding
         if (alignment > 1 && base_size > 0) {
             usize remainder = base_size % alignment;
             if (remainder != 0) {

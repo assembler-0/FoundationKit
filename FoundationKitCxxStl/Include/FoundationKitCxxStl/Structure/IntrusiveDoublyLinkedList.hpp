@@ -38,11 +38,19 @@ namespace FoundationKitCxxStl::Structure {
         constexpr IntrusiveDoublyLinkedList() noexcept = default;
 
         void PushFront(IntrusiveDoublyLinkedListNode* node) noexcept {
+            FK_BUG_ON(node == nullptr, "IntrusiveDoublyLinkedList::PushFront: null node");
+            // Detect inserting a node that is already linked into a list.
+            // An unlinked node always points to itself (see constructor).
+            FK_BUG_ON(node->IsShared(),
+                "IntrusiveDoublyLinkedList::PushFront: node is already linked into a list (use-after-insert or missing Remove)");
             Insert(node, &m_head, m_head.next);
             m_size++;
         }
 
         void PushBack(IntrusiveDoublyLinkedListNode* node) noexcept {
+            FK_BUG_ON(node == nullptr, "IntrusiveDoublyLinkedList::PushBack: null node");
+            FK_BUG_ON(node->IsShared(),
+                "IntrusiveDoublyLinkedList::PushBack: node is already linked into a list (use-after-insert or missing Remove)");
             Insert(node, m_head.prev, &m_head);
             m_size++;
         }
@@ -65,8 +73,15 @@ namespace FoundationKitCxxStl::Structure {
 
         void Remove(IntrusiveDoublyLinkedListNode* node) noexcept {
             FK_BUG_ON(!node, "IntrusiveDoublyLinkedList: Remove called with null node");
+            // Removing an already-unlinked node (next == self) is a double-remove bug.
+            FK_BUG_ON(!node->IsShared(),
+                "IntrusiveDoublyLinkedList::Remove: node is not linked (double-remove or remove of uninserted node)");
+            // Sanity: the size counter must be consistent with the list having nodes.
+            FK_BUG_ON(m_size == 0,
+                "IntrusiveDoublyLinkedList::Remove: size is zero but a linked node was found (counter corruption)");
             node->prev->next = node->next;
             node->next->prev = node->prev;
+            // Reset to self-loop so IsShared() correctly returns false after removal.
             node->next = node;
             node->prev = node;
             m_size--;

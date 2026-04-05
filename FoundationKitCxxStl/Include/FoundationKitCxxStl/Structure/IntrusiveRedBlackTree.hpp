@@ -78,6 +78,8 @@ namespace FoundationKitCxxStl {
     /// T must have a member accessible via NodeOffset, or inherit from RbNode.
     template <typename T, usize NodeOffset>
     class IntrusiveRbTree : public RbTreeBase {
+        static_assert(NodeOffset < 65536,
+            "IntrusiveRbTree: NodeOffset exceeds 65535 bytes — did you swap T and NodeOffset?");
     public:
         static T* ToEntry(RbNode* node) noexcept {
             if (!node) return nullptr;
@@ -108,9 +110,12 @@ namespace FoundationKitCxxStl {
 
         template <typename Comparator>
         void Insert(T* entry, Comparator&& comp) noexcept {
+            FK_BUG_ON(entry == nullptr, "IntrusiveRbTree::Insert: null entry");
+            RbNode* node = ToNode(entry);
+            FK_BUG_ON(node->Parent() != nullptr || node->left != nullptr || node->right != nullptr,
+                "IntrusiveRbTree::Insert: node appears already linked (parent/children non-null)");
             RbNode** link = &m_root;
             RbNode* parent = nullptr;
-            RbNode* node = ToNode(entry);
 
             while (*link) {
                 parent = *link;
@@ -123,6 +128,7 @@ namespace FoundationKitCxxStl {
         }
 
         void Remove(T* entry) noexcept {
+            FK_BUG_ON(entry == nullptr, "IntrusiveRbTree::Remove: null entry");
             RbTreeBase::Remove(ToNode(entry));
         }
 

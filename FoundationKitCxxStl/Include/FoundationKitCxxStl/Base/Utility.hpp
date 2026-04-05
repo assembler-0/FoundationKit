@@ -41,6 +41,7 @@ namespace FoundationKitCxxStl {
     /// @brief Exchange values of two objects.
     template <typename T>
     void Swap(T& a, T& b) noexcept {
+        static_assert(!Reference<T>, "Swap: T must not be a reference type");
         T temp = Move(a);
         a = Move(b);
         b = Move(temp);
@@ -48,6 +49,9 @@ namespace FoundationKitCxxStl {
 
     template <typename T, typename... Args>
     T* ConstructAt(void* ptr, Args&&... args) noexcept {
+        static_assert(!Void<T>,      "ConstructAt: T must not be void");
+        static_assert(!Reference<T>, "ConstructAt: T must not be a reference");
+        static_assert(!Abstract<T>,  "ConstructAt: T must not be abstract");
         #if FOUNDATIONKIT_COMPILER_HAS_BUILTIN(__builtin_construct_at)
         return FoundationKitCxxStl::ConstructAt<T>(ptr, Forward<Args>(args)...);
         #else

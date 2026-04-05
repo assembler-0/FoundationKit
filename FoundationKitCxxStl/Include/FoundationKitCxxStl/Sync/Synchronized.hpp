@@ -4,6 +4,7 @@
 #include <FoundationKitCxxStl/Sync/SharedLock.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 
@@ -13,6 +14,7 @@ namespace FoundationKitCxxStl::Sync {
     /// @tparam LockType The lock type to use (default FOUNDATIONKIT_DEFAULT_LOCK).
     template <typename T, typename LockType = FOUNDATIONKIT_DEFAULT_LOCK>
     class Synchronized {
+        using _check = TypeSanityCheck<T>;
     public:
         template <typename... Args>
         explicit constexpr Synchronized(Args&&... args) noexcept

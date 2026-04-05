@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitMemory/MemoryOperations.hpp>
 #include <FoundationKitMemory/AnyAllocator.hpp>
 
@@ -13,6 +14,7 @@ namespace FoundationKitCxxStl::Structure {
     /// @tparam Alloc The allocator to use for nodes.
     template <typename T, FoundationKitMemory::IAllocator Alloc = FoundationKitMemory::AnyAllocator>
     class CircularLinkedList {
+        using _check = TypeSanityCheck<T>;
     public:
         struct Node {
             T value;
@@ -106,7 +108,6 @@ namespace FoundationKitCxxStl::Structure {
 
         void PopFront() {
             FK_BUG_ON(!m_last, "CircularLinkedList: PopFront called on empty list");
-            if (!m_last) return;
 
             Node* head = m_last->next;
             if (head == m_last) {

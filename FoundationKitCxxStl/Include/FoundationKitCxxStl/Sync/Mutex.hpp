@@ -3,6 +3,7 @@
 #include <FoundationKitOsl/Osl.hpp>
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 
@@ -27,6 +28,8 @@ namespace FoundationKitCxxStl::Sync {
         }
 
         void Unlock() noexcept {
+            FK_BUG_ON(m_locked.Load(MemoryOrder::Relaxed) == 0,
+                "Mutex::Unlock(): unlocking already-unlocked mutex");
             m_locked.Store(false, MemoryOrder::Release);
             FoundationKitOsl::OslThreadWake(this);
         }
