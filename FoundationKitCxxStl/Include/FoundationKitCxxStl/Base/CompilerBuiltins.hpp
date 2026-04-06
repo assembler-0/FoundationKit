@@ -72,6 +72,26 @@ namespace FoundationKitCxxStl::Base::CompilerBuiltins {
         return __builtin_popcountll(value);
     }
 
+    /// @brief Population count dispatched on the native word size (usize).
+    ///        On LP64 targets usize == unsigned long; on ILP32 it is unsigned int.
+    ///        This avoids callers having to pick the right suffix manually.
+    constexpr int PopCountUSize(unsigned long value) noexcept {
+        if constexpr (sizeof(unsigned long) == sizeof(unsigned int)) {
+            return __builtin_popcount(static_cast<unsigned int>(value));
+        } else {
+            return __builtin_popcountl(value);
+        }
+    }
+
+    /// @brief Count trailing zeros dispatched on the native word size (usize).
+    constexpr int CountTrailingZerosUSize(unsigned long value) noexcept {
+        if constexpr (sizeof(unsigned long) == sizeof(unsigned int)) {
+            return __builtin_ctz(static_cast<unsigned int>(value));
+        } else {
+            return __builtin_ctzl(value);
+        }
+    }
+
     /// @breif Memory operations.
     inline void MemCpy(void* dest, const void* src, decltype(sizeof(0)) size) noexcept {
         __builtin_memcpy(dest, src, size);

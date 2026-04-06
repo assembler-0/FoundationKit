@@ -6,6 +6,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Flags.hpp>
 #include <FoundationKitPlatform/Amd64/ControlRegs.hpp>
 
 namespace FoundationKitPlatform::Amd64 {
@@ -99,19 +100,22 @@ namespace FoundationKitPlatform::Amd64 {
     // Entry Helpers
     // =========================================================================
 
+    /// @brief Type-safe flag set for page table entries.
+    using PageEntryFlagSet = FoundationKitCxxStl::Flags<PageEntryFlags>;
+
     /// @brief Returns true if the given flag is set in an entry.
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool EntryHasFlag(u64 entry, PageEntryFlags flag) noexcept {
-        return (entry & static_cast<u64>(flag)) != 0;
+        return PageEntryFlagSet(static_cast<u64>(entry)).Has(flag);
     }
 
     /// @brief Sets one or more flags in an entry value (non-mutating).
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntrySetFlags(u64 entry, u64 flags) noexcept {
-        return entry | flags;
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntrySetFlags(u64 entry, PageEntryFlagSet flags) noexcept {
+        return entry | flags.Raw();
     }
 
     /// @brief Clears one or more flags in an entry value (non-mutating).
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntryClearFlags(u64 entry, u64 flags) noexcept {
-        return entry & ~flags;
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntryClearFlags(u64 entry, PageEntryFlagSet flags) noexcept {
+        return entry & ~flags.Raw();
     }
 
     /// @brief Extracts the physical address from an entry (strips all flag bits).
@@ -122,23 +126,21 @@ namespace FoundationKitPlatform::Amd64 {
     /// @brief Builds an entry from a physical address and a flag mask.
     /// @param phys_addr  Must be 4K-aligned and within the 52-bit physical range.
     /// @param flags      Bitwise OR of PageEntryFlags values cast to u64.
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntryBuild(u64 phys_addr, u64 flags) noexcept {
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntryBuild(u64 phys_addr, PageEntryFlagSet flags) noexcept {
         FK_BUG_ON(
             phys_addr & ~kEntryPhysMask,
             "EntryBuild: physical address is not 4K-aligned or exceeds 52-bit range"
         );
-        // The Present bit must be set in any valid entry; building a non-present
-        // entry with a physical address is almost always a bug (use 0 for non-present).
         FK_BUG_ON(
-            !(flags & static_cast<u64>(PageEntryFlags::Present)),
+            !flags.Has(PageEntryFlags::Present),
             "EntryBuild: Present flag is not set — use 0 for a non-present entry, not EntryBuild"
         );
         // Reserved bits [62:52] must be zero on all current x86-64 implementations.
         FK_BUG_ON(
-            flags & 0x7FF0000000000000ull,
+            flags.Raw() & 0x7FF0000000000000ull,
             "EntryBuild: flags contain reserved bits [62:52] which must be zero"
         );
-        return (phys_addr & kEntryPhysMask) | flags;
+        return (phys_addr & kEntryPhysMask) | flags.Raw();
     }
 
     // =========================================================================
@@ -249,27 +251,25 @@ namespace FoundationKitPlatform::Amd64 {
         /// @brief Encodes attributes into raw flag bits for a 4K PT entry.
         [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 Encode4K() const noexcept {
             FK_BUG_ON(global && user, "PageAttribs: Global + User is architecturally nonsensical");
-            u64 flags = static_cast<u64>(PageEntryFlags::Present);
-            if (writable)   flags |= static_cast<u64>(PageEntryFlags::Writable);
-            if (user)       flags |= static_cast<u64>(PageEntryFlags::User);
-            if (global)     flags |= static_cast<u64>(PageEntryFlags::Global);
-            if (no_execute) flags |= static_cast<u64>(PageEntryFlags::NoExecute);
-            flags |= PatFlags4K(pat_slot);
-            return flags;
+            PageEntryFlagSet flags(PageEntryFlags::Present);
+            if (writable)   flags.Set(PageEntryFlags::Writable);
+            if (user)       flags.Set(PageEntryFlags::User);
+            if (global)     flags.Set(PageEntryFlags::Global);
+            if (no_execute) flags.Set(PageEntryFlags::NoExecute);
+            return flags.Raw() | PatFlags4K(pat_slot);
         }
 
         /// @brief Encodes attributes into raw flag bits for a large-page (2 MiB / 1 GiB) entry.
         /// The PS bit is included automatically.
         [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EncodeLarge() const noexcept {
             FK_BUG_ON(global && user, "PageAttribs: Global + User is architecturally nonsensical");
-            u64 flags = static_cast<u64>(PageEntryFlags::Present)
-                      | static_cast<u64>(PageEntryFlags::PageSize);
-            if (writable)   flags |= static_cast<u64>(PageEntryFlags::Writable);
-            if (user)       flags |= static_cast<u64>(PageEntryFlags::User);
-            if (global)     flags |= static_cast<u64>(PageEntryFlags::Global);
-            if (no_execute) flags |= static_cast<u64>(PageEntryFlags::NoExecute);
-            flags |= PatFlagsLarge(pat_slot);
-            return flags;
+            PageEntryFlagSet flags(PageEntryFlags::Present);
+            flags.Set(PageEntryFlags::PageSize);
+            if (writable)   flags.Set(PageEntryFlags::Writable);
+            if (user)       flags.Set(PageEntryFlags::User);
+            if (global)     flags.Set(PageEntryFlags::Global);
+            if (no_execute) flags.Set(PageEntryFlags::NoExecute);
+            return flags.Raw() | PatFlagsLarge(pat_slot);
         }
     };
 

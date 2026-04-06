@@ -28,6 +28,8 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/StaticVector.hpp
     Include/FoundationKitCxxStl/Base/PlacementNew.hpp
     Include/FoundationKitCxxStl/Base/Safety.hpp
+    Include/FoundationKitCxxStl/Base/Flags.hpp
+    Include/FoundationKitCxxStl/Base/LazyInit.hpp
     Include/FoundationKitCxxStl/Meta/Concepts.hpp
     Include/FoundationKitCxxStl/Std/initializer_list
     Include/FoundationKitCxxStl/Structure/BitSet.hpp
@@ -39,6 +41,9 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Structure/IntrusiveAvlTree.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveRedBlackTree.hpp
     Include/FoundationKitCxxStl/Structure/RingBuffer.hpp
+    Include/FoundationKitCxxStl/Structure/FlatMap.hpp
+    Include/FoundationKitCxxStl/Structure/CircularLog.hpp
+    Include/FoundationKitCxxStl/Structure/AtomicBitmap.hpp
     Include/FoundationKitCxxStl/Structure/InterruptSafeQueue.hpp
     Include/FoundationKitCxxStl/Structure/WorkQueue.hpp
 )
