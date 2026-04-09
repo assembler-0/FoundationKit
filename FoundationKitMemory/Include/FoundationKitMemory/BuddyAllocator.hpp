@@ -259,6 +259,31 @@ namespace FoundationKitMemory {
             return 0;
         }
 
+        /// @brief Aggregate free-list statistics for fragmentation analysis.
+        struct FreeStats {
+            usize free_bytes       = 0;
+            usize free_block_count = 0;
+            usize largest_free     = 0;
+        };
+
+        /// @brief Walk all per-order free lists and accumulate byte totals.
+        /// @desc O(MaxOrder * n_free). Call only from diagnostic paths.
+        [[nodiscard]] FreeStats GetFreeStats() const noexcept {
+            FreeStats s;
+            for (usize order = 0; order <= MaxOrder; ++order) {
+                const usize block_bytes = MinBlockSize << order;
+                const FreeNode* node = m_free_lists[order];
+                while (node) {
+                    s.free_bytes += block_bytes;
+                    ++s.free_block_count;
+                    node = node->next;
+                }
+                if (m_free_lists[order] && block_bytes > s.largest_free)
+                    s.largest_free = block_bytes;
+            }
+            return s;
+        }
+
     private:
         // ----------------------------------------------------------------
         // Free List Intrusive Node

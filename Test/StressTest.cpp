@@ -72,7 +72,7 @@ TEST_CASE(Base_FixedArray) {
 
 TEST_CASE(Base_Vector) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     Vector<i32> vec(any_alloc);
     for (i32 i = 0; i < 50; ++i) {
@@ -92,7 +92,7 @@ TEST_CASE(Base_Vector) {
 
 TEST_CASE(Base_String) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     String str(any_alloc);
     auto res1 = str.Append("Foundation");
@@ -142,7 +142,7 @@ TEST_CASE(Base_Optional_Expected) {
 
 TEST_CASE(Memory_SmartPointers) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     static i32 dtor_count = 0;
     struct Guard {
@@ -202,7 +202,7 @@ TEST_CASE(Memory_Allocators) {
 
 TEST_CASE(Base_StringBuilder) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     StringBuilder sb(any_alloc);
     sb.Append("Answer: ").Append(42).Append(", Hex: ").Append("deadbeef");
@@ -222,7 +222,7 @@ TEST_CASE(Base_StringBuilder) {
 
 TEST_CASE(Base_StringOps) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
 
     String str(any_alloc);
     str.Append("  Hello FoundationKitCxxStl  ");
@@ -315,7 +315,7 @@ TEST_CASE(Memory_PoolAllocator) {
 
 TEST_CASE(Structure_SinglyLinkedList) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     SinglyLinkedList<i32> list(any_alloc);
     for (i32 i = 0; i < 10; ++i) {
@@ -336,7 +336,7 @@ TEST_CASE(Structure_SinglyLinkedList) {
 
 TEST_CASE(Structure_DoublyLinkedList) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     DoublyLinkedList<i32> list(any_alloc);
     for (i32 i = 0; i < 5; ++i) {
@@ -353,7 +353,7 @@ TEST_CASE(Structure_DoublyLinkedList) {
 
 TEST_CASE(Structure_CircularLinkedList) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     CircularLinkedList<i32> list(any_alloc);
     list.PushBack(1);
@@ -413,7 +413,7 @@ TEST_CASE(Base_BitManipulation) {
 
 TEST_CASE(Base_Algorithm) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     Vector<i32> vec(any_alloc);
     vec.PushBack(5);
@@ -461,7 +461,7 @@ TEST_CASE(Structure_BitSet) {
 
 TEST_CASE(Base_Algorithm_Manipulation) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     Vector<i32> vec(any_alloc);
     vec.PushBack(1);
@@ -507,7 +507,7 @@ TEST_CASE(Base_MinMax_InitializerList) {
 
 TEST_CASE(Structure_HashMap) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
     
     HashMap<i32, const char*> map(any_alloc);
     ASSERT_TRUE(map.Insert(1, "One"));
@@ -535,7 +535,7 @@ TEST_CASE(Structure_HashMap) {
 TEST_CASE(Base_Extended_Suite) {
     g_test_alloc.DeallocateAll();
     // Global allocator is initialized in main.cpp
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
 
     // 1. CommandLine Parsing
     CommandLine cmd("kernel.bin debug log_level=3 --force root=/dev/sda1");
@@ -608,7 +608,7 @@ TEST_CASE(Base_Extended_Suite) {
 
 TEST_CASE(Base_LoggingAndFormatting) {
     g_test_alloc.DeallocateAll();
-    AnyAllocator any_alloc{};
+    AnyAllocator any_alloc = AnyAllocator::FromGlobal();
 
     // Test Log (non-formatted)
     Log(LogLevel::Info, "Testing non-formatted Info log");

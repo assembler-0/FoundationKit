@@ -129,15 +129,15 @@ namespace FoundationKitMemory {
         /// @brief Check ownership.
         [[nodiscard]] bool Owns(const void* ptr) const noexcept {
             if (!ptr) return false;
-
-            // First, check if the base allocator even considers this pointer in its range.
-            // This is a safety check to avoid dereferencing wild/unmapped pointers.
             if (!m_base.Owns(ptr)) return false;
 
-            const auto* header = reinterpret_cast<const Header*>(
-                reinterpret_cast<const byte*>(ptr) - CanarySize - sizeof(Header)
-            );
+            // Guard: the header lives (CanarySize + sizeof(Header)) bytes before
+            // the payload. Only read it if the base allocator also owns that region.
+            const auto* header_addr =
+                static_cast<const byte*>(ptr) - CanarySize - sizeof(Header);
+            if (!m_base.Owns(header_addr)) return false;
 
+            const auto* header = reinterpret_cast<const Header*>(header_addr);
             if (header->magic != HeaderMagic) return false;
             return m_base.Owns(header->raw_ptr);
         }

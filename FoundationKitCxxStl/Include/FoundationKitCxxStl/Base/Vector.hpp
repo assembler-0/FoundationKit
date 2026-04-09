@@ -21,7 +21,7 @@ namespace FoundationKitCxxStl {
         using Iterator = T*;
         using ConstIterator = const T*;
 
-        explicit Vector(Alloc allocator = Alloc())
+        explicit Vector(Alloc allocator = FoundationKitMemory::AnyAllocator::FromGlobal())
             : m_allocator(FoundationKitCxxStl::Move(allocator)), m_data(nullptr), m_size(0), m_capacity(0) {}
 
         ~Vector() {

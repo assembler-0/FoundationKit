@@ -85,10 +85,22 @@ void __cxa_guard_abort(unsigned long long* guard_object) {
     FK_BUG_ON(guard_object == nullptr,
         "__cxa_guard_abort: null guard_object pointer. Memory corruption.");
 
-    FK_LOG_WARN("__cxa_guard_abort: static initializer aborted on guard {:#x}. "
+    FK_BUG("__cxa_guard_abort: static initializer aborted on guard {:#x}. "
                 "The static object may be partially constructed. "
                 "Allowing the next caller to retry. "
-                "This is only safe if the initializer is idempotent.",
+                "This is only safe if the initializer is idempotent. clearing IN_PROGRESS.",
+                reinterpret_cast<uptr>(guard_object));
+}
+
+///@brief internal version that doesn't crash the entire thing
+void __i__cxa_guard_abort(unsigned long long* guard_object) {
+    FK_BUG_ON(guard_object == nullptr,
+        "__i__cxa_guard_abort: null guard_object pointer. Memory corruption.");
+
+    FK_LOG_WARN("__i__cxa_guard_abort: static initializer aborted on guard {:#x}. "
+                "The static object may be partially constructed. "
+                "Allowing the next caller to retry. "
+                "This is only safe if the initializer is idempotent. clearing IN_PROGRESS.",
                 reinterpret_cast<uptr>(guard_object));
 
     GuardAbort(guard_object);

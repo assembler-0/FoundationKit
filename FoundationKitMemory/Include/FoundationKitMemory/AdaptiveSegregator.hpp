@@ -77,6 +77,15 @@ namespace FoundationKitMemory {
             return m_threshold;
         }
 
+        /// @brief Update the runtime threshold.
+        /// @desc Only effective when SmallThreshold == 0 (runtime-configured mode).
+        ///       When SmallThreshold is a non-zero template parameter the threshold
+        ///       is baked in at compile time and this call is a no-op.
+        void SetThreshold(usize new_threshold) noexcept {
+            if constexpr (SmallThreshold == 0)
+                m_threshold = new_threshold;
+        }
+
         /// @brief Reset statistics.
         void ResetStats() noexcept {
             m_small_allocations.Store(0, Sync::MemoryOrder::Relaxed);

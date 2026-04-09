@@ -18,7 +18,7 @@ namespace FoundationKitMemory {
             : m_start(static_cast<byte*>(start)), m_current(m_start), m_end(m_start + size) {
             FK_BUG_ON(start == nullptr && size > 0, "BumpAllocator: null start with non-zero size ({})", size);
             // Wraparound: m_start + size must not overflow.
-            FK_BUG_ON(size > 0 && reinterpret_cast<uptr>(m_start) + size < reinterpret_cast<uptr>(m_start),
+            FK_BUG_ON(reinterpret_cast<uptr>(m_start) + size < reinterpret_cast<uptr>(m_start),
                 "BumpAllocator: buffer range wraps around address space (start: {}, size: {})", start, size);
         }
 
@@ -38,7 +38,7 @@ namespace FoundationKitMemory {
             }
 
             m_current = reinterpret_cast<byte*>(aligned_ptr + size);
-            return { reinterpret_cast<void*>(aligned_ptr), size };
+            return AllocationResult::Success(reinterpret_cast<void*>(aligned_ptr), size);
         }
 
         static constexpr void Deallocate(void*, usize) noexcept {

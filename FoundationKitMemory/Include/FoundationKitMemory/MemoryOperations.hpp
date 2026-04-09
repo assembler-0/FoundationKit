@@ -126,8 +126,29 @@ namespace FoundationKitMemory {
     }
 
     /// @brief Zero out memory in 'dest'.
+    /// @desc The scalar fallback writes through a `volatile byte*` pointer.
+    ///       Without `volatile`, the compiler is permitted to prove that the
+    ///       zeroed region is never read again (e.g., before a free()) and
+    ///       silently elide the entire loop — a classic security-critical
+    ///       zeroing failure (CWE-14). The `volatile` qualifier forces the
+    ///       store to be observable, preventing that optimisation.
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void* MemoryZero(void* dest, const usize size) noexcept {
-        return MemorySet(dest, 0, size);
+        if (size == 0) return dest;
+        FK_BUG_ON(!dest, "MemoryZero: null pointer provided with non-zero size ({})", size);
+
+        FK_BUG_ON(reinterpret_cast<uptr>(dest) + size < reinterpret_cast<uptr>(dest),
+            "MemoryZero: range wraparound (dest: {}, size: {})", dest, size);
+
+#if defined(FOUNDATIONKITCXXSTL_COMPILER_GCC) || defined(FOUNDATIONKITCXXSTL_COMPILER_CLANG)
+        if (FoundationKitOsl::OslIsSimdEnabled()) {
+            Base::CompilerBuiltins::MemSet(dest, static_cast<byte>(0), size);
+            return dest;
+        }
+#endif
+        // volatile prevents the compiler from eliding security-critical zeroing.
+        volatile byte* vd = static_cast<volatile byte*>(dest);
+        for (usize i = 0; i < size; ++i) vd[i] = 0;
+        return dest;
     }
 
     // ============================================================================

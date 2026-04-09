@@ -22,10 +22,7 @@
 #include <FoundationKitMemory/UniquePtr.hpp>
 #include <FoundationKitMemory/BuddyAllocator.hpp>
 #include <FoundationKitMemory/SharedPtr.hpp>
-#include <FoundationKitMemory/ObjectAllocator.hpp>
 #include <FoundationKitMemory/FragmentationReport.hpp>
-#include <FoundationKitMemory/PressureManager.hpp>
-#include <FoundationKitMemory/RegionDescriptor.hpp>
 #include <FoundationKitCxxStl/Sync/TicketLock.hpp>
 #include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
@@ -553,9 +550,6 @@ TEST_CASE(Memory_Concepts_Validation) {
 
     // Extended capability checks
     static_assert(IClearableAllocator<BumpAllocator>);
-    // Note: BumpAllocator doesn't support reallocation
-
-    // Just pass - these are compile-time validations
     ASSERT_TRUE(true);
 }
 
@@ -989,40 +983,6 @@ TEST_CASE(Memory_SlabAllocator_ConfigurableWeights) {
 }
 
 // ============================================================================
-// TEST: ObjectAllocator — Typed, Tagged Allocation
-// ============================================================================
-
-TEST_CASE(Memory_ObjectAllocator_TypedAllocation) {
-    static byte obj_buf[32 * 1024];
-    FreeListAllocator heap(obj_buf, sizeof(obj_buf));
-    ObjectAllocator<FreeListAllocator> obj_alloc(heap);
-
-    struct Task { i32 id; i32 priority; };
-
-    auto r1 = obj_alloc.Allocate<MemoryObjectType::TaskControl, Task>(42, 10);
-    ASSERT_TRUE(r1);
-    ASSERT_EQ(r1.Value()->id, 42);
-    ASSERT_EQ(r1.Value()->priority, 10);
-
-    auto r2 = obj_alloc.Allocate<MemoryObjectType::TaskControl, Task>(99, 5);
-    ASSERT_TRUE(r2);
-
-    ASSERT_EQ(obj_alloc.CountObjects(MemoryObjectType::TaskControl), 2);
-
-    usize walked = 0;
-    obj_alloc.ForEachObject<MemoryObjectType::TaskControl, Task>(
-        [&](Task*) { ++walked; }
-    );
-    ASSERT_EQ(walked, 2);
-
-    obj_alloc.Deallocate(r1.Value());
-    ASSERT_EQ(obj_alloc.CountObjects(MemoryObjectType::TaskControl), 1);
-
-    obj_alloc.Deallocate(r2.Value());
-    ASSERT_EQ(obj_alloc.CountObjects(MemoryObjectType::TaskControl), 0);
-}
-
-// ============================================================================
 // TEST: FragmentationReport — Heap Analysis
 // ============================================================================
 
@@ -1050,85 +1010,6 @@ TEST_CASE(Memory_FragmentationReport_FreeListAnalysis) {
     auto report_clean = AnalyzeFragmentation(heap);
     ASSERT_EQ(report_clean.free_block_count, 1);
     ASSERT_EQ(report_clean.FragmentationIndex(), 0.0f);
-}
-
-// ============================================================================
-// TEST: PressureManager — OOM Callback Chain
-// ============================================================================
-
-TEST_CASE(Memory_PressureManager_CallbackChain) {
-    PressureManager<4> pm;
-
-    static usize s_a_calls = 0;
-    static usize s_b_calls = 0;
-
-    const auto cb_a = [](usize, void*) noexcept { ++s_a_calls; };
-    const auto cb_b = [](usize, void*) noexcept { ++s_b_calls; };
-
-    pm.RegisterCallback(+cb_a, nullptr, 5);
-    pm.RegisterCallback(+cb_b, nullptr, 2);
-
-    ASSERT_EQ(pm.CallbackCount(), 2);
-
-    bool notified = pm.NotifyPressure(4096);
-    ASSERT_TRUE(notified);
-    ASSERT_EQ(s_a_calls, 1);
-    ASSERT_EQ(s_b_calls, 1);
-
-    pm.UnregisterCallback(+cb_a);
-    ASSERT_EQ(pm.CallbackCount(), 1);
-
-    pm.NotifyPressure(1024);
-    ASSERT_EQ(s_a_calls, 1); // was unregistered
-    ASSERT_EQ(s_b_calls, 2); // still registered
-}
-
-// ============================================================================
-// TEST: RegionDescriptor — NUMA-Aware Region Metadata
-// ============================================================================
-
-TEST_CASE(Memory_RegionDescriptor_Creation) {
-    static byte rd_buf[4096];
-    RegionDescriptor desc(
-        rd_buf, sizeof(rd_buf),
-        RegionType::Generic,
-        RegionFlags::Readable | RegionFlags::Writable | RegionFlags::Cacheable,
-        /*numa_node=*/0,
-        /*owner_id=*/0x1001
-    );
-
-    ASSERT_TRUE(desc.IsValid());
-    ASSERT_TRUE(desc.IsReadable());
-    ASSERT_TRUE(desc.IsWritable());
-    ASSERT_TRUE(desc.IsCacheable());
-    ASSERT_FALSE(desc.IsExecutable());
-    ASSERT_TRUE(desc.IsNumaAware());
-    ASSERT_TRUE(desc.IsOwned());
-    ASSERT_TRUE(desc.Contains(rd_buf));
-    ASSERT_FALSE(desc.IsDmaCoherent());
-
-    RegionDescriptor sub = desc.SubDescriptor(0, 1024);
-    ASSERT_EQ(sub.Size(), 1024);
-    ASSERT_EQ(sub.numa_node, 0ULL);
-}
-
-TEST_CASE(Memory_RegionDescriptorPool_Registration) {
-    static byte pool_buf[4096];
-    static byte dma_buf[4096];
-
-    RegionDescriptorPool<4> pool;
-    [[maybe_unused]] auto idx0 = pool.Register({pool_buf, sizeof(pool_buf), RegionType::Generic});
-    [[maybe_unused]] auto idx1 = pool.Register({dma_buf,  sizeof(dma_buf),  RegionType::DmaCoherent});
-
-    ASSERT_EQ(pool.Count(), 2);
-
-    const RegionDescriptor* found = pool.FindContaining(pool_buf + 10);
-    ASSERT_TRUE(found != nullptr);
-    ASSERT_EQ(found->type, RegionType::Generic);
-
-    const RegionDescriptor* dma = pool.FindByType(RegionType::DmaCoherent);
-    ASSERT_TRUE(dma != nullptr);
-    ASSERT_TRUE(dma->Contains(dma_buf));
 }
 
 // ============================================================================

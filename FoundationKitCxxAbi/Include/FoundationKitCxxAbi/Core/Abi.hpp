@@ -28,8 +28,12 @@ namespace FoundationKitCxxAbi {
 
     /// @brief Abort an in-progress initialization (called on exception unwind).
     /// @param guard_object Same pointer passed to __cxa_guard_acquire.
-    /// @note  We are -fno-exceptions, but this symbol must exist for the linker.
-    void __cxa_guard_abort(unsigned long long *guard_object);
+    /// @note  Traps.
+    [[noreturn]] void __cxa_guard_abort(unsigned long long *guard_object);
+
+    /// @brief Abort an in-progress initialization.
+    /// @param guard_object Same pointer passed to __cxa_guard_acquire.
+    void __i__cxa_guard_abort(unsigned long long* guard_object);
 
     /// @brief Register a destructor to call at program termination.
     /// @param destructor  Function to call.

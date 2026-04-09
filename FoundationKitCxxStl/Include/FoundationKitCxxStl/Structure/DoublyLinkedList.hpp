@@ -64,7 +64,7 @@ namespace FoundationKitCxxStl::Structure {
             Node* m_node;
         };
 
-        explicit DoublyLinkedList(Alloc allocator = Alloc())
+        explicit DoublyLinkedList(Alloc allocator = FoundationKitMemory::AnyAllocator::FromGlobal())
             : m_allocator(FoundationKitCxxStl::Move(allocator)), m_head(nullptr), m_tail(nullptr), m_size(0) {}
 
         ~DoublyLinkedList() { Clear(); }

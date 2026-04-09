@@ -70,13 +70,8 @@ namespace FoundationKitMemory {
         usize       size  = 0;
         MemoryError error = MemoryError::None;
 
-        [[nodiscard]] constexpr bool IsSuccess() const noexcept { 
-            // Paranoid: Ensure state consistency
-            FK_BUG_ON(ptr != nullptr && error != MemoryError::None, 
-                "AllocationResult: inconsistency - success pointer with error code ({})", static_cast<u8>(error));
-            FK_BUG_ON(ptr != nullptr && size == 0, 
-                "AllocationResult: inconsistency - success pointer with zero size");
-            return ptr != nullptr && error == MemoryError::None; 
+        [[nodiscard]] constexpr bool IsSuccess() const noexcept {
+            return ptr != nullptr && error == MemoryError::None;
         }
 
         [[nodiscard]] constexpr explicit operator bool() const noexcept { return IsSuccess(); }
@@ -157,6 +152,23 @@ namespace FoundationKitMemory {
         { alloc.BytesAllocated() } -> SameAs<usize>;
         { alloc.BytesDeallocated() } -> SameAs<usize>;
         { alloc.TotalAllocations() } -> SameAs<usize>;
+    };
+
+    // Forward-declare FragmentationReport so the concepts below can reference it
+    // without pulling in FragmentationReport.hpp (which includes allocator headers).
+    struct FragmentationReport;
+
+    /// @brief Allocator that exposes a FragmentationReport without external helpers.
+    template <typename A>
+    concept IIntrospectableAllocator = IAllocator<A> && requires(const A& a) {
+        { a.Report() } -> SameAs<FragmentationReport>;
+    };
+
+    /// @brief Allocator that participates in the pressure-reclaim protocol.
+    /// @desc  Reclaim(bytes) returns the actual number of bytes freed — not the target.
+    template <typename A>
+    concept IReclaimableAllocator = IAllocator<A> && requires(A& a, usize bytes) {
+        { a.Reclaim(bytes) } -> SameAs<usize>;
     };
 
     // ============================================================================

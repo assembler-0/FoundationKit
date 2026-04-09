@@ -38,10 +38,10 @@ namespace FoundationKitCxxStl::Structure {
             Bucket() = default;
         };
 
-        explicit HashMap(Alloc allocator = Alloc())
+        explicit HashMap(Alloc allocator = FoundationKitMemory::AnyAllocator::FromGlobal())
             : m_buckets(FoundationKitCxxStl::Move(allocator)), m_size(0) {
-            // Start with a reasonable power-of-two capacity
-            m_buckets.Resize(16);
+            FK_BUG_ON(!m_buckets.Resize(16),
+                "HashMap: initial bucket allocation failed — global allocator OOM at construction");
         }
 
         ~HashMap() = default;

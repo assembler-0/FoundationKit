@@ -21,6 +21,11 @@ namespace FoundationKitCxxStl {
 
     /// @brief A simple intrusive producer-consumer WorkQueue.
     /// @desc Uses a Mutex and ConditionVariable for synchronization.
+    /// @warning Requires an active kernel scheduler. Dequeue() blocks via
+    ///          ConditionVariable::Wait() which must be backed by a scheduler
+    ///          that can suspend and resume threads. Do NOT use WorkQueue
+    ///          before the scheduler is initialised — Dequeue() will deadlock.
+    ///          For pre-scheduler use, call TryDequeue() only.
     class WorkQueue {
     public:
         WorkQueue() = default;

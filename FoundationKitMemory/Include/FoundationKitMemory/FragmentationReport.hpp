@@ -73,23 +73,18 @@ namespace FoundationKitMemory {
     // ============================================================================
 
     /// @brief Analyse fragmentation of a BuddyAllocator.
-    /// @desc Reports free bytes using per-order free-list counts in O(MaxOrder * n_free).
+    /// @desc Walks all per-order free lists in O(MaxOrder * n_free).
     template <usize MaxOrder, usize MinBlockSize>
     [[nodiscard]] FragmentationReport
     AnalyzeFragmentation(const BuddyAllocator<MaxOrder, MinBlockSize>& alloc) noexcept {
         FragmentationReport report;
-        report.total_bytes         = BuddyAllocator<MaxOrder, MinBlockSize>::MaxBlockSize;
-        report.largest_free_block  = alloc.LargestFreeBlockSize();
+        report.total_bytes = BuddyAllocator<MaxOrder, MinBlockSize>::MaxBlockSize;
 
-        // Reconstruct free_bytes: LargestFreeBlockSize gives us the top order.
-        // For a full count we'd need to expose internals — for now, use the
-        // provided introspection API which is the public contract.
-        report.free_bytes          = 0; // BuddyAllocator does not expose per-order counts directly.
-        report.used_bytes          = 0;
-        report.free_block_count    = 0;
-
-        // Note: A full byte-level count from BuddyAllocator would require exposing
-        // the free-list arrays. This gives a conservative useful subset.
+        const auto stats       = alloc.GetFreeStats();
+        report.free_bytes      = stats.free_bytes;
+        report.free_block_count = stats.free_block_count;
+        report.largest_free_block = stats.largest_free;
+        report.used_bytes      = report.total_bytes - report.free_bytes;
         return report;
     }
 

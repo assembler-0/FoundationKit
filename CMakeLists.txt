@@ -29,6 +29,10 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/StructureTest.cpp
         Test/Phase1Test.cpp
         Test/Phase2Test.cpp
+        Test/PhysicalMemoryMapTests.cpp
+        Test/ObjectPoolTests.cpp
+        Test/KernelHeapTests.cpp
+        Test/ReclaimChainTests.cpp
     )
 
     target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi)

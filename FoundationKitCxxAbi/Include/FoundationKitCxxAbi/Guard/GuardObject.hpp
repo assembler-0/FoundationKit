@@ -56,7 +56,7 @@ namespace FoundationKitCxxAbi::Guard {
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE
     void SpinHint() noexcept {
 #if defined(FOUNDATIONKITPLATFORM_ARCH_X86_64)
-        __builtin_ia32_pause();
+        Base::CompilerBuiltins::CpuPause();
 #elif defined(FOUNDATIONKITPLATFORM_ARCH_ARM64)
         __asm__ volatile("yield" ::: "memory");
 #elif defined(FOUNDATIONKITPLATFORM_ARCH_RISCV64)

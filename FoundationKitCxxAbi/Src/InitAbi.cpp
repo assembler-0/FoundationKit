@@ -99,10 +99,6 @@ void __cxa_finalize(void *dso_handle) {
         entry.destructor = nullptr;
         AtExitLockRelease();
 
-        FK_LOG_INFO("__cxa_finalize: calling destructor {:#x} for object {:#x}",
-                    reinterpret_cast<uptr>(fn),
-                    reinterpret_cast<uptr>(obj));
-
         fn(obj);
     }
 }

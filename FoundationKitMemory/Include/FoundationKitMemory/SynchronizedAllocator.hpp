@@ -8,6 +8,7 @@
 namespace FoundationKitMemory {
 
 using namespace FoundationKitCxxStl;
+using namespace FoundationKitCxxStl::Sync;
 
 // ============================================================================
 // SynchronizedAllocator: Concurrency Decorator

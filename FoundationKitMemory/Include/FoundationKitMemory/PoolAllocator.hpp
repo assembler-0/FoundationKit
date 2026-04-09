@@ -64,12 +64,14 @@ namespace FoundationKitMemory {
 
         [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept {
             FK_BUG_ON(size == 0, "PoolAllocator::Allocate: zero-size allocation requested");
+            FK_BUG_ON(m_chunk_size == 0,
+                "PoolAllocator::Allocate: called before Initialize() (chunk_size is zero)");
             if (size > m_chunk_size || align > m_alignment || m_free_list.Empty()) {
                 return AllocationResult::Failure();
             }
 
             Node* node = m_free_list.PopFront();
-            return {node, m_chunk_size};
+            return AllocationResult::Success(node, m_chunk_size);
         }
 
         void Deallocate(void* ptr, usize size) noexcept {

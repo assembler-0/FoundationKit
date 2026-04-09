@@ -52,7 +52,7 @@ namespace FoundationKitCxxStl::Structure {
             Node* m_node;
         };
 
-        explicit SinglyLinkedList(Alloc allocator = Alloc())
+        explicit SinglyLinkedList(Alloc allocator = FoundationKitMemory::AnyAllocator::FromGlobal())
             : m_allocator(FoundationKitCxxStl::Move(allocator)), m_head(nullptr), m_size(0) {}
 
         ~SinglyLinkedList() { Clear(); }

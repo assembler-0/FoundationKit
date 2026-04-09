@@ -71,7 +71,7 @@ TEST_CASE(Guard_AbortAllowsRetry) {
     unsigned long long guard = 0;
     int r1 = __cxa_guard_acquire(&guard);
     ASSERT_EQ(r1, 1);
-    __cxa_guard_abort(&guard);
+    __i__cxa_guard_abort(&guard);
 
     int r2 = __cxa_guard_acquire(&guard);
     ASSERT_EQ(r2, 1);
@@ -102,12 +102,12 @@ TEST_CASE(Guard_LocalStaticPattern) {
 // ============================================================================
 
 namespace {
-    static int g_atexit_counter = 0;
+    int g_atexit_counter = 0;
 
-    static void AtExitIncrement(void* /*unused*/) noexcept {
+    void AtExitIncrement(void* /*unused*/) noexcept {
         ++g_atexit_counter;
     }
-    static void AtExitAdd10(void* /*unused*/) noexcept {
+    void AtExitAdd10(void* /*unused*/) noexcept {
         g_atexit_counter += 10;
     }
 }

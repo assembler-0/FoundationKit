@@ -107,18 +107,22 @@ namespace FoundationKitMemory {
         /// @brief Check ownership.
         [[nodiscard]] bool Owns(const void* ptr) const noexcept {
             if (!ptr) return false;
-            
-            // First, check if the base allocator even considers this pointer in its range.
-            // This is a safety check to avoid dereferencing wild/unmapped pointers.
             if (!m_base.Owns(ptr)) return false;
 
-            const auto* header = reinterpret_cast<const Header*>(
-                static_cast<const byte*>(ptr) - sizeof(Header)
-            );
-            
+            // Guard: the header lives sizeof(Header) bytes before the payload.
+            // If ptr is too close to the start of the allocator's range, the
+            // header address would underflow into memory before the buffer —
+            // a silent fault in a kernel. Only read the header if the base
+            // allocator also owns the header region.
+            const auto* header_addr = static_cast<const byte*>(ptr) - sizeof(Header);
+            if (!m_base.Owns(header_addr)) return false;
+
+            const auto* header = reinterpret_cast<const Header*>(header_addr);
             if (header->magic != HeaderMagic) return false;
-            
-            void* raw_ptr = const_cast<byte*>(reinterpret_cast<const byte*>(header) + sizeof(Header) - header->padding);
+
+            // Reconstruct raw_ptr: in Allocate(), raw_ptr is the base allocation
+            // and padding = payload_ptr - raw_ptr, so raw_ptr = payload_ptr - padding.
+            const auto* raw_ptr = static_cast<const byte*>(ptr) - header->padding;
             return m_base.Owns(raw_ptr);
         }
 

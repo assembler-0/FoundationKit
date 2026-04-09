@@ -20,7 +20,7 @@ namespace FoundationKitCxxStl {
         static constexpr SizeType SsoCapacity = 23;
 
         String() noexcept 
-            : m_allocator(), m_size(0), m_is_heap(false) {
+            : m_allocator(FoundationKitMemory::AnyAllocator::FromGlobal()), m_size(0), m_is_heap(false) {
             m_data.sso[0] = '\0';
         }
 

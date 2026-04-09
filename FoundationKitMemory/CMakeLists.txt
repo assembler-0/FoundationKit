@@ -26,11 +26,14 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/AdaptiveSegregator.hpp
     Include/FoundationKitMemory/SynchronizedAllocator.hpp
     Include/FoundationKitMemory/AllocatorLocking.hpp
-    Include/FoundationKitMemory/ObjectAllocator.hpp
+    Include/FoundationKitMemory/MemoryObject.hpp
+    Include/FoundationKitMemory/ObjectPool.hpp
+    Include/FoundationKitMemory/KernelHeap.hpp
+    Include/FoundationKitMemory/ReclaimChain.hpp
     Include/FoundationKitMemory/FragmentationReport.hpp
-    Include/FoundationKitMemory/PressureManager.hpp
-    Include/FoundationKitMemory/RegionDescriptor.hpp
     Include/FoundationKitMemory/MemorySafety.hpp
+    Include/FoundationKitMemory/RegionDescriptor.hpp
+    Include/FoundationKitMemory/PhysicalMemoryMap.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES

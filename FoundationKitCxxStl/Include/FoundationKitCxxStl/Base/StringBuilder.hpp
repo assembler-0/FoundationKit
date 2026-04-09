@@ -10,7 +10,7 @@ namespace FoundationKitCxxStl {
     /// @brief Efficiently build strings with {} formatting.
     class StringBuilder {
     public:
-        explicit StringBuilder(FoundationKitMemory::AnyAllocator allocator = FoundationKitMemory::AnyAllocator())
+        explicit StringBuilder(FoundationKitMemory::AnyAllocator allocator = FoundationKitMemory::AnyAllocator::FromGlobal())
             : m_buffer(Move(allocator)) {}
 
         StringBuilder& Append(const StringView view) {

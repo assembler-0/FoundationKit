@@ -86,29 +86,23 @@ namespace FoundationKitCxxStl::Structure {
         }
 
         /// @brief Peek at all available entries without consuming them.
-        ///        NOTE: This is a snapshot — new entries may arrive concurrently.
-        ///        Uses a temporary drain into a local copy; entries are re-pushed
-        ///        if the ring has space.  Intended for debugger/serial dump only.
+        ///        NOTE: This is NOT logically const — it drains the ring into a
+        ///        staging array and re-pushes entries. Entries that do not fit
+        ///        back in (ring full due to concurrent producer) are lost.
+        ///        Intended for debugger/serial dump only; do not call on hot paths.
         ///
         /// @param fn  Callable with signature `void(const LogEntry&)`.
         template <Invocable<const LogEntry&> Fn>
-        void ForEach(Fn&& fn) const noexcept {
-            // We cannot peek into StaticRingBuffer without consuming, so we
-            // drain into a local staging array and re-push.  This is a
-            // best-effort snapshot — entries that don't fit back in are lost,
-            // which is acceptable for a diagnostic tool.
+        void DrainAndRestore(Fn&& fn) noexcept {
             LogEntry staging[N];
             usize count = 0;
-            // Cast away const: Pop() is logically non-mutating for a snapshot.
-            auto& mutable_ring = const_cast<StaticRingBuffer<LogEntry, N>&>(m_ring);
             while (count < N) {
-                auto e = mutable_ring.Pop();
+                auto e = m_ring.Pop();
                 if (!e) break;
                 staging[count++] = *e;
             }
             for (usize i = 0; i < count; ++i) fn(staging[i]);
-            // Re-push what we can.
-            for (usize i = 0; i < count; ++i) mutable_ring.Push(staging[i]);
+            for (usize i = 0; i < count; ++i) m_ring.Push(staging[i]);
         }
 
         [[nodiscard]] bool Empty() const noexcept { return m_ring.Empty(); }

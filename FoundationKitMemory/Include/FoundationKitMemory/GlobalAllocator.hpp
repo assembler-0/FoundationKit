@@ -38,19 +38,32 @@ namespace FoundationKitMemory {
             if constexpr (FoundationKitCxxStl::BaseOf<BasicMemoryResource, Alloc>) {
                 resource_ptr = static_cast<BasicMemoryResource*>(&allocator);
             } else {
-                static AllocatorWrapper<Alloc> wrapper(allocator);
-                resource_ptr = &wrapper;
+                // File-scope storage: avoids the function-local static __cxa_guard_acquire
+                // that a function-local static would emit. The CAS below already prevents
+                // double-initialisation, so the guard is redundant and dangerous at early boot.
+                alignas(AllocatorWrapper<Alloc>)
+                static byte s_wrapper_storage[sizeof(AllocatorWrapper<Alloc>)];
+
+                if (m_allocator.Load(MemoryOrder::Acquire) == nullptr) {
+                    resource_ptr = FoundationKitCxxStl::ConstructAt<AllocatorWrapper<Alloc>>(
+                        s_wrapper_storage, allocator
+                    );
+                } else {
+                    resource_ptr = reinterpret_cast<AllocatorWrapper<Alloc>*>(s_wrapper_storage);
+                }
             }
 
             FK_BUG_ON(resource_ptr == nullptr, "GlobalAllocatorSystem::Initialize: failed to resolve memory resource pointer");
 
-            BasicMemoryResource* old = m_allocator.Exchange(
-                resource_ptr,
+            BasicMemoryResource* expected = nullptr;
+            const bool won = m_allocator.CompareExchange(
+                expected, resource_ptr,
+                /*weak=*/false,
+                MemoryOrder::SeqCst,
                 MemoryOrder::SeqCst
             );
-            
-            if (old != nullptr) {
-                // Multiple initialization attempts detected
+
+            if (!won) {
                 FK_LOG_WARN("GlobalAllocatorSystem initialized more than once - ignoring subsequent initialization");
             }
         }

@@ -55,7 +55,7 @@ namespace FoundationKitCxxStl::Structure {
             bool  m_is_end;
         };
 
-        explicit CircularLinkedList(Alloc allocator = Alloc())
+        explicit CircularLinkedList(Alloc allocator = FoundationKitMemory::AnyAllocator::FromGlobal())
             : m_allocator(FoundationKitCxxStl::Move(allocator)), m_last(nullptr), m_size(0) {}
 
         ~CircularLinkedList() { Clear(); }

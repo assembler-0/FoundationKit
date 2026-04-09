@@ -12,12 +12,26 @@ namespace FoundationKitMemory {
     ///          SynchronizedAllocator<AnyAllocator, Mutex>
     class AnyAllocator {
     public:
-        /// @brief Adopts the system-wide global allocator by default.
-        /// @desc Will bug if GlobalAllocatorSystem has not been initialized.
-        AnyAllocator() noexcept : m_resource(&GetGlobalAllocator()) {}
+        /// @brief Default constructor stores nullptr.
+        /// @desc  Callers that want the global allocator must call AnyAllocator::FromGlobal()
+        ///        explicitly. This prevents silent null-pointer storage during early boot
+        ///        when the global allocator may not yet be initialised.
+        constexpr AnyAllocator() noexcept : m_resource(nullptr) {}
 
         explicit constexpr AnyAllocator(nullptr_t) noexcept : m_resource(nullptr) {}
         explicit constexpr AnyAllocator(BasicMemoryResource* resource) noexcept : m_resource(resource) {}
+
+        /// @brief Explicitly adopt the system-wide global allocator.
+        /// @desc  Crashes immediately with a clear boot-order message if the global
+        ///        allocator has not yet been initialised — far easier to diagnose
+        ///        than a deferred null-pointer crash at first use.
+        [[nodiscard]] static AnyAllocator FromGlobal() noexcept {
+            FK_BUG_ON(!IsGlobalAllocatorInitialized(),
+                "AnyAllocator::FromGlobal: called before GlobalAllocatorSystem::Initialize(). "
+                "Fix boot order: initialise the global allocator before any "
+                "subsystem that calls AnyAllocator::FromGlobal().");
+            return AnyAllocator(&GetGlobalAllocator());
+        }
 
         [[nodiscard]] AllocationResult Allocate(usize size, usize align) const noexcept {
             if (!m_resource) return AllocationResult::Failure();
