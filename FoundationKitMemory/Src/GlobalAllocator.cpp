@@ -2,10 +2,13 @@
 
 namespace FoundationKitMemory {
 
-    using namespace FoundationKitCxxStl;
+    // The domain is never armed in production — it exists solely to satisfy
+    // RcuPtr's template parameter. The global allocator is written once at boot.
+    GlobalAllocatorSystem::GlobalAllocDomain
+        GlobalAllocatorSystem::m_domain{};
 
-    /// @brief Static storage for the global allocator pointer.
-    /// @desc Initially null. Must be initialized via GlobalAllocatorSystem::Initialize().
-    Atomic<BasicMemoryResource*> GlobalAllocatorSystem::m_allocator(nullptr);
+    RcuPtr<BasicMemoryResource,
+                                       GlobalAllocatorSystem::GlobalAllocDomain>
+        GlobalAllocatorSystem::m_allocator{m_domain, nullptr};
 
 } // namespace FoundationKitMemory

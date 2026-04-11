@@ -2,6 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
+#include <FoundationKitCxxStl/Sync/SeqLock.hpp>
 #include <FoundationKitOsl/Osl.hpp>
 #include <FoundationKitPlatform/Clocksource/ClockSource.hpp>
 
@@ -40,88 +41,91 @@ namespace FoundationKitPlatform::Clocksource {
     ///      OslGetSystemTicks() / OslGetSystemFrequency() so SystemClock callers
     ///      work correctly during early boot.
     ///
-    /// ## Kernel integration
+    /// ## Thread safety — SeqLock integration
     ///
-    /// ```cpp
-    /// // 1. At boot, after TSC calibration:
-    /// TimeKeeper::Register(MakeTscClockSource(tsc_freq_hz));
+    /// The three fields that NowNanoseconds() reads together —
+    ///   mono_base_ns, last_cycles, and the active descriptor's mult/shift/mask —
+    /// must be seen as a consistent snapshot. Previously they were separate atomics,
+    /// which allowed a reader to see mono_base_ns from after an Advance() but
+    /// last_cycles from before it, producing a time value that jumped backwards.
     ///
-    /// // 2. After reading RTC:
-    /// TimeKeeper::SetWallClockBase(rtc_unix_ns);
-    ///
-    /// // 3. From the timer ISR (e.g. every 1 ms):
-    /// TimeKeeper::Advance();
-    /// ```
-    ///
-    /// ## Thread safety
-    ///
-    /// Register() and SetWallClockBase() are called once during boot (single CPU,
-    /// no contention). Advance() is called from the timer ISR on the boot CPU only
-    /// (single writer). NowNanoseconds() / NowWallClock() are read-only and safe
-    /// to call from any context including NMI, because they only read atomics and
-    /// call the clocksource Read() function.
+    /// SeqLock<TimeState> fixes this: the writer (Advance / Register) holds the
+    /// odd-sequence window for the duration of all three field updates; readers
+    /// retry if they straddle a write. On the hot read path (no concurrent write)
+    /// this is two Acquire loads and one MemCpy — cheaper than three separate
+    /// SeqCst atomics.
     class TimeKeeper {
     public:
+
         // -------------------------------------------------------------------------
         // Registration
         // -------------------------------------------------------------------------
 
         /// @brief Register a clocksource. If its rating exceeds the current best,
         ///        it becomes the active source immediately.
-        ///
-        /// @param desc  Fully populated ClockSourceDescriptor. mult must be set
-        ///              (use CalibrateMult). Read must not be null.
-        static void Register(const ClockSourceDescriptor &desc) noexcept {
-            FK_BUG_ON(desc.Read == nullptr, "TimeKeeper::Register: descriptor '{}' has null Read function",
-                      desc.name ? desc.name : "<unnamed>");
-            FK_BUG_ON(desc.mult == 0, "TimeKeeper::Register: descriptor '{}' has zero mult — call CalibrateMult first",
-                      desc.name ? desc.name : "<unnamed>");
+        static void Register(const ClockSourceDescriptor& desc) noexcept {
+            FK_BUG_ON(desc.Read == nullptr,
+                "TimeKeeper::Register: descriptor '{}' has null Read function",
+                desc.name ? desc.name : "<unnamed>");
+            FK_BUG_ON(desc.mult == 0,
+                "TimeKeeper::Register: descriptor '{}' has zero mult — call CalibrateMult first",
+                desc.name ? desc.name : "<unnamed>");
 
-            // Only upgrade if the new source is strictly better.
-            if (static_cast<u32>(desc.rating) > static_cast<u32>(s_active.rating)) {
-                // Snapshot the current monotonic base before switching sources so
-                // the accumulator is continuous across the transition.
-                if (s_active.Read != nullptr) {
-                    s_mono_base_ns.Store(s_mono_base_ns.Load(MemoryOrder::Relaxed) + _ReadActive(),
-                                         MemoryOrder::Release);
-                }
-                s_active = desc;
-                s_last_cycles = desc.Read();
-                FK_LOG_INFO("TimeKeeper: selected clocksource '{}' (rating {})", desc.name ? desc.name : "<unnamed>",
-                            static_cast<u32>(desc.rating));
-            } else {
+            // Read current state to check rating and snapshot mono base.
+            TimeState cur = s_state.Read();
+
+            if (static_cast<u32>(desc.rating) <= static_cast<u32>(cur.active.rating)) {
                 FK_LOG_INFO("TimeKeeper: registered clocksource '{}' (rating {}, not selected)",
-                            desc.name ? desc.name : "<unnamed>", static_cast<u32>(desc.rating));
+                    desc.name ? desc.name : "<unnamed>", static_cast<u32>(desc.rating));
+                return;
             }
+
+            // Snapshot the current monotonic base before switching sources so
+            // the accumulator is continuous across the transition.
+            TimeState next;
+            next.active = desc;
+            if (cur.active.Read != nullptr) {
+                const u64 live = _ReadFrom(cur);
+                next.mono_base_ns  = cur.mono_base_ns + live;
+            } else {
+                next.mono_base_ns  = cur.mono_base_ns;
+            }
+            next.wall_base_ns  = cur.wall_base_ns;
+            next.last_cycles   = desc.Read();
+
+            // Single writer: no external lock needed (Register is boot-time only).
+            s_state.Write(next);
+
+            FK_LOG_INFO("TimeKeeper: selected clocksource '{}' (rating {})",
+                desc.name ? desc.name : "<unnamed>", static_cast<u32>(desc.rating));
         }
 
         /// @brief Set the wall-clock base (nanoseconds since Unix epoch at boot).
-        /// Call once after reading the RTC or EFI time. Pass 0 to disable wall-clock.
-        static void SetWallClockBase(i64 unix_ns_at_boot) noexcept {
-            s_wall_base_ns.Store(unix_ns_at_boot, MemoryOrder::Release);
+        static void SetWallClockBase(const i64 unix_ns_at_boot) noexcept {
+            TimeState s = s_state.Read();
+            s.wall_base_ns = unix_ns_at_boot;
+            s_state.Write(s);
         }
 
         // -------------------------------------------------------------------------
-        // Advance — called from the timer ISR
+        // Advance — called from the timer ISR (single writer)
         // -------------------------------------------------------------------------
 
         /// @brief Advance the monotonic accumulator by the cycles elapsed since
         ///        the last call. Call from the timer ISR on the boot CPU.
-        ///
-        /// The accumulator is the stable base; NowNanoseconds() adds the live
-        /// interpolation on top. Calling Advance() regularly keeps the interpolation
-        /// delta small, which prevents the u64 multiply in CyclesToNs from
-        /// accumulating error over long intervals.
         static void Advance() noexcept {
-            if (s_active.Read == nullptr)
-                return;
+            // Read current state snapshot.
+            TimeState s = s_state.Read();
+            if (s.active.Read == nullptr) return;
 
-            const u64 now = s_active.Read();
-            const u64 delta = (now - s_last_cycles) & s_active.mask;
-            s_last_cycles = now;
+            const u64 now     = s.active.Read();
+            const u64 delta   = now - s.last_cycles & s.active.mask;
+            const u64 delta_ns = CyclesToNs(delta, s.active.mult, s.active.shift);
 
-            const u64 delta_ns = CyclesToNs(delta, s_active.mult, s_active.shift);
-            s_mono_base_ns.FetchAdd(delta_ns, MemoryOrder::Relaxed);
+            s.mono_base_ns += delta_ns;
+            s.last_cycles   = now;
+
+            s_state.Write(s);
         }
 
         // -------------------------------------------------------------------------
@@ -130,15 +134,16 @@ namespace FoundationKitPlatform::Clocksource {
 
         /// @brief Monotonic nanoseconds since boot.
         ///
-        /// If a clocksource is registered: base + live interpolation (no division).
-        /// If not: falls back to OslGetSystemTicks() conversion (may divide).
+        /// SeqLock read: two Acquire loads + one MemCpy in the common case.
+        /// Retries only if Advance() is concurrently writing (rare).
         [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE static u64 NowNanoseconds() noexcept {
-            if (s_active.Read == nullptr) [[unlikely]]
+            const TimeState s = s_state.Read();
+
+            if (s.active.Read == nullptr) [[unlikely]]
                 return _OslFallback();
 
-            const u64 base = s_mono_base_ns.Load(MemoryOrder::Relaxed);
-            const u64 live_ns = _ReadActive();
-            return base + live_ns;
+            const u64 live_ns = _ReadFrom(s);
+            return s.mono_base_ns + live_ns;
         }
 
         [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE static u64 NowMicroseconds() noexcept {
@@ -150,58 +155,57 @@ namespace FoundationKitPlatform::Clocksource {
         }
 
         /// @brief Wall-clock nanoseconds since Unix epoch.
-        /// Returns 0 if SetWallClockBase() has not been called.
         [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE static KTime NowWallClock() noexcept {
-            const i64 base = s_wall_base_ns.Load(MemoryOrder::Relaxed);
-            if (base == 0)
-                return 0;
-            return base + static_cast<i64>(NowNanoseconds());
+            const TimeState s = s_state.Read();
+            if (s.wall_base_ns == 0) return 0;
+            if (s.active.Read == nullptr) return s.wall_base_ns;
+            return s.wall_base_ns + static_cast<i64>(s.mono_base_ns + _ReadFrom(s));
         }
 
-        /// @brief Name of the currently active clocksource, or "osl-fallback".
-        [[nodiscard]] static const char *ActiveName() noexcept {
-            if (s_active.Read == nullptr)
-                return "osl-fallback";
-            return s_active.name ? s_active.name : "<unnamed>";
+        [[nodiscard]] static const char* ActiveName() noexcept {
+            const TimeState s = s_state.Read();
+            if (s.active.Read == nullptr) return "osl-fallback";
+            return s.active.name ? s.active.name : "<unnamed>";
         }
 
-        [[nodiscard]] static bool HasSource() noexcept { return s_active.Read != nullptr; }
+        [[nodiscard]] static bool HasSource() noexcept {
+            return s_state.Read().active.Read != nullptr;
+        }
 
         /// @brief Reset all state to defaults. FOR TESTING ONLY.
         static void ResetForTesting() noexcept {
-            s_active       = ClockSourceDescriptor{};
-            s_last_cycles  = 0;
-            s_mono_base_ns.Store(0, MemoryOrder::Relaxed);
-            s_wall_base_ns.Store(0, MemoryOrder::Relaxed);
+            s_state.Write(TimeState{});
         }
 
-    private:
-        // Live interpolation: cycles elapsed since last Advance(), converted to ns.
-        [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE static u64 _ReadActive() noexcept {
-            const u64 now = s_active.Read();
-            const u64 delta = (now - s_last_cycles) & s_active.mask;
-            return CyclesToNs(delta, s_active.mult, s_active.shift);
+    // TimeState is public so TimeKeeper.cpp can name it in the static definition.
+        struct TimeState {
+            ClockSourceDescriptor active{};
+            u64 mono_base_ns = 0;
+            i64 wall_base_ns = 0;
+            u64 last_cycles  = 0;
+        };
+
+        // Live interpolation from a consistent snapshot.
+        [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE
+        static u64 _ReadFrom(const TimeState& s) noexcept {
+            const u64 now   = s.active.Read();
+            const u64 delta = now - s.last_cycles & s.active.mask;
+            return CyclesToNs(delta, s.active.mult, s.active.shift);
         }
 
-        // Pre-registration fallback: delegates to the OSL tick/frequency pair.
-        // This is the same math that the old SystemClock used.
         [[nodiscard]] static u64 _OslFallback() noexcept {
             const u64 ticks = FoundationKitOsl::OslGetSystemTicks();
-            const u64 freq = FoundationKitOsl::OslGetSystemFrequency();
-            if (freq == 0)
-                return 0;
+            const u64 freq  = FoundationKitOsl::OslGetSystemFrequency();
+            if (freq == 0) return 0;
 #if defined(FOUNDATIONKITCXXSTL_HAS_INT128)
-            return static_cast<u64>((static_cast<u128>(ticks) * 1000000000ULL) / freq);
+            return static_cast<u64>(static_cast<u128>(ticks) * 1000000000ULL / freq);
 #else
             return (ticks / freq) * 1000000000ULL + ((ticks % freq) * 1000000000ULL) / freq;
 #endif
         }
 
-        // All state is file-scoped static — defined in TimeKeeper.cpp.
-        static ClockSourceDescriptor s_active;
-        static u64 s_last_cycles;
-        static Atomic<u64> s_mono_base_ns;
-        static Atomic<i64> s_wall_base_ns;
+        // SeqLock-protected time state. Defined in TimeKeeper.cpp.
+        static SeqLock<TimeState> s_state;
     };
 
 } // namespace FoundationKitPlatform::Clocksource
