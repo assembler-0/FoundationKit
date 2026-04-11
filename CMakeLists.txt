@@ -35,9 +35,10 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/ReclaimChainTests.cpp
         Test/PerCpuTests.cpp
         Test/PerCpuAllocatorTests.cpp
+        Test/TimeKeeperTests.cpp
     )
 
-    target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitOsl)
+    target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitOsl FoundationKitPlatform)
     
     target_compile_options(FoundationKitTester PRIVATE -ffreestanding -nostdlib -fno-stack-protector)
 endif()
