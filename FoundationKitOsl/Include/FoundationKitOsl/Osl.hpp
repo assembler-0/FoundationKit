@@ -43,6 +43,7 @@ namespace FoundationKitOsl {
     ///        early boot and returns it here. FoundationKit adds the monotonic uptime
     ///        to this value to produce wall-clock time without ever touching hardware.
     ///        Return 0 if wall-clock time is not available (embedded / bare-metal).
+    /// @note  iirc, Limine has a request for this
     u64 OslGetWallClockBase();
 
     /// @brief High-resolution delay in microseconds.
