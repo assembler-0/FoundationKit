@@ -23,7 +23,7 @@ add_library(FoundationKitPlatform STATIC ${FOUNDATIONKITPLATFORM_SOURCES} ${FOUN
 
 target_include_directories(FoundationKitPlatform PUBLIC Include)
 
-target_link_libraries(FoundationKitPlatform PUBLIC FoundationKitMemory FoundationKitOsl)
+target_link_libraries(FoundationKitPlatform PUBLIC FoundationKitCxxStl FoundationKitOsl)
 
 target_compile_definitions(FoundationKitPlatform PUBLIC
     FOUNDATIONKITPLATFORM_MACHINE_WIDTH_${FKPLATFORM_MACHINE_WIDTH_OVERRIDE}

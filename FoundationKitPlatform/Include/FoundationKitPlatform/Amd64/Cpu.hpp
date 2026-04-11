@@ -6,7 +6,7 @@
 
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
-#include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
 
 namespace FoundationKitPlatform::Amd64 {
 
@@ -173,9 +173,9 @@ namespace FoundationKitPlatform::Amd64 {
         CpuVendor v{};
         const auto r = Cpuid(0x0);
         // EBX:EDX:ECX layout per Intel/AMD spec.
-        FoundationKitMemory::MemoryCopy(v.string + 0, &r.ebx, 4);
-        FoundationKitMemory::MemoryCopy(v.string + 4, &r.edx, 4);
-        FoundationKitMemory::MemoryCopy(v.string + 8, &r.ecx, 4);
+        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 0, &r.ebx, 4);
+        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 4, &r.edx, 4);
+        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 8, &r.ecx, 4);
         v.string[12] = '\0';
         return v;
     }
@@ -201,10 +201,10 @@ namespace FoundationKitPlatform::Amd64 {
         // Each of the three leaves returns 16 bytes in EAX:EBX:ECX:EDX.
         for (u32 i = 0; i < 3; ++i) {
             const auto r = Cpuid(0x80000002u + i);
-            FoundationKitMemory::MemoryCopy(b.string + i * 16 + 0, &r.eax, 4);
-            FoundationKitMemory::MemoryCopy(b.string + i * 16 + 4, &r.ebx, 4);
-            FoundationKitMemory::MemoryCopy(b.string + i * 16 + 8, &r.ecx, 4);
-            FoundationKitMemory::MemoryCopy(b.string + i * 16 + 12, &r.edx, 4);
+            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 0,  &r.eax, 4);
+            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 4,  &r.ebx, 4);
+            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 8,  &r.ecx, 4);
+            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 12, &r.edx, 4);
         }
         b.string[48] = '\0';
         return b;
@@ -217,9 +217,9 @@ namespace FoundationKitPlatform::Amd64 {
         if (!IsHypervisor())
             return v;
         const auto r = Cpuid(0x40000000u);
-        FoundationKitMemory::MemoryCopy(v.string + 0, &r.ebx, 4);
-        FoundationKitMemory::MemoryCopy(v.string + 4, &r.ecx, 4);
-        FoundationKitMemory::MemoryCopy(v.string + 8, &r.edx, 4);
+        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 0, &r.ebx, 4);
+        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 4, &r.ecx, 4);
+        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 8, &r.edx, 4);
         v.string[12] = '\0';
         return v;
     }

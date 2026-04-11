@@ -36,9 +36,11 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/PerCpuTests.cpp
         Test/PerCpuAllocatorTests.cpp
         Test/TimeKeeperTests.cpp
+        Test/ConcurrencyPrimitivesTest.cpp
+        Test/RcuInfrastructureTest.cpp
     )
 
-    target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitOsl FoundationKitPlatform)
+    target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitPlatform)
     
     target_compile_options(FoundationKitTester PRIVATE -ffreestanding -nostdlib -fno-stack-protector)
 endif()

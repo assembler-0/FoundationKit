@@ -45,7 +45,12 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Structure/CircularLog.hpp
     Include/FoundationKitCxxStl/Structure/AtomicBitmap.hpp
     Include/FoundationKitCxxStl/Structure/InterruptSafeQueue.hpp
+    Include/FoundationKitCxxStl/Structure/MpscQueue.hpp
+    Include/FoundationKitCxxStl/Structure/RcuList.hpp
     Include/FoundationKitCxxStl/Structure/WorkQueue.hpp
+    Include/FoundationKitCxxStl/Sync/Rcu.hpp
+    Include/FoundationKitCxxStl/Sync/RcuPtr.hpp
+    Include/FoundationKitCxxStl/Sync/SeqLock.hpp
 )
 
 set(FOUNDATIONKITCXXSTL_SOURCES
@@ -57,7 +62,11 @@ add_library(FoundationKitCxxStl STATIC ${FOUNDATIONKITCXXSTL_HEADERS} ${FOUNDATI
 
 target_include_directories(FoundationKitCxxStl PUBLIC Include)
 
-target_link_libraries(FoundationKitCxxStl PUBLIC FoundationKitOsl FoundationKitPlatform)
+target_link_libraries(FoundationKitCxxStl PUBLIC FoundationKitOsl)
+target_include_directories(FoundationKitCxxStl PUBLIC
+    $<TARGET_PROPERTY:FoundationKitPlatform,INTERFACE_INCLUDE_DIRECTORIES>)
+target_compile_definitions(FoundationKitCxxStl PUBLIC
+    $<TARGET_PROPERTY:FoundationKitPlatform,INTERFACE_COMPILE_DEFINITIONS>)
 
 target_compile_options(FoundationKitCxxStl PRIVATE
     -fPIC

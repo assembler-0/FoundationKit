@@ -36,6 +36,7 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/PhysicalMemoryMap.hpp
     Include/FoundationKitMemory/PerCpuAllocator.hpp
     Include/FoundationKitMemory/PerCpuStatsAllocator.hpp
+    Include/FoundationKitMemory/RcuAllocatorAdapter.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES
