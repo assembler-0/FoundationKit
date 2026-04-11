@@ -34,6 +34,8 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/MemorySafety.hpp
     Include/FoundationKitMemory/RegionDescriptor.hpp
     Include/FoundationKitMemory/PhysicalMemoryMap.hpp
+    Include/FoundationKitMemory/PerCpuAllocator.hpp
+    Include/FoundationKitMemory/PerCpuStatsAllocator.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES
@@ -44,7 +46,7 @@ add_library(FoundationKitMemory ${FOUNDATIONKITMEMORY_SOURCES} ${FOUNDATIONKITME
 
 target_include_directories(FoundationKitMemory PUBLIC Include)
 
-target_link_libraries(FoundationKitMemory PUBLIC FoundationKitCxxStl)
+target_link_libraries(FoundationKitMemory PUBLIC FoundationKitCxxStl FoundationKitOsl)
 
 target_compile_options(FoundationKitMemory PRIVATE
     -fPIC

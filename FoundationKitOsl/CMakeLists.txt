@@ -2,6 +2,8 @@
 
 set(FOUNDATIONKITOSL_HEADERS
     Include/FoundationKitOsl/Osl.hpp
+    Include/FoundationKitOsl/SystemClock.hpp
+    Include/FoundationKitOsl/PerCpu.hpp
 )
 
 add_library(FoundationKitOsl INTERFACE ${FOUNDATIONKITOSL_HEADERS})

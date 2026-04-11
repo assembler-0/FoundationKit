@@ -4,6 +4,7 @@
 #include <FoundationKitCxxStl/Sync/Locks.hpp>
 #include <FoundationKitCxxStl/Sync/SharedLock.hpp>
 #include <FoundationKitMemory/MemoryCore.hpp>
+#include <FoundationKitMemory/MemoryOperations.hpp>
 
 namespace FoundationKitMemory {
 

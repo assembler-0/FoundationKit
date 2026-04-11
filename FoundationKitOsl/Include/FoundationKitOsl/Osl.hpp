@@ -19,6 +19,28 @@ void OslLog(const char *msg);
 /// @return True if features are enabled, false otherwise.
 bool OslIsSimdEnabled();
 
+/// @brief Get the current CPU ID.
+u32 OslGetCurrentCpuId();
+
+/// @brief Get the base address for the current CPU's Per-CPU data block.
+/// @return Pointer to the base of the Per-CPU instance region.
+void* OslGetPerCpuBase();
+
+/// @brief Get the base address of the Per-CPU data block for a specific CPU.
+/// @param cpu_id The logical CPU index.
+/// @return Pointer to the base of that CPU's instance region, or nullptr if cpu_id is invalid.
+void* OslGetPerCpuBaseFor(u32 cpu_id);
+
+/// @brief Get the current system monotonic ticks.
+u64 OslGetSystemTicks();
+
+/// @brief Get the frequency of system ticks (ticks per second).
+u64 OslGetSystemFrequency();
+
+/// @brief High-resolution delay in microseconds.
+/// @param microseconds Number of microseconds to wait.
+void OslMicroDelay(u64 microseconds);
+
 /// @brief Get the current thread ID.
 u64 OslGetCurrentThreadId();
 

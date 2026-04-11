@@ -67,9 +67,43 @@ extern "C" {
         (void)channel;
         // No-op in single-threaded mock
     }
-    static usize g_current_cpu_id = 0;
+    usize g_current_cpu_id = 0;
 
-    usize OslGetCurrentCpuId() noexcept {
-        return g_current_cpu_id;
+    u32 OslGetCurrentCpuId() {
+        return static_cast<u32>(g_current_cpu_id);
+    }
+
+    // ============================================================================
+    // Per-CPU block stubs
+    // ============================================================================
+
+    // 4 simulated CPUs, each with a 4 KiB block of zeroed storage.
+    static constexpr u32   k_cpu_count  = 4;
+    static constexpr usize k_block_size = 4096;
+    byte g_per_cpu_blocks[k_cpu_count][k_block_size]{};
+
+    void* OslGetPerCpuBase() {
+        return g_per_cpu_blocks[g_current_cpu_id];
+    }
+
+    void* OslGetPerCpuBaseFor(u32 cpu_id) {
+        if (cpu_id >= k_cpu_count) return nullptr;
+        return g_per_cpu_blocks[cpu_id];
+    }
+
+    // ============================================================================
+    // Timing stubs
+    // ============================================================================
+
+    u64 OslGetSystemTicks() {
+        return 0;
+    }
+
+    u64 OslGetSystemFrequency() {
+        return 1000000000ULL; // 1 GHz
+    }
+
+    void OslMicroDelay(u64 microseconds) {
+        (void)microseconds;
     }
 }
