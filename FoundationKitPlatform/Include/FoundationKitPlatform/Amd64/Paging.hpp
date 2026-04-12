@@ -47,7 +47,8 @@ namespace FoundationKitPlatform::Amd64 {
     /// A canonical address requires bits [63:N] to be sign-extensions of bit N-1,
     /// where N = VAddrBits(mode). Non-canonical addresses cause #GP on use.
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool IsCanonical(u64 vaddr, PagingMode mode) noexcept {
-        const u32 shift = VAddrBits(mode) - 1;
+        const u32 bits = VAddrBits(mode);
+        const u32 shift = bits - 1;
         // Arithmetic right-shift propagates the sign bit; the result must be
         // all-zeros (positive canonical) or all-ones (negative canonical).
         const i64 signed_addr = static_cast<i64>(vaddr);

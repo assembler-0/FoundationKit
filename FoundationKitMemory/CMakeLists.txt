@@ -34,6 +34,13 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/PerCpuStatsAllocator.hpp
     Include/FoundationKitMemory/RcuAllocatorAdapter.hpp
     Include/FoundationKitMemory/PoisoningAllocator.hpp
+    Include/FoundationKitMemory/Vmm/AddressTypes.hpp
+    Include/FoundationKitMemory/Vmm/KernelMemoryManager.hpp
+    Include/FoundationKitMemory/Vmm/MemoryPressureManager.hpp
+    Include/FoundationKitMemory/Vmm/PageFrameAllocator.hpp
+    Include/FoundationKitMemory/Vmm/VirtualAddressSpace.hpp
+    Include/FoundationKitMemory/Vmm/VmaDescriptor.hpp
+    Include/FoundationKitMemory/Vmm/VmmConcepts.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES

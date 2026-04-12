@@ -17,11 +17,12 @@ namespace FoundationKitMemory {
         Unknown       = 0x0000,
         KernelStack   = 0x0001,
         PageTable     = 0x0002,
-        TaskControl   = 0x0003,
-        NetworkBuffer = 0x0004,
-        FileHandle    = 0x0005,
-        IrqContext    = 0x0006,
-        UserBase      = 0x0100,
+        TaskControl       = 0x0003,
+        NetworkBuffer     = 0x0004,
+        FileHandle        = 0x0005,
+        IrqContext        = 0x0006,
+        VirtualMemoryArea = 0x0007,
+        UserBase          = 0x0100,
     };
 
     // =========================================================================

@@ -32,6 +32,9 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/LazyInit.hpp
     Include/FoundationKitCxxStl/Base/FlatMap.hpp
     Include/FoundationKitCxxStl/Base/HashMap.hpp
+    Include/FoundationKitCxxStl/Base/Math.hpp
+    Include/FoundationKitCxxStl/Base/TypeIndex.hpp
+    Include/FoundationKitCxxStl/Base/Result.hpp
     Include/FoundationKitCxxStl/Meta/Concepts.hpp
     Include/FoundationKitCxxStl/Std/initializer_list
     Include/FoundationKitCxxStl/Structure/BitSet.hpp

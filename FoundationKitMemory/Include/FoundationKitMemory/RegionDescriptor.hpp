@@ -30,6 +30,7 @@ namespace FoundationKitMemory {
         Cacheable  = 1 << 3,
         Pinned     = 1 << 4,
         Zeroed     = 1 << 5,
+        User       = 1 << 6,
     };
 
     [[nodiscard]] constexpr RegionFlags operator|(RegionFlags a, RegionFlags b) noexcept {

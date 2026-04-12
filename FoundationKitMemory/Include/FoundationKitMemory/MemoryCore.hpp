@@ -3,6 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitCxxStl/Base/Math.hpp>
 
 namespace FoundationKitMemory {
 
@@ -31,14 +32,12 @@ namespace FoundationKitMemory {
 
         [[nodiscard]] constexpr uptr AlignUp(uptr ptr) const noexcept {
             FK_BUG_ON(value == 0, "Alignment::AlignUp: internal state corruption (value is 0)");
-            uptr result = (ptr + value - 1) & ~(value - 1);
-            FK_BUG_ON(result < ptr, "Alignment::AlignUp: address space wraparound (ptr: {}, align: {})", ptr, value);
-            return result;
+            return FoundationKitCxxStl::AlignUp(ptr, value);
         }
 
         [[nodiscard]] constexpr uptr AlignDown(uptr ptr) const noexcept {
             FK_BUG_ON(value == 0, "Alignment::AlignDown: internal state corruption (value is 0)");
-            return ptr & ~(value - 1);
+            return FoundationKitCxxStl::AlignDown(ptr, value);
         }
     };
 

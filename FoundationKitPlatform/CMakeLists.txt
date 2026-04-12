@@ -9,6 +9,7 @@ set(FOUNDATIONKITPLATFORM_HEADERS
     Include/FoundationKitPlatform/Amd64/Cpu.hpp
     Include/FoundationKitPlatform/Amd64/ControlRegs.hpp
     Include/FoundationKitPlatform/Amd64/Paging.hpp
+    Include/FoundationKitPlatform/Amd64/Amd64PageTableManager.hpp
     Include/FoundationKitPlatform/Amd64/Clocksource.hpp
     Include/FoundationKitPlatform/Arm64/Cpu.hpp
     Include/FoundationKitPlatform/Arm64/Clocksource.hpp
