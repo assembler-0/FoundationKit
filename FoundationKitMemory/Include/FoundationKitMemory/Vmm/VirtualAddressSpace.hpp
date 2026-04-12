@@ -221,12 +221,10 @@ namespace FoundationKitMemory {
 
                 usize right_gap = 0;
                 if (n->right) {
-                    VmaDescriptor* r = ToEntry(n->right);
-                    // Gap between end of this VMA and start of right child's leftmost VMA.
-                    // The right child's base is the smallest base in its subtree only if
-                    // the subtree is a single node; for a subtree we need the leftmost node.
-                    // However, because the tree is ordered by base, the right child's own
-                    // base is >= end, so we use it directly as a conservative lower bound.
+                    // Successor is the leftmost node of the right subtree.
+                    RbNode* leftmost = n->right;
+                    while (leftmost->left) leftmost = leftmost->left;
+                    VmaDescriptor* r = ToEntry(leftmost);
                     right_gap = r->base.value > end.value ? r->base.value - end.value : 0;
                 }
 
