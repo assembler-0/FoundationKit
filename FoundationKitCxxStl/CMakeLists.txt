@@ -48,6 +48,8 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Structure/MpscQueue.hpp
     Include/FoundationKitCxxStl/Structure/RcuList.hpp
     Include/FoundationKitCxxStl/Sync/AtomicFlag.hpp
+    Include/FoundationKitCxxStl/Sync/AtomicPair.hpp
+    Include/FoundationKitCxxStl/Sync/BitSpinLock.hpp
     Include/FoundationKitCxxStl/Sync/Cas.hpp
     Include/FoundationKitCxxStl/Sync/TaggedPtr.hpp
     Include/FoundationKitCxxStl/Structure/WorkQueue.hpp

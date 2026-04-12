@@ -39,6 +39,7 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/ConcurrencyPrimitivesTest.cpp
         Test/RcuInfrastructureTest.cpp
         Test/AtomicFlagAndTaggedPtrTests.cpp
+        Test/BitSpinLockAndAtomicPairTests.cpp
     )
 
     target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitPlatform)
