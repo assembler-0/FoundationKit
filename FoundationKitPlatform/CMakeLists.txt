@@ -17,6 +17,8 @@ set(FOUNDATIONKITPLATFORM_HEADERS
         Include/FoundationKitPlatform/RiscV64/Clocksource.hpp
         Include/FoundationKitPlatform/Clocksource/ClockSource.hpp
         Include/FoundationKitPlatform/Clocksource/TimeKeeper.hpp
+        Include/FoundationKitPlatform/IrqChip/IrqChip.hpp
+        Include/FoundationKitPlatform/Amd64/IrqChip.hpp
 )
 
 set(FOUNDATIONKITPLATFORM_SOURCES
