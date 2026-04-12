@@ -5,7 +5,6 @@
 #include <FoundationKitCxxStl/Base/Hash.hpp>
 #include <FoundationKitCxxStl/Base/Vector.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
-#include <FoundationKitCxxStl/Base/Pair.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Safety.hpp>
 

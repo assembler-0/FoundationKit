@@ -19,23 +19,19 @@
 #include <FoundationKitCxxStl/Base/Logger.hpp>
 
 // Structure components
-#include <FoundationKitCxxStl/Structure/SinglyLinkedList.hpp>
-#include <FoundationKitCxxStl/Structure/DoublyLinkedList.hpp>
-#include <FoundationKitCxxStl/Structure/CircularLinkedList.hpp>
-#include <FoundationKitCxxStl/Structure/IntrusiveDoublyLinkedList.hpp>
+#include <FoundationKitCxxStl/Base/HashMap.hpp>
 #include <FoundationKitCxxStl/Structure/BitSet.hpp>
-#include <FoundationKitCxxStl/Structure/HashMap.hpp>
+#include <FoundationKitCxxStl/Structure/CircularLinkedList.hpp>
+#include <FoundationKitCxxStl/Structure/DoublyLinkedList.hpp>
+#include <FoundationKitCxxStl/Structure/IntrusiveDoublyLinkedList.hpp>
+#include <FoundationKitCxxStl/Structure/SinglyLinkedList.hpp>
 
 // Memory components
 #include <FoundationKitMemory/BumpAllocator.hpp>
-#include <FoundationKitMemory/FreeListAllocator.hpp>
-#include <FoundationKitMemory/SlabAllocator.hpp>
-#include <FoundationKitMemory/BuddyAllocator.hpp>
 #include <FoundationKitMemory/AnyAllocator.hpp>
 #include <FoundationKitMemory/UniquePtr.hpp>
 #include <FoundationKitMemory/SharedPtr.hpp>
 #include <FoundationKitMemory/PoolAllocator.hpp>
-#include <FoundationKitMemory/GlobalAllocator.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;

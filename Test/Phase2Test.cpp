@@ -1,9 +1,9 @@
-#include <Test/TestFramework.hpp>
-#include <FoundationKitCxxStl/Structure/FlatMap.hpp>
-#include <FoundationKitCxxStl/Structure/CircularLog.hpp>
-#include <FoundationKitCxxStl/Structure/AtomicBitmap.hpp>
-#include <FoundationKitCxxStl/Base/LazyInit.hpp>
+#include <FoundationKitCxxStl/Base/FlatMap.hpp>
 #include <FoundationKitCxxStl/Base/Flags.hpp>
+#include <FoundationKitCxxStl/Base/LazyInit.hpp>
+#include <FoundationKitCxxStl/Structure/AtomicBitmap.hpp>
+#include <FoundationKitCxxStl/Structure/CircularLog.hpp>
+#include <Test/TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitCxxStl::Structure;

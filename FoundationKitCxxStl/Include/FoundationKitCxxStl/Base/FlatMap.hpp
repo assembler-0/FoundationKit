@@ -186,7 +186,7 @@ namespace FoundationKitCxxStl::Structure {
     private:
         [[nodiscard]] constexpr Entry* FindEntry(const K& key) noexcept {
             Entry* pos = m_data;
-            isize count = static_cast<isize>(m_size);
+            auto count = static_cast<isize>(m_size);
             while (count > 0) {
                 isize step = count / 2;
                 Entry* it = pos + step;
@@ -199,7 +199,7 @@ namespace FoundationKitCxxStl::Structure {
 
         [[nodiscard]] constexpr const Entry* FindEntry(const K& key) const noexcept {
             const Entry* pos = m_data;
-            isize count = static_cast<isize>(m_size);
+            auto count = static_cast<isize>(m_size);
             while (count > 0) {
                 isize step = count / 2;
                 const Entry* it = pos + step;

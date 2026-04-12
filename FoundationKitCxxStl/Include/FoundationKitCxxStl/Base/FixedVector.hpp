@@ -21,7 +21,7 @@ namespace FoundationKitCxxStl::Structure {
         using Iterator = T*;
         using ConstIterator = const T*;
 
-        constexpr FixedVector() noexcept : m_size(0) {}
+        constexpr FixedVector() noexcept : m_data{} {}
 
         constexpr ~FixedVector() {
             Clear();
