@@ -6,10 +6,13 @@ set(FOUNDATIONKITPLATFORM_HEADERS
     Include/FoundationKitPlatform/HostArchitecture.hpp
     Include/FoundationKitPlatform/MachineWidth.hpp
     Include/FoundationKitPlatform/Bitfield.hpp
+    Include/FoundationKitPlatform/Amd64/Cpu.hpp
     Include/FoundationKitPlatform/Amd64/ControlRegs.hpp
     Include/FoundationKitPlatform/Amd64/Paging.hpp
     Include/FoundationKitPlatform/Amd64/Clocksource.hpp
+    Include/FoundationKitPlatform/Arm64/Cpu.hpp
     Include/FoundationKitPlatform/Arm64/Clocksource.hpp
+    Include/FoundationKitPlatform/RiscV64/Cpu.hpp
     Include/FoundationKitPlatform/RiscV64/Clocksource.hpp
     Include/FoundationKitPlatform/Clocksource/ClockSource.hpp
     Include/FoundationKitPlatform/Clocksource/TimeKeeper.hpp

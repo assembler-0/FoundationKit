@@ -192,6 +192,22 @@ namespace FoundationKitCxxStl::Base::CompilerBuiltins {
         __builtin_ia32_pause();
     }
 
+    /// @brief Compiler-only reorder barrier — zero hardware instructions emitted.
+    ///
+    /// Prevents the compiler from moving memory accesses across this point.
+    /// On x86 (TSO) this is sufficient to pin a MemCpy between two atomic
+    /// counter stores in a SeqLock because the hardware already provides
+    /// store-store and load-load ordering. On weakly-ordered architectures
+    /// (ARM64, RISC-V) the surrounding Release/Acquire atomics supply the
+    /// hardware fence; this barrier only stops the *compiler* from hoisting
+    /// or sinking the MemCpy out of the critical window.
+    ///
+    /// Do NOT substitute this for a hardware fence in any context that
+    /// requires cross-CPU visibility ordering.
+    inline void CompilerBarrier() noexcept {
+        __asm__ volatile("" ::: "memory");
+    }
+
     /// @brief Issue a full memory barrier (acquire + release semantics).
     inline void FullMemoryBarrier() noexcept {
         __atomic_thread_fence(__ATOMIC_SEQ_CST);

@@ -116,12 +116,22 @@ namespace FoundationKitCxxStl::Sync {
             FK_BUG_ON(cpu >= MaxCpus,
                 "RcuDomain::ReportQs: cpu_id {} >= MaxCpus {}", cpu, MaxCpus);
 
-            const usize word  = cpu / 64u;
-            const u64   bit   = static_cast<u64>(1) << (cpu % 64u);
+            const usize word = cpu / 64u;
+            const u64   bit  = static_cast<u64>(1) << (cpu % 64u);
 
-            if (const u64 prev = m_pending_mask[word].FetchAnd(~bit, MemoryOrder::Release); !(prev & bit)) return;
+            // AcqRel: the Release half publishes that this CPU has passed a
+            // quiescent state, pairing with the Acquire loads in the grace-period
+            // scan below and in Synchronize(). The Acquire half is mandatory: it
+            // ensures the subsequent scan of all pending_mask words observes the
+            // Release stores from *other* CPUs' FetchAnd calls. Without Acquire
+            // here, the zero-check loop can read stale non-zero values from other
+            // CPUs and miss grace-period completion entirely (silent livelock).
+            const u64 prev = m_pending_mask[word].FetchAnd(~bit, MemoryOrder::AcqRel);
 
-            // Acquire: see the Release stores from all other CPUs' ReportQs calls
+            // If our bit was already clear, we are not part of the current grace
+            // period (e.g. CPU came online after Synchronize armed the mask).
+            if (!(prev & bit)) return;
+
             for (usize i = 0; i < kWords; ++i) {
                 if (m_pending_mask[i].Load(MemoryOrder::Acquire) != 0) return;
             }
@@ -139,15 +149,21 @@ namespace FoundationKitCxxStl::Sync {
         ///                    The kernel must supply this; FoundationKit does not
         ///                    own the CPU topology.
         void Synchronize(u64 const (&online_mask)[kWords]) noexcept {
-            // Arm: set pending bits for all online CPUs.
             {
                 LockGuard guard(m_lock);
                 for (usize i = 0; i < kWords; ++i)
                     m_pending_mask[i].Store(online_mask[i], MemoryOrder::Release);
             }
 
+            // Spin until every CPU has reported a quiescent state. CpuPause is
+            // placed at the top of the retry path so it fires on every failed
+            // scan iteration, including those that exit the inner loop early via
+            // break. Without this, a partial scan (first non-zero word found
+            // immediately) restarts the outer loop with no pause, saturating the
+            // memory bus with back-to-back Acquire loads on a hot cache line.
             bool done = false;
             while (!done) {
+                CompilerBuiltins::CpuPause();
                 done = true;
                 for (usize i = 0; i < kWords; ++i) {
                     if (m_pending_mask[i].Load(MemoryOrder::Acquire) != 0) {
@@ -155,7 +171,6 @@ namespace FoundationKitCxxStl::Sync {
                         break;
                     }
                 }
-                if (!done) CompilerBuiltins::CpuPause();
             }
 
             DrainCallbacks();

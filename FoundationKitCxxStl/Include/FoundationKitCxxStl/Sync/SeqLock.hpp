@@ -82,17 +82,19 @@ namespace FoundationKitCxxStl::Sync {
         ///
         /// @param value The new value to publish.
         void Write(const T& value) noexcept {
-            // Release: the data writes below must not be reordered before this
-            // increment by the CPU or compiler.
             const usize seq = m_seq.Load(MemoryOrder::Relaxed);
             FK_BUG_ON((seq & 1u) != 0,
                 "SeqLock::Write: sequence counter is odd ({}) — concurrent writers detected "
                 "or previous Write() did not complete cleanly", seq);
+
             m_seq.Store(seq + 1, MemoryOrder::Release);
 
+            CompilerBuiltins::CompilerBarrier();
             CompilerBuiltins::MemCpy(&m_data, &value, sizeof(T));
+            CompilerBuiltins::CompilerBarrier();
 
-            // Release: makes the data writes visible before the counter update.
+            // Release: makes all data writes visible to any reader that
+            // subsequently loads an even counter value >= seq+2.
             m_seq.Store(seq + 2, MemoryOrder::Release);
         }
 
@@ -107,19 +109,16 @@ namespace FoundationKitCxxStl::Sync {
             T snapshot;
             usize seq0, seq1;
             do {
-                // Acquire: see the data written before the even counter store.
                 seq0 = m_seq.Load(MemoryOrder::Acquire);
-                // Spin while a write is in progress (odd counter).
-                // CpuPause() reduces power and avoids memory-bus saturation.
                 while (seq0 & 1u) {
                     CompilerBuiltins::CpuPause();
                     seq0 = m_seq.Load(MemoryOrder::Acquire);
                 }
 
+                CompilerBuiltins::CompilerBarrier();
                 CompilerBuiltins::MemCpy(&snapshot, &m_data, sizeof(T));
+                CompilerBuiltins::CompilerBarrier();
 
-                // Acquire: if seq1 == seq0, the MemCpy above saw a consistent
-                // snapshot (no write started or completed during our read).
                 seq1 = m_seq.Load(MemoryOrder::Acquire);
             } while (seq0 != seq1);
 
@@ -135,9 +134,12 @@ namespace FoundationKitCxxStl::Sync {
         /// @return true if the snapshot is consistent; false if it should be discarded.
         [[nodiscard]] bool TryRead(T& out) const noexcept {
             const usize seq0 = m_seq.Load(MemoryOrder::Acquire);
-            if (seq0 & 1u) return false; // write in progress
+            if (seq0 & 1u) return false;
 
+            // Same compiler pinning rationale as Read().
+            CompilerBuiltins::CompilerBarrier();
             CompilerBuiltins::MemCpy(&out, &m_data, sizeof(T));
+            CompilerBuiltins::CompilerBarrier();
 
             const usize seq1 = m_seq.Load(MemoryOrder::Acquire);
             return seq0 == seq1;
@@ -149,8 +151,6 @@ namespace FoundationKitCxxStl::Sync {
         }
 
     private:
-        // m_seq on its own cache line: readers and writers only bounce this
-        // line during the brief odd-sequence window, not the data line.
         alignas(64) Atomic<usize> m_seq;
                     T             m_data;
     };

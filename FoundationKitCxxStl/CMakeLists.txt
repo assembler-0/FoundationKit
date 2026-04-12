@@ -47,6 +47,9 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Structure/InterruptSafeQueue.hpp
     Include/FoundationKitCxxStl/Structure/MpscQueue.hpp
     Include/FoundationKitCxxStl/Structure/RcuList.hpp
+    Include/FoundationKitCxxStl/Sync/AtomicFlag.hpp
+    Include/FoundationKitCxxStl/Sync/Cas.hpp
+    Include/FoundationKitCxxStl/Sync/TaggedPtr.hpp
     Include/FoundationKitCxxStl/Structure/WorkQueue.hpp
     Include/FoundationKitCxxStl/Sync/Rcu.hpp
     Include/FoundationKitCxxStl/Sync/RcuPtr.hpp

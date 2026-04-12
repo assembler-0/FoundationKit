@@ -81,9 +81,36 @@ namespace FoundationKitCxxStl::Sync {
             return CompilerBuiltins::AtomicFetchXor(&m_value, val, static_cast<int>(order));
         }
 
-        /// @brief Operator overloads for convenience.
+        /// @brief FetchMax: atomically store max(current, val), return old value.
+        /// @desc  Uses a weak CAS loop. On x86 the loop almost never retries;
+        ///        on ARM the LL/SC pair may retry under contention.
+        T FetchMax(T val, MemoryOrder order = MemoryOrder::SeqCst) noexcept requires (Integral<T> || Pointer<T>) {
+            T current = Load(MemoryOrder::Relaxed);
+            while (current < val) {
+                // Weak CAS: failure refreshes `current` automatically.
+                if (CompareExchange(current, val, true, order, MemoryOrder::Relaxed))
+                    return current;
+            }
+            return current;
+        }
+
+        /// @brief FetchMin: atomically store min(current, val), return old value.
+        T FetchMin(T val, MemoryOrder order = MemoryOrder::SeqCst) noexcept requires (Integral<T> || Pointer<T>) {
+            T current = Load(MemoryOrder::Relaxed);
+            while (current > val) {
+                if (CompareExchange(current, val, true, order, MemoryOrder::Relaxed))
+                    return current;
+            }
+            return current;
+        }
+
+        /// @brief Implicit load for read contexts (Acquire).
         operator T() const noexcept { return Load(); }
-        T operator=(T value) noexcept { Store(value); return value; }
+
+        /// @brief Assignment operator deleted: `atomic = x` looks like a plain
+        ///        store but emits a full SeqCst fence. Use Store(v, order) explicitly
+        ///        to make the intended ordering visible at the call site.
+        T operator=(T) = delete;
 
         T operator++() noexcept { return FetchAdd(1) + 1; }
         T operator++(int) noexcept { return FetchAdd(1); }

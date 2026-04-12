@@ -5,8 +5,8 @@
 #ifdef FOUNDATIONKITPLATFORM_ARCH_X86_64
 
 #include <FoundationKitCxxStl/Base/Bug.hpp>
-#include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+#include <FoundationKitCxxStl/Base/Types.hpp>
 
 namespace FoundationKitPlatform::Amd64 {
 
@@ -201,9 +201,9 @@ namespace FoundationKitPlatform::Amd64 {
         // Each of the three leaves returns 16 bytes in EAX:EBX:ECX:EDX.
         for (u32 i = 0; i < 3; ++i) {
             const auto r = Cpuid(0x80000002u + i);
-            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 0,  &r.eax, 4);
-            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 4,  &r.ebx, 4);
-            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 8,  &r.ecx, 4);
+            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 0, &r.eax, 4);
+            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 4, &r.ebx, 4);
+            FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 8, &r.ecx, 4);
             FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(b.string + i * 16 + 12, &r.edx, 4);
         }
         b.string[48] = '\0';
@@ -315,8 +315,8 @@ namespace FoundationKitPlatform::Amd64 {
         }
         // Paranoid: out_count must not exceed the buffer we were given.
         FK_BUG_ON(out_count > kMaxTopologyLevels,
-            "GetExtendedTopology: wrote more entries ({}) than kMaxTopologyLevels ({})",
-            out_count, kMaxTopologyLevels);
+                  "GetExtendedTopology: wrote more entries ({}) than kMaxTopologyLevels ({})", out_count,
+                  kMaxTopologyLevels);
     }
 
     // =========================================================================
@@ -328,9 +328,6 @@ namespace FoundationKitPlatform::Amd64 {
     /// without unconditionally re-enabling interrupts on exit.
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 SaveAndDisableInterrupts() noexcept {
         u64 flags;
-        // PUSHFQ pushes RFLAGS onto the stack; we pop it into a register.
-        // The "memory" clobber prevents the compiler from moving memory
-        // accesses out of the critical section.
         __asm__ volatile("pushfq\n\t"
                          "pop %0\n\t"
                          "cli"
@@ -367,8 +364,7 @@ namespace FoundationKitPlatform::Amd64 {
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void Hlt() noexcept {
         // Halting with interrupts disabled means the CPU will never wake up.
         // This is almost always a kernel bug (missed Sti() before Hlt()).
-        FK_WARN_ON(!InterruptsEnabled(),
-            "Hlt: called with interrupts disabled — CPU would halt forever");
+        FK_WARN_ON(!InterruptsEnabled(), "Hlt: called with interrupts disabled — CPU would halt forever");
         __asm__ volatile("hlt" ::: "memory");
     }
 
@@ -478,9 +474,6 @@ namespace FoundationKitPlatform::Amd64 {
     /// @param retries  Maximum attempts before giving up (Intel recommends 10).
     /// @returns        True if a valid random value was produced.
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool Rdrand64(u64 &out, u32 retries = 10) noexcept {
-        // The "=r" constraint lets the compiler pick any GPR for the output.
-        // The "=@ccc" constraint captures CF directly into a bool without a
-        // separate SETC instruction — a GCC/Clang C23 asm flag output.
         for (u32 i = 0; i < retries; ++i) {
             u8 ok;
             __asm__ volatile("rdrand %1" : "=@ccc"(ok), "=r"(out)::"cc");
@@ -520,42 +513,13 @@ namespace FoundationKitPlatform::Amd64 {
         return false;
     }
 
-    // =========================================================================
-    // Atomic Compare-Exchange (memory operand forms)
-    // =========================================================================
-    //
-    // These are the *memory-operand* forms of CMPXCHG, distinct from the
-    // compiler's __atomic builtins which operate on register-sized values.
-    // They are needed when:
-    //   - The target is a volatile MMIO location that must not be torn
-    //   - You need the exact LOCK prefix semantics on a specific address
-    //   - CMPXCHG16B is required for 128-bit lock-free updates (e.g. tagged
-    //     pointers, double-word descriptors in GDT/IDT manipulation)
-
-    /// @brief 64-bit LOCK CMPXCHG on a memory operand.
-    ///
-    /// Atomically: if *ptr == expected, writes desired and returns true.
-    /// On failure, expected is updated with the current value at *ptr.
-    ///
-    /// @param ptr       Target memory location (must be 8-byte aligned).
-    /// @param expected  In: value to compare against. Out: actual value if mismatch.
-    /// @param desired   Value to write on success.
-    /// @returns         True if the exchange succeeded.
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool Cmpxchg64(volatile u64 *ptr, u64 &expected,
-                                                                   u64 desired) noexcept {
-        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 8 != 0, "Cmpxchg64: pointer must be 8-byte aligned");
-        u8 succeeded;
-        __asm__ volatile("lock cmpxchgq %3, %1"
-                         : "=@ccz"(succeeded), "+m"(*ptr), "+a"(expected)
-                         : "r"(desired)
-                         : "memory");
-        return succeeded;
-    }
-
     /// @brief 32-bit LOCK CMPXCHG on a memory operand.
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool Cmpxchg32(volatile u32 *ptr, u32 &expected,
-                                                                   u32 desired) noexcept {
-        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 4 != 0, "Cmpxchg32: pointer must be 4-byte aligned");
+    /// @param ptr       Must be 4-byte aligned.
+    /// @param expected  In/Out: compared against *ptr; updated on failure.
+    /// @param desired   Written on success.
+    /// @return          True if the exchange succeeded.
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool Cas32(volatile u32 *ptr, u32 &expected, u32 desired) noexcept {
+        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 4 != 0, "Amd64::Cas32: pointer must be 4-byte aligned");
         u8 succeeded;
         __asm__ volatile("lock cmpxchgl %3, %1"
                          : "=@ccz"(succeeded), "+m"(*ptr), "+a"(expected)
@@ -564,59 +528,65 @@ namespace FoundationKitPlatform::Amd64 {
         return succeeded;
     }
 
-    /// @brief 128-bit compare-exchange via LOCK CMPXCHG16B.
-    ///
-    /// Atomically compares the 128-bit value at *ptr with {expected_hi:expected_lo}.
-    /// If equal, writes {desired_hi:desired_lo}. On failure, the expected pair is
-    /// updated with the current contents of *ptr.
-    ///
-    /// Primary use cases:
-    ///   - Lock-free tagged pointer updates (pointer + ABA counter in one word)
-    ///   - Atomic update of 128-bit descriptors (e.g. GDT system segment entries)
-    ///
-    /// @param ptr          Target memory (MUST be 16-byte aligned — #GP otherwise).
-    /// @param expected_lo  In/Out: low 64 bits of the expected value (maps to RAX).
-    /// @param expected_hi  In/Out: high 64 bits of the expected value (maps to RDX).
-    /// @param desired_lo   Low 64 bits to write on success (maps to RBX).
-    /// @param desired_hi   High 64 bits to write on success (maps to RCX).
-    /// @returns            True if the exchange succeeded (ZF=1).
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool
-    Cmpxchg16b(volatile u64 *ptr, u64 &expected_lo, u64 &expected_hi, u64 desired_lo, u64 desired_hi) noexcept {
-        // 16-byte alignment is a hard architectural requirement: a misaligned
-        // CMPXCHG16B raises #GP(0) unconditionally, even with the LOCK prefix.
-        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 16 != 0,
-                  "Cmpxchg16b: pointer must be 16-byte aligned — misalignment causes #GP");
+    /// @brief 64-bit LOCK CMPXCHG on a memory operand.
+    /// @param ptr       Must be 8-byte aligned.
+    /// @param expected  In/Out: compared against *ptr; updated on failure.
+    /// @param desired   Written on success.
+    /// @return          True if the exchange succeeded.
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool Cas64(volatile u64 *ptr, u64 &expected, u64 desired) noexcept {
+        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 8 != 0, "Amd64::Cas64: pointer must be 8-byte aligned");
         u8 succeeded;
-        // RBX and RCX hold the desired value. We use explicit register constraints
-        // because the instruction encoding hardwires these registers.
-        // "+A" is not valid for 128-bit in 64-bit mode; we must split into
-        // "=a"/"=d" for the expected pair explicitly.
-        __asm__ volatile("lock cmpxchg16b %1"
+        __asm__ volatile("lock cmpxchgq %3, %1"
+                         : "=@ccz"(succeeded), "+m"(*ptr), "+a"(expected)
+                         : "r"(desired)
+                         : "memory");
+        return succeeded;
+    }
+
+    /// @brief 64-bit LOCK CMPXCHG8B — EDX:EAX / ECX:EBX split form.
+    ///
+    /// Superseded by Cas64 on x86-64 for normal use. Retained for:
+    ///   - Legacy 32-bit data structure access.
+    ///   - Firmware interfaces that require the explicit EDX:EAX split.
+    ///
+    /// @param ptr          Must be 8-byte aligned.
+    /// @param expected_lo  In/Out: low 32 bits (EAX).
+    /// @param expected_hi  In/Out: high 32 bits (EDX).
+    /// @param desired_lo   Low 32 bits to write on success (EBX).
+    /// @param desired_hi   High 32 bits to write on success (ECX).
+    /// @return             True if the exchange succeeded.
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool
+    Cas64Split(volatile u32 *ptr, u32 &expected_lo, u32 &expected_hi, u32 desired_lo, u32 desired_hi) noexcept {
+        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 8 != 0, "Amd64::Cas64Split: pointer must be 8-byte aligned");
+        u8 succeeded;
+        __asm__ volatile("lock cmpxchg8b %1"
                          : "=@ccz"(succeeded), "+m"(*ptr), "+a"(expected_lo), "+d"(expected_hi)
                          : "b"(desired_lo), "c"(desired_hi)
                          : "memory");
         return succeeded;
     }
 
-    /// @brief 64-bit compare-exchange via LOCK CMPXCHG8B (memory operand form).
+    /// @brief 128-bit LOCK CMPXCHG16B.
     ///
-    /// Operates on a 64-bit memory location using the EDX:EAX / ECX:EBX register
-    /// pairs. On x86-64 this is largely superseded by the 64-bit register form of
-    /// CMPXCHG, but remains useful for:
-    ///   - Accessing 64-bit fields in legacy 32-bit data structures
-    ///   - Explicit EDX:EAX split semantics required by some firmware interfaces
+    /// Atomically compares *ptr with {expected_lo, expected_hi}.
+    /// On success writes {desired_lo, desired_hi}; on failure updates expected.
     ///
-    /// @param ptr          Target memory (must be 8-byte aligned).
-    /// @param expected_lo  In/Out: low 32 bits (EAX).
-    /// @param expected_hi  In/Out: high 32 bits (EDX).
-    /// @param desired_lo   Low 32 bits to write on success (EBX).
-    /// @param desired_hi   High 32 bits to write on success (ECX).
-    /// @returns            True if the exchange succeeded.
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool
-    Cmpxchg8b(volatile u32 *ptr, u32 &expected_lo, u32 &expected_hi, u32 desired_lo, u32 desired_hi) noexcept {
-        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 8 != 0, "Cmpxchg8b: pointer must be 8-byte aligned");
+    /// Use cases: tagged-pointer ABA prevention, atomic GDT descriptor update.
+    ///
+    /// @param ptr          MUST be 16-byte aligned — misalignment raises #GP.
+    /// @param expected_lo  In/Out: low 64 bits (RAX).
+    /// @param expected_hi  In/Out: high 64 bits (RDX).
+    /// @param desired_lo   Low 64 bits to write on success (RBX).
+    /// @param desired_hi   High 64 bits to write on success (RCX).
+    /// @return             True if the exchange succeeded (ZF=1).
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool Cas128(volatile u64 *ptr, u64 &expected_lo, u64 &expected_hi,
+                                                                u64 desired_lo, u64 desired_hi) noexcept {
+        FK_BUG_ON(reinterpret_cast<uptr>(ptr) % 16 != 0,
+                  "Amd64::Cas128: pointer must be 16-byte aligned — misalignment causes #GP");
         u8 succeeded;
-        __asm__ volatile("lock cmpxchg8b %1"
+        // RBX/RCX are hardwired by the instruction encoding.
+        // "+A" is invalid for 128-bit in 64-bit mode; split into +a/+d.
+        __asm__ volatile("lock cmpxchg16b %1"
                          : "=@ccz"(succeeded), "+m"(*ptr), "+a"(expected_lo), "+d"(expected_hi)
                          : "b"(desired_lo), "c"(desired_hi)
                          : "memory");

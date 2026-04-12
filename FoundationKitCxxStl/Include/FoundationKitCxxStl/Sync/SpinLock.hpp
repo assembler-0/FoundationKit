@@ -1,6 +1,8 @@
 #pragma once
 
+#include <FoundationKitCxxStl/Sync/AtomicFlag.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+#include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 
@@ -15,22 +17,23 @@ namespace FoundationKitCxxStl::Sync {
         constexpr SpinLock() noexcept = default;
 
         void Lock() noexcept {
-            while (CompilerBuiltins::AtomicTestAndSet(&m_locked, __ATOMIC_ACQUIRE)) {
+            while (m_flag.TestAndSet(MemoryOrder::Acquire)) {
                 CompilerBuiltins::CpuPause();
             }
         }
 
         void Unlock() noexcept {
-
-            CompilerBuiltins::AtomicClear(&m_locked, __ATOMIC_RELEASE);
+            FK_BUG_ON(!m_flag.Test(MemoryOrder::Relaxed),
+                "SpinLock::Unlock: unlocking a lock that is not held");
+            m_flag.Clear(MemoryOrder::Release);
         }
 
         bool TryLock() noexcept {
-            return !CompilerBuiltins::AtomicTestAndSet(&m_locked, __ATOMIC_ACQUIRE);
+            return !m_flag.TestAndSet(MemoryOrder::Acquire);
         }
 
     private:
-        volatile bool m_locked = false;
+        AtomicFlag m_flag;
     };
 
 } // namespace FoundationKitCxxStl::Sync
