@@ -135,13 +135,13 @@ namespace FoundationKitCxxStl::Structure {
             FK_BUG_ON((capacity & (capacity - 1)) != 0,
                 "DynamicRingBuffer: capacity ({}) must be a power of two", capacity);
 
-            const auto res = m_alloc.Allocate(capacity * sizeof(T), alignof(T));
+            const auto res = m_alloc.Allocate(capacity * sizeof(T));
             FK_BUG_ON(!res.ok(), "DynamicRingBuffer: allocation of {} slots failed", capacity);
             m_slots = static_cast<T*>(res.ptr);
         }
 
         ~DynamicRingBuffer() noexcept {
-            if (m_slots) m_alloc.Deallocate(m_slots, m_capacity * sizeof(T), alignof(T));
+            if (m_slots) m_alloc.Deallocate(m_slots, m_capacity * sizeof(T));
         }
 
         DynamicRingBuffer(const DynamicRingBuffer&)            = delete;
