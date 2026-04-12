@@ -43,6 +43,7 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/XArrayAndLruCacheTests.cpp
         Test/SkipListAndBTreeTests.cpp
         Test/IrqChipTests.cpp
+        Test/RefCountedTests.cpp
     )
 
     target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitPlatform)
