@@ -123,14 +123,17 @@ namespace FoundationKitMemory {
             FK_BUG_ON(!IsPowerOfTwo(align),
                 "PageFrameAllocator::AllocatePages: alignment {} must be a power of two", align);
 
-            const usize idx = FindZoneIndex(zone);
-            if (idx == kNoZone) return Unexpected(MemoryError::DesignationMismatch);
-
             const usize byte_size = n * kPageSize;
-            AllocationResult res  = m_buddies[idx].Allocate(byte_size, align);
-            if (!res) return Unexpected(res.error);
 
-            return VirtToPfn(idx, res.ptr);
+            // Iterate all zones to find one that matches the type and has enough memory.
+            for (usize i = 0; i < m_zone_count; ++i) {
+                if (m_zones[i].type == zone) {
+                    AllocationResult res = m_buddies[i].Allocate(byte_size, align);
+                    if (res) return VirtToPfn(i, res.ptr);
+                }
+            }
+
+            return Unexpected(MemoryError::OutOfMemory);
         }
 
         /// @brief Allocate `n` physically contiguous pages from `zone`.

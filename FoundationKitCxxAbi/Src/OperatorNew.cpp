@@ -58,15 +58,23 @@ void operator delete[](void *ptr) noexcept {
 #endif
 }
 
-// Sized delete (C++14): delegate to unsized form (size unused in our impl).
-void operator delete(void *ptr, unsigned long /*size*/) noexcept {
-    FK_LOG_WARN("delete: unimplemented sized delete (C++14), deferring to global delete");
+// Sized delete (C++14): delegate to sized form.
+void operator delete(void *ptr, unsigned long size) noexcept {
+#if FOUNDATIONKITCXXABI_BRIDGE_GLOBAL_ALLOCATOR
+    if (ptr == nullptr) return;
+    FoundationKitMemory::GlobalDeallocate(ptr, size);
+#else
     ::operator delete(ptr);
+#endif
 }
 
-void operator delete[](void *ptr, unsigned long /*size*/) noexcept {
-    FK_LOG_WARN("delete: unimplemented sized delete (C++14), deferring to global delete");
+void operator delete[](void *ptr, unsigned long size) noexcept {
+#if FOUNDATIONKITCXXABI_BRIDGE_GLOBAL_ALLOCATOR
+    if (ptr == nullptr) return;
+    FoundationKitMemory::GlobalDeallocate(ptr, size);
+#else
     ::operator delete[](ptr);
+#endif
 }
 
 [[nodiscard]] void *operator new(unsigned long, void *p) noexcept { return p; }

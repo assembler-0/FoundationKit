@@ -5,7 +5,6 @@
 #include <FoundationKitCxxStl/Sync/Rcu.hpp>
 #include <FoundationKitCxxStl/Sync/RcuPtr.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
-#include <FoundationKitOsl/Osl.hpp>
 
 namespace FoundationKitMemory {
 
@@ -116,6 +115,10 @@ namespace FoundationKitMemory {
 
     inline void GlobalDeallocate(void* ptr) noexcept {
         GlobalAllocatorSystem::GetAllocator().Deallocate(ptr);
+    }
+
+    inline void GlobalDeallocate(void* ptr, usize size) noexcept {
+        GlobalAllocatorSystem::GetAllocator().Deallocate(ptr, size);
     }
 
     // ============================================================================
