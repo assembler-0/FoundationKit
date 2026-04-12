@@ -206,6 +206,10 @@ namespace FoundationKitPlatform::Amd64 {
     }
 
     static constexpr u32 kMsrEfer = 0xC0000080u;
+    static constexpr u32 kMsrStar   = 0xC0000081u;
+    static constexpr u32 kMsrLstar  = 0xC0000082u;
+    static constexpr u32 kMsrSfmask = 0xC0000084u;
+
 
     /// @brief Bit flags for the EFER MSR.
     enum class EferFlags : u64 {
