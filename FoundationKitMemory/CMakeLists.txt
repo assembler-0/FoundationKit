@@ -40,7 +40,14 @@ set(FOUNDATIONKITMEMORY_HEADERS
         Include/FoundationKitMemory/Vmm/PageFrameAllocator.hpp
         Include/FoundationKitMemory/Vmm/VirtualAddressSpace.hpp
         Include/FoundationKitMemory/Vmm/VmaDescriptor.hpp
+        Include/FoundationKitMemory/Vmm/VmObject.hpp
         Include/FoundationKitMemory/Vmm/VmmConcepts.hpp
+        Include/FoundationKitMemory/Vmm/PageDescriptor.hpp
+        Include/FoundationKitMemory/Vmm/PageDescriptorArray.hpp
+        Include/FoundationKitMemory/Vmm/PageQueue.hpp
+        Include/FoundationKitMemory/Vmm/VmPager.hpp
+        Include/FoundationKitMemory/Vmm/VmFault.hpp
+        Include/FoundationKitMemory/Vmm/AddressSpace.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES

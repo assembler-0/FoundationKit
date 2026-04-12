@@ -56,7 +56,10 @@ namespace FoundationKitMemory {
         NotOwned,
         AllocationTooLarge,
         DesignationMismatch,  // e.g., deleting array as single object
-        CorruptionDetected    // Memory integrity failed
+        CorruptionDetected,   // Memory integrity failed
+        InvalidAddress,       // E.g., page fault on unmapped area
+        AccessViolation,      // E.g., read-only page fault on write
+        NotSupported          // Valid but unsupported
     };
 
     // ============================================================================

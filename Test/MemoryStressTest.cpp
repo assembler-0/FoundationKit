@@ -26,6 +26,15 @@
 #include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
 
+// syntax check
+#include <FoundationKitMemory/Vmm/KernelMemoryManager.hpp>
+#include <FoundationKitMemory/Vmm/VmObject.hpp>
+#include <FoundationKitMemory/Vmm/VmaDescriptor.hpp>
+#include <FoundationKitMemory/Vmm/AddressTypes.hpp>
+#include <FoundationKitMemory/Vmm/PageDescriptorArray.hpp>
+#include <FoundationKitMemory/Vmm/PageQueue.hpp>
+#include <FoundationKitMemory/Vmm/VirtualAddressSpace.hpp>
+
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;
 

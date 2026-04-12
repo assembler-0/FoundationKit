@@ -65,6 +65,11 @@ namespace FoundationKitMemory {
     static constexpr usize kPageSize1G = 1024 * 1024 * 1024;
     static constexpr usize kPageSize2M = 2 * 1024 * 1024;
 
+    static constexpr usize kPageShift2M = 21;
+    static constexpr usize kPageShift1G = 30;
+    static constexpr usize kPageMask2M  = kPageSize2M - 1;
+    static constexpr usize kPageMask1G  = kPageSize1G - 1;
+
     [[nodiscard]] constexpr Pfn PhysicalToPfn(PhysicalAddress pa) noexcept {
         return {pa.value >> kPageShift};
     }
@@ -81,5 +86,34 @@ namespace FoundationKitMemory {
     [[nodiscard]] constexpr usize PageAlignUp(usize n) noexcept {
         return (n + kPageMask) & ~kPageMask;
     }
+
+    /// @brief Number of base (4K) pages needed to cover `bytes` (rounds up).
+    [[nodiscard]] constexpr usize PageCount(usize bytes) noexcept {
+        return (bytes + kPageMask) >> kPageShift;
+    }
+
+    /// @brief Number of pages in a physical address range [start, end).
+    [[nodiscard]] constexpr usize PagesInRange(PhysicalAddress start, PhysicalAddress end) noexcept {
+        FK_BUG_ON(end.value < start.value,
+            "PagesInRange: end ({:#x}) < start ({:#x})", end.value, start.value);
+        return (end.value - start.value) >> kPageShift;
+    }
+
+    /// @brief Pfn addition operator.
+    [[nodiscard]] constexpr Pfn operator+(Pfn pfn, usize n) noexcept {
+        return {pfn.value + n};
+    }
+
+    /// @brief Pfn subtraction operator.
+    [[nodiscard]] constexpr Pfn operator-(Pfn pfn, usize n) noexcept {
+        FK_BUG_ON(n > pfn.value, "Pfn subtraction underflow");
+        return {pfn.value - n};
+    }
+
+    /// @brief Pfn comparison.
+    [[nodiscard]] constexpr bool operator==(Pfn a, Pfn b) noexcept { return a.value == b.value; }
+    [[nodiscard]] constexpr bool operator!=(Pfn a, Pfn b) noexcept { return a.value != b.value; }
+    [[nodiscard]] constexpr bool operator<(Pfn a, Pfn b) noexcept { return a.value < b.value; }
+    [[nodiscard]] constexpr bool operator<=(Pfn a, Pfn b) noexcept { return a.value <= b.value; }
 
 } // namespace FoundationKitMemory

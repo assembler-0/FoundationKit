@@ -22,7 +22,8 @@ namespace FoundationKitMemory {
         FileHandle        = 0x0005,
         IrqContext        = 0x0006,
         VirtualMemoryArea = 0x0007,
-        UserBase          = 0x0100,
+        VmObject      = 0x0008,
+        UserBase      = 0x0100,
     };
 
     // =========================================================================
