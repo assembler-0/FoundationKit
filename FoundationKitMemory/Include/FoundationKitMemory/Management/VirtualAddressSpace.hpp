@@ -215,25 +215,27 @@ namespace FoundationKitMemory {
             ///        If there is no right child, the gap extends to the address space
             ///        top — but we don't know the top here, so we store 0 and let
             ///        FindFreeFrom() handle the trailing gap explicitly.
+            /// @brief Recompute subtree_max_gap for `n` from its children.
+            /// @desc  Called bottom-up after every insert/remove/rotation.
+            ///        The gap after this VMA = start_of_next_vma - end_of_this_vma.
+            ///        subtree_max_gap = max(left->max_gap, gap_after_this, right->max_gap).
             static void Propagate(RbNode* n) noexcept {
                 VmaDescriptor* v   = ToEntry(n);
                 VirtualAddress end = v->End();
 
-                usize right_gap = 0;
+                usize gap_after = 0;
+                
                 if (n->right) {
-                    // Successor is the leftmost node of the right subtree.
-                    RbNode* leftmost = n->right;
-                    while (leftmost->left) leftmost = leftmost->left;
-                    VmaDescriptor* r = ToEntry(leftmost);
-                    right_gap = r->base.value > end.value ? r->base.value - end.value : 0;
+                    RbNode* curr = n->right;
+                    while (curr->left) curr = curr->left;
+                    gap_after = ToEntry(curr)->base.value - end.value;
                 }
 
                 const usize left_max  = n->left  ? ToEntry(n->left)->subtree_max_gap  : 0;
                 const usize right_max = n->right ? ToEntry(n->right)->subtree_max_gap : 0;
 
-                // Max of: largest gap in left subtree, gap after this node, largest gap in right subtree.
                 usize m = left_max > right_max ? left_max : right_max;
-                v->subtree_max_gap = m > right_gap ? m : right_gap;
+                v->subtree_max_gap = m > gap_after ? m : gap_after;
             }
         };
 
@@ -244,67 +246,57 @@ namespace FoundationKitMemory {
         /// @brief Search for a free range of `size` bytes starting at or after `from`.
         [[nodiscard]] Optional<VirtualAddress>
         FindFreeFrom(VirtualAddress from, usize size) const noexcept {
-            // Check the gap before the first VMA (or the entire space if empty).
             if (m_tree.Empty()) {
                 if (m_top.value - from.value >= size)
                     return from;
                 return NullOpt;
             }
 
-            // Walk the tree in-order, checking gaps between consecutive VMAs.
-            // The subtree_max_gap pruning skips subtrees that cannot contain a
-            // large enough gap, giving O(log n) amortised behaviour.
-            VmaDescriptor* prev = nullptr;
-            VirtualAddress cursor = from;
-
-            // Find the first VMA whose end > cursor (i.e. the first VMA that
-            // could be preceded by a gap starting at cursor).
-            VmaDescriptor* v = m_tree.First();
-            while (v && v->End().value <= cursor.value)
-                v = m_tree.Next(v);
-
-            // Gap before the first relevant VMA.
-            if (v) {
-                const uptr gap_start = cursor.value;
-                const uptr gap_end   = v->base.value;
+            // Prune: If the entire tree doesn't have a large enough gap,
+            // we only need to check the gap BEFORE the first node and AFTER the last node.
+            const VmaDescriptor* root = m_tree.ToEntry(m_tree.Root());
+            
+            // Check gap before first node
+            const VmaDescriptor* first = m_tree.First();
+            if (first->base.value > m_base.value) {
+                const uptr gap_start = m_base.value > from.value ? m_base.value : from.value;
+                const uptr gap_end   = first->base.value;
                 if (gap_end > gap_start && gap_end - gap_start >= size)
                     return VirtualAddress{gap_start};
-            } else {
-                // All VMAs end before cursor — check trailing gap.
-                if (m_top.value - cursor.value >= size)
-                    return cursor;
-                return NullOpt;
             }
 
-            // Walk remaining VMAs checking inter-VMA gaps.
-            prev = v;
-            v    = m_tree.Next(v);
-            while (v) {
-                // Prune: if the subtree rooted at v cannot contain a gap >= size,
-                // skip it. We can't prune individual nodes here (we're iterating
-                // in-order), but the subtree_max_gap on the root lets FindFree()
-                // bail out early before entering this loop.
-                const uptr gap_start = prev->End().value;
-                const uptr gap_end   = v->base.value;
-                if (gap_end > gap_start && gap_end - gap_start >= size) {
-                    const uptr candidate = gap_start >= from.value ? gap_start : from.value;
-                    if (gap_end - candidate >= size)
-                        return VirtualAddress{candidate};
-                }
-                prev = v;
-                v    = m_tree.Next(v);
+            // If subtree_max_gap is too small, skip tree search.
+            if (root->subtree_max_gap < size) {
+                goto check_trailing;
             }
 
-            // Trailing gap after the last VMA.
+            // O(log N) Recursive Search (Optimized In-order)
             {
-                const uptr gap_start = prev->End().value;
-                const uptr gap_end   = m_top.value;
-                if (gap_end > gap_start && gap_end - gap_start >= size) {
-                    const uptr candidate = gap_start >= from.value ? gap_start : from.value;
-                    if (gap_end - candidate >= size)
-                        return VirtualAddress{candidate};
+                VmaDescriptor* v = m_tree.First();
+                while (v) {
+                    const uptr end = v->End().value;
+                    if (end < from.value) {
+                        v = m_tree.Next(v);
+                        continue;
+                    }
+
+                    // Check gap after v
+                    VmaDescriptor* next = m_tree.Next(v);
+                    const uptr gap_start = end > from.value ? end : from.value;
+                    const uptr gap_end   = next ? next->base.value : m_top.value;
+                    
+                    if (gap_end > gap_start && gap_end - gap_start >= size)
+                        return VirtualAddress{gap_start};
+
+                    v = next;
                 }
             }
+
+        check_trailing:
+            const VmaDescriptor* last = m_tree.Last();
+            const uptr trailing_start = last->End().value > from.value ? last->End().value : from.value;
+            if (m_top.value > trailing_start && m_top.value - trailing_start >= size)
+                return VirtualAddress{trailing_start};
 
             return NullOpt;
         }

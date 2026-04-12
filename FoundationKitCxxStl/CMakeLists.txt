@@ -83,7 +83,7 @@ target_compile_definitions(FoundationKitCxxStl PUBLIC
         $<TARGET_PROPERTY:FoundationKitPlatform,INTERFACE_COMPILE_DEFINITIONS>)
 
 target_compile_options(FoundationKitCxxStl PRIVATE
-        $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:
+    $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:
         -fPIC
         -fPIE
         -fno-rtti
@@ -97,5 +97,5 @@ target_compile_options(FoundationKitCxxStl PRIVATE
         -Wno-unused-parameter
         -nostdinc++
         -nostdlib
-        >
+    >
 )

@@ -1,9 +1,9 @@
-#include <Test/TestFramework.hpp>
-#include <FoundationKitCxxStl/Base/KernelError.hpp>
 #include <FoundationKitCxxStl/Base/FixedString.hpp>
-#include <FoundationKitCxxStl/Structure/RingBuffer.hpp>
+#include <FoundationKitCxxStl/Base/KernelError.hpp>
 #include <FoundationKitCxxStl/Structure/InterruptSafeQueue.hpp>
+#include <FoundationKitCxxStl/Structure/RingBuffer.hpp>
 #include <FoundationKitPlatform/Bitfield.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitCxxStl::Structure;

@@ -1,6 +1,6 @@
-#include <FoundationKitPlatform/IrqChip/IrqChip.hpp>
 #include <FoundationKitPlatform/HostArchitecture.hpp>
-#include <Test/TestFramework.hpp>
+#include <FoundationKitPlatform/IrqChip/IrqChip.hpp>
+#include <TestFramework.hpp>
 
 #ifdef FOUNDATIONKITPLATFORM_ARCH_X86_64
 #include <FoundationKitPlatform/Amd64/IrqChip.hpp>

@@ -1,6 +1,6 @@
-#include <Test/TestFramework.hpp>
-#include <FoundationKitOsl/Osl.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitOsl/Osl.hpp>
+#include <TestFramework.hpp>
 
 namespace FoundationKitCxxStl::Test {
 

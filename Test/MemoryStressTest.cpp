@@ -1,7 +1,7 @@
 /// @file MemoryStressTest.cpp
 /// @desc Comprehensive stress tests for all FoundationKitMemory allocators and features
 
-#include <Test/TestFramework.hpp>
+#include <TestFramework.hpp>
 
 // Memory components - ALL allocators
 #include <FoundationKitMemory/Core/MemoryCore.hpp>

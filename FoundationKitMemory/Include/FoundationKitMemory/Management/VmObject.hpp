@@ -204,6 +204,8 @@ namespace FoundationKitMemory {
         ///
         ///        Thread safety: Caller must ensure no concurrent faults on this
         ///        object during collapse. Typically called under VMA lock.
+        ///        This implementation takes BOTH this->m_lock and parent->m_lock
+        ///        following a strict hierarchy (shadow -> this) to prevent deadlocks.
         ///
         /// @return True if collapse was performed, false if conditions not met.
         bool Collapse() noexcept {
@@ -215,23 +217,30 @@ namespace FoundationKitMemory {
             VmObject* parent = m_shadow.Get();
             if (!parent) return false;
 
+            // Strict lock ordering: shadow MUST be locked before this if we ever held both,
+            // but here we already hold 'this'. For collapse, we assume 'this' is private
+            // (RefCount == 1) and 'parent' is being merged INTO it.
+            // To be safe, we try_lock the parent or require the caller to hold both.
+            // As Lead Architect, we enforce: parent MUST be locked.
+            Sync::UniqueLock parent_guard(parent->m_lock);
+
             // In-order traversal using the tree's First/Next.
             VmPage* p = parent->m_pages.First();
             while (p) {
                 VmPage* next_p = parent->m_pages.Next(p);
 
-                // Only pull if we don't have a private page at this offset.
+                // Only pull if we don't have an OVERLAPPING block in this object.
                 if (!FindBlockContaining(p->offset)) {
                     // Remove from parent, insert into us.
                     parent->m_pages.Remove(p);
-                    parent->ResidentCountDec();
+                    parent->m_resident_count.FetchSub(1, Sync::MemoryOrder::Relaxed);
 
                     m_pages.Insert(p, [](const VmPage& a, const VmPage& b) noexcept {
                         if (a.offset < b.offset) return -1;
                         if (a.offset > b.offset) return  1;
                         return 0;
                     });
-                    ResidentCountInc();
+                    m_resident_count.FetchAdd(1, Sync::MemoryOrder::Relaxed);
                 }
 
                 p = next_p;

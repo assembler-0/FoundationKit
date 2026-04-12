@@ -1,7 +1,5 @@
 #pragma once
 
-#include <FoundationKitCxxStl/Base/Types.hpp>
-
 namespace FoundationKitCxxStl::CharType {
 
     /// @brief Check if character is a decimal digit ('0'-'9').

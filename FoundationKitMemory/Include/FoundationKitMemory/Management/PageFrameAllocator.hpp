@@ -124,16 +124,18 @@ namespace FoundationKitMemory {
                 "PageFrameAllocator::AllocatePages: alignment {} must be a power of two", align);
 
             const usize byte_size = n * kPageSize;
+            bool zone_found = false;
 
             // Iterate all zones to find one that matches the type and has enough memory.
             for (usize i = 0; i < m_zone_count; ++i) {
                 if (m_zones[i].type == zone) {
+                    zone_found = true;
                     AllocationResult res = m_buddies[i].Allocate(byte_size, align);
                     if (res) return VirtToPfn(i, res.ptr);
                 }
             }
 
-            return Unexpected(MemoryError::OutOfMemory);
+            return Unexpected(zone_found ? MemoryError::OutOfMemory : MemoryError::DesignationMismatch);
         }
 
         /// @brief Allocate `n` physically contiguous pages from `zone`.
@@ -148,19 +150,22 @@ namespace FoundationKitMemory {
             FK_BUG_ON(n == 0,
                 "PageFrameAllocator::AllocateContiguous: zero-page allocation is nonsensical");
 
-            const usize idx = FindZoneIndex(zone);
-            if (idx == kNoZone) return Unexpected(MemoryError::DesignationMismatch);
-
             // BuddyAllocator naturally returns a contiguous block when the requested
             // size is a power-of-two multiple of MinBlockSize. Round up to next power
             // of two so the buddy can satisfy it in one shot.
             usize rounded = kPageSize;
             while (rounded < n * kPageSize) rounded <<= 1;
 
-            AllocationResult res = m_buddies[idx].Allocate(rounded, rounded);
-            if (!res) return Unexpected(res.error);
+            bool zone_found = false;
+            for (usize i = 0; i < m_zone_count; ++i) {
+                if (m_zones[i].type == zone) {
+                    zone_found = true;
+                    AllocationResult res = m_buddies[i].Allocate(rounded, rounded);
+                    if (res) return VirtToPfn(i, res.ptr);
+                }
+            }
 
-            return VirtToPfn(idx, res.ptr);
+            return Unexpected(zone_found ? MemoryError::OutOfMemory : MemoryError::DesignationMismatch);
         }
 
         /// @brief Free `n` pages starting at `pfn`.
@@ -243,14 +248,24 @@ namespace FoundationKitMemory {
 
         /// @brief Convert a virtual pointer (inside zone[idx]) to its PFN.
         [[nodiscard]] Pfn VirtToPfn(usize idx, void* virt) const noexcept {
-            const uptr offset = reinterpret_cast<uptr>(virt)
-                              - reinterpret_cast<uptr>(m_zones[idx].virt_base);
+            const uptr v_ptr  = reinterpret_cast<uptr>(virt);
+            const uptr v_base = reinterpret_cast<uptr>(m_zones[idx].virt_base);
+            const uptr offset = v_ptr - v_base;
+            FK_BUG_ON(v_ptr < v_base || offset >= m_zones[idx].pages * kPageSize,
+                "PageFrameAllocator::VirtToPfn: virtual pointer {} is outside zone[{}] range",
+                virt, idx);
             return {(m_zones[idx].base.value + offset) >> kPageShift};
         }
 
         /// @brief Convert a PFN back to its virtual pointer within zone[idx].
         [[nodiscard]] void* PfnToVirt(usize idx, Pfn pfn) const noexcept {
-            const uptr pa_offset = (pfn.value << kPageShift) - m_zones[idx].base.value;
+            const uptr pa = pfn.value << kPageShift;
+            const uptr z_start = m_zones[idx].base.value;
+            const uptr z_end   = z_start + m_zones[idx].pages * kPageSize;
+            FK_BUG_ON(pa < z_start || pa >= z_end,
+                "PageFrameAllocator::PfnToVirt: PFN {:#x} is outside zone[{}] range",
+                pfn.value, idx);
+            const uptr pa_offset = pa - z_start;
             return reinterpret_cast<void*>(
                 reinterpret_cast<uptr>(m_zones[idx].virt_base) + pa_offset);
         }

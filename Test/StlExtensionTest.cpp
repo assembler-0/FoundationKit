@@ -1,9 +1,9 @@
-#include <Test/TestFramework.hpp>
-#include <FoundationKitCxxStl/Base/StringView.hpp>
 #include <FoundationKitCxxStl/Base/Bit.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>
-#include <FoundationKitCxxStl/Base/Tuple.hpp>
 #include <FoundationKitCxxStl/Base/FixedVector.hpp>
+#include <FoundationKitCxxStl/Base/StringView.hpp>
+#include <FoundationKitCxxStl/Base/Tuple.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 

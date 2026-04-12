@@ -1,5 +1,4 @@
 #include <FoundationKitCxxAbi/Core/Config.hpp>
-#include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Logger.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
 

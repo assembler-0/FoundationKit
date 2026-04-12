@@ -9,14 +9,14 @@
 //   5. __cxa_demangle — C API with caller-supplied buffer
 // ============================================================================
 
-#include <Test/TestFramework.hpp>
 #include <FoundationKitCxxAbi/Core/Abi.hpp>
-#include <FoundationKitCxxAbi/Init/GlobalInit.hpp>
 #include <FoundationKitCxxAbi/Demangle/Demangler.hpp>
-#include <FoundationKitCxxStl/Base/Types.hpp>
-#include <FoundationKitCxxStl/Base/StringView.hpp>
-#include <FoundationKitCxxStl/Base/Span.hpp>
+#include <FoundationKitCxxAbi/Init/GlobalInit.hpp>
 #include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
+#include <FoundationKitCxxStl/Base/Span.hpp>
+#include <FoundationKitCxxStl/Base/StringView.hpp>
+#include <FoundationKitCxxStl/Base/Types.hpp>
+#include <TestFramework.hpp>
 
 // ============================================================================
 // Mock Linker Symbols for Host OS Testing

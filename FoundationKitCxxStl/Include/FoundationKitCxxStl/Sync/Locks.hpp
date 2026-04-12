@@ -81,7 +81,7 @@ namespace FoundationKitCxxStl::Sync {
 
         void Lock() noexcept {
             FK_BUG_ON(m_owned, "UniqueLock::Lock: already owns the lock (double-lock)");
-            if (m_lock && !m_owned) {
+            if (m_lock) {
                 m_lock->Lock();
                 m_owned = true;
             }

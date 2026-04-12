@@ -1,4 +1,4 @@
-#include <Test/TestFramework.hpp>
+#include <TestFramework.hpp>
 
 // Base components
 #include <FoundationKitCxxStl/Base/Array.hpp>

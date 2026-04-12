@@ -1,7 +1,6 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
-#include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitCxxStl {

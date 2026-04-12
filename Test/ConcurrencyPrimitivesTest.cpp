@@ -1,7 +1,7 @@
-#include <Test/TestFramework.hpp>
+#include <FoundationKitCxxStl/Structure/MpscQueue.hpp>
 #include <FoundationKitCxxStl/Sync/Rcu.hpp>
 #include <FoundationKitCxxStl/Sync/SeqLock.hpp>
-#include <FoundationKitCxxStl/Structure/MpscQueue.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitCxxStl::Sync;

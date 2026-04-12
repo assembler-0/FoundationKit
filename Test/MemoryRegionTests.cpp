@@ -1,9 +1,9 @@
 /// @file MemoryRegionTests.cpp
 
-#include <Test/TestFramework.hpp>
-#include <FoundationKitMemory/Management/MemoryRegion.hpp>
 #include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
 #include <FoundationKitMemory/Allocators/FreeListAllocator.hpp>
+#include <FoundationKitMemory/Management/MemoryRegion.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;

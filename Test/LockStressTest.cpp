@@ -1,13 +1,13 @@
+#include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
+#include <FoundationKitCxxStl/Sync/Locks.hpp>
+#include <FoundationKitCxxStl/Sync/MCSLock.hpp>
+#include <FoundationKitCxxStl/Sync/Mutex.hpp>
+#include <FoundationKitCxxStl/Sync/SharedLock.hpp>
+#include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/TicketLock.hpp>
-#include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
-#include <FoundationKitCxxStl/Sync/Mutex.hpp>
-#include <FoundationKitCxxStl/Sync/Locks.hpp>
-#include <FoundationKitCxxStl/Sync/SharedLock.hpp>
-#include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
-#include <FoundationKitCxxStl/Sync/MCSLock.hpp>
 #include <FoundationKitOsl/Osl.hpp>
-#include <Test/TestFramework.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl::Sync;
 

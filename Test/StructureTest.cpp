@@ -1,7 +1,7 @@
-#include <Test/TestFramework.hpp>
-#include <FoundationKitCxxStl/Structure/IntrusiveRedBlackTree.hpp>
 #include <FoundationKitCxxStl/Structure/IntrusiveAvlTree.hpp>
+#include <FoundationKitCxxStl/Structure/IntrusiveRedBlackTree.hpp>
 #include <FoundationKitCxxStl/Structure/WorkQueue.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 

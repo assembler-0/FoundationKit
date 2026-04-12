@@ -1,6 +1,6 @@
-#include <Test/TestFramework.hpp>
-#include <FoundationKitCxxStl/Base/StringBuilder.hpp>
 #include <FoundationKitCxxStl/Base/Logger.hpp>
+#include <FoundationKitCxxStl/Base/StringBuilder.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 

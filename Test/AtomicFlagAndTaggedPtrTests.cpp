@@ -1,7 +1,7 @@
 #include <FoundationKitCxxStl/Sync/AtomicFlag.hpp>
-#include <FoundationKitCxxStl/Sync/TaggedPtr.hpp>
 #include <FoundationKitCxxStl/Sync/Cas.hpp>
-#include <Test/TestFramework.hpp>
+#include <FoundationKitCxxStl/Sync/TaggedPtr.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl::Sync;
 

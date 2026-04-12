@@ -1,6 +1,6 @@
-#include <FoundationKitCxxStl/Sync/BitSpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/AtomicPair.hpp>
-#include <Test/TestFramework.hpp>
+#include <FoundationKitCxxStl/Sync/BitSpinLock.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitCxxStl::Sync;

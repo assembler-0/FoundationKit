@@ -118,13 +118,13 @@ namespace FoundationKitMemory {
                 "PhysicalMemoryMap::BuildPfnIndex: index already built");
 
             // Rebuild the XArray with the supplied allocator.
-            // We use placement-new into the existing storage since XArray is
-            // not default-constructible with a deferred allocator.
+            // Explicitly clear any stale pointers before re-initializing.
+            m_pfn_index.Clear();
             new (&m_pfn_index) FoundationKitCxxStl::Structure::XArray<usize, Alloc>(alloc);
 
             for (usize i = 0; i < m_count; ++i) {
-                const uptr base = reinterpret_cast<uptr>(m_zones[i].base);
-                const uptr end  = base + m_zones[i].size;
+                const uptr base = reinterpret_cast<uptr>(m_zones[i].Base());
+                const uptr end  = base + m_zones[i].Size();
                 for (uptr pfn = base >> kPageShift; pfn < (end >> kPageShift); ++pfn) {
                     // Store the zone index. We use a static per-zone index cell
                     // to avoid allocating per-page storage.

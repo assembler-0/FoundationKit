@@ -1,7 +1,7 @@
-#include <Test/TestFramework.hpp>
 #include <FoundationKitCxxStl/Base/String.hpp>
-#include <FoundationKitCxxStl/Base/StringView.hpp>
 #include <FoundationKitCxxStl/Base/StringUtil.hpp>
+#include <FoundationKitCxxStl/Base/StringView.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 

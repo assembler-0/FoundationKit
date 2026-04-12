@@ -34,6 +34,8 @@
 #    define FOUNDATIONKITCXXSTL_COMPILER_GCC 1
 #  endif
 
+#define FOUNDATIONKIT_COMPILER __VERSION__
+
 #endif
 
 /// @section compiler attributes

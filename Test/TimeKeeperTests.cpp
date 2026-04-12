@@ -1,6 +1,6 @@
 #include <FoundationKitPlatform/Clocksource/ClockSource.hpp>
 #include <FoundationKitPlatform/Clocksource/TimeKeeper.hpp>
-#include <Test/TestFramework.hpp>
+#include <TestFramework.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitPlatform::Clocksource;
