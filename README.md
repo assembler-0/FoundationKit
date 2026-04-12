@@ -4,30 +4,17 @@ FoundationKit is a modular C++23 systems framework designed specifically for ope
 
 > Use this in your kernel/OS!
 
-## Repository Structure
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/assembler-0/FoundationKit)
 
-The project is organized as a monorepo. Each component resides in its own directory and follows a standardized internal structure:
+## Components
 
-* **`Include/[Component]/`**: Public headers (primarily header-only templates).
-* **`Src/`**: Implementation files.
-* **`CMakeLists.txt`**: Defines the specific library target and source declarations.
-
-### Components
-
-| Component                 | Description                                                 | Documentation                       |
-|:--------------------------|:------------------------------------------------------------|:------------------------------------|
-| **FoundationKitCxxStl**   | A kernel-ready, C++23 compliant Standard Template Library.  | `Documentation/FoundationKitCxxStl` |
-| **FoundationKitMemory**   | Core memory management primitives and allocators.           | `Documentation/FoundationKitMemory` |
-| **FoundationKitOsl**      | Operating System Layer for fundamental system abstractions. | `Documentation/FoundationKitOsl`    |
-| **FoundationKitCxxAbi**   | Low-level C++ ABI support.                                  | `Documentation/FoundationKitCxxAbi` |
-| **FoundationKitPlatform** | Low-level architecture specific helpers                     | `WIP!`                              |
-
-## Build System
-
-The project uses CMake. The architecture is designed for seamless integration into existing (cmake) OSDev toolchains:
-
-* **Root CMakeLists.txt**: Handles the global project configuration and builds the test suite executable.
-* **Component CMakeLists.txt**: Each directory contains its own logic, often declaring `INTERFACE` targets to facilitate header-only usage while managing necessary source files for non-template logic.
+| Component                 | Description                                                 |
+|:--------------------------|:------------------------------------------------------------|
+| **FoundationKitCxxStl**   | A kernel-ready, C++23 compliant Standard Template Library.  |
+| **FoundationKitMemory**   | Core memory management primitives and allocators.           |
+| **FoundationKitOsl**      | Operating System Layer for fundamental system abstractions. |
+| **FoundationKitCxxAbi**   | Low-level C++ ABI support.                                  |
+| **FoundationKitPlatform** | Low-level architecture specific helpers                     |
 
 ## Testing
 
