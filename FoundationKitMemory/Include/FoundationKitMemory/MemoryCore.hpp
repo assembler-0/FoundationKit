@@ -98,7 +98,6 @@ namespace FoundationKitMemory {
     // ============================================================================
 
     /// @brief Trait: Does the allocator support deallocate without size?
-    /// @desc If true, Deallocate(ptr) with no size is safe. If false, use TrackingAllocator.
     template <typename A>
     inline constexpr bool SupportsUnsizedDelete = false;
 
@@ -305,22 +304,7 @@ namespace FoundationKitMemory {
     // Backwards Compatibility Aliases
     // ============================================================================
 
-    /// @brief Alias: AllocResult is now AllocationResult.
-    using AllocResult = AllocationResult;
-
-    /// @brief Alias: IMemoryResource is now BasicMemoryResource.
-    using IMemoryResource = BasicMemoryResource;
-
-    /// @brief Alias: Compatibility wrapper name.
     template <IAllocator Alloc>
     using MemoryResourceWrapper = AllocatorWrapper<Alloc>;
-
-    /// @brief Alias: IReallocatable is now IReallocatableAllocator.
-    template <typename A>
-    inline constexpr bool IReallocatable = IReallocatableAllocator<A>;
-
-    /// @brief Alias: IClearable is now IClearableAllocator.
-    template <typename A>
-    inline constexpr bool IClearable = IClearableAllocator<A>;
 
 } // namespace FoundationKitMemory

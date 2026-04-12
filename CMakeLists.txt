@@ -18,7 +18,6 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/StressTest.cpp
         Test/MemoryStressTest.cpp
         Test/MemoryRegionTests.cpp
-        Test/AdaptiveSegregatorTests.cpp
         Test/LockStressTest.cpp
         Test/OslStub.cpp
         Test/CxxAbiTest.cpp

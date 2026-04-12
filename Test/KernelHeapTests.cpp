@@ -1,6 +1,5 @@
 #include <Test/TestFramework.hpp>
 #include <FoundationKitMemory/KernelHeap.hpp>
-#include <FoundationKitMemory/AllocatorFactory.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;
@@ -77,7 +76,7 @@ TEST_CASE(KernelHeap_Factory_CreateKernelHeap) {
     static byte large_buf[kLargeSize];
 
     DefaultKernelHeap heap;
-    AllocatorFactory::CreateKernelHeap(
+    DefaultKernelHeap::Create(
         heap,
         MemoryRegion(region_buf, kRegionSize),
         20,

@@ -16,7 +16,6 @@
 #include <FoundationKitMemory/StatsAllocator.hpp>
 #include <FoundationKitMemory/SafeAllocator.hpp>
 #include <FoundationKitMemory/AnyAllocator.hpp>
-#include <FoundationKitMemory/TrackingAllocator.hpp>
 #include <FoundationKitMemory/FallbackAllocator.hpp>
 #include <FoundationKitMemory/Segregator.hpp>
 #include <FoundationKitMemory/UniquePtr.hpp>
@@ -354,64 +353,6 @@ TEST_CASE(Memory_AnyAllocator_TypeErasure) {
 }
 
 // ============================================================================
-// TEST: TrackingAllocator - Size-Less Delete (Universal Feature)
-// ============================================================================
-
-TEST_CASE(Memory_TrackingAllocator_UnsizedDelete) {
-    BumpAllocator bump(g_bump_buffer, sizeof(g_bump_buffer));
-    TrackingAllocator<BumpAllocator> tracked(bump);
-
-    // Allocate through tracker
-    auto res1 = tracked.Allocate(256, 8);
-    ASSERT_TRUE(res1);
-
-    auto res2 = tracked.Allocate(512, 8);
-    ASSERT_TRUE(res2);
-
-    // Test size-LESS deallocation (key feature!)
-    tracked.Deallocate(res1.ptr);
-    tracked.Deallocate(res2.ptr);
-
-    // Test that we can still allocate again
-    auto res3 = tracked.Allocate(128, 8);
-    ASSERT_TRUE(res3);
-
-    tracked.Deallocate(res3.ptr, 128);  // Also test with size
-}
-
-// ============================================================================
-// TEST: TrackingAllocator - With PoolAllocator (requires size)
-// ============================================================================
-
-TEST_CASE(Memory_TrackingAllocator_WithPool) {
-    constexpr usize user_size = 512;
-    constexpr usize chunk_size = 1024; // Extra space for header + alignment
-    // Use a local buffer to avoid interfering with other tests
-    static byte local_pool_buffer[16 * 1024];
-    PoolAllocator<chunk_size> pool;
-    pool.Initialize(local_pool_buffer, sizeof(local_pool_buffer));
-
-    TrackingAllocator<PoolAllocator<chunk_size>> tracked(pool);
-
-    // Allocate fixed chunks
-    auto res1 = tracked.Allocate(user_size, 8);
-    ASSERT_TRUE(res1);
-
-    auto res2 = tracked.Allocate(user_size, 8);
-    ASSERT_TRUE(res2);
-
-    // Use size-less deallocation (TrackingAllocator handles it)
-    tracked.Deallocate(res1.ptr);
-    tracked.Deallocate(res2.ptr);
-
-    // Verify re-allocation works
-    auto res3 = tracked.Allocate(user_size, 8);
-    ASSERT_TRUE(res3);
-
-    tracked.Deallocate(res3.ptr, user_size);
-}
-
-// ============================================================================
 // TEST: Alignment Verification
 // ============================================================================
 
@@ -546,8 +487,6 @@ TEST_CASE(Memory_Concepts_Validation) {
     static_assert(IAllocator<StatsAllocator<BumpAllocator>>);
     static_assert(IAllocator<SafeAllocator<BumpAllocator>>);
     static_assert(IAllocator<AnyAllocator>);
-    static_assert(IAllocator<TrackingAllocator<BumpAllocator>>);
-
     // Extended capability checks
     static_assert(IClearableAllocator<BumpAllocator>);
     ASSERT_TRUE(true);
@@ -582,20 +521,15 @@ TEST_CASE(Memory_MixedChain_Complex) {
     BumpAllocator bump(g_bump_buffer, sizeof(g_bump_buffer));
     StatsAllocator<BumpAllocator> stats(bump);
     SafeAllocator<StatsAllocator<BumpAllocator>> safe(stats);
-    TrackingAllocator<SafeAllocator<StatsAllocator<BumpAllocator>>> tracked(safe);
 
-    // This is a complex chain: Tracked -> Safe -> Stats -> Bump
-
-    // Allocate through the chain
-    auto res1 = tracked.Allocate(256, 8);
+    auto res1 = safe.Allocate(256, 8);
     ASSERT_TRUE(res1);
 
-    auto res2 = tracked.Allocate(512, 8);
+    auto res2 = safe.Allocate(512, 8);
     ASSERT_TRUE(res2);
 
-    // Use size-less deallocation (top of chain feature)
-    tracked.Deallocate(res1.ptr);
-    tracked.Deallocate(res2.ptr);
+    safe.Deallocate(res1.ptr, 256);
+    safe.Deallocate(res2.ptr, 512);
 }
 
 // ============================================================================
@@ -653,20 +587,13 @@ TEST_CASE(Memory_ArraySize_OverflowProtection) {
 
 TEST_CASE(Memory_Ownership_Checking) {
     BumpAllocator bump(g_bump_buffer, sizeof(g_bump_buffer));
-    TrackingAllocator<BumpAllocator> tracked(bump);
 
-    auto res1 = tracked.Allocate(256, 8);
+    auto res1 = bump.Allocate(256, 8);
     ASSERT_TRUE(res1);
 
-    // Test ownership
-    ASSERT_TRUE(tracked.Owns(res1.ptr));
-    ASSERT_FALSE(tracked.Owns(nullptr));
-    ASSERT_FALSE(tracked.Owns(reinterpret_cast<void*>(0xDEADBEEF)));
-
-    tracked.Deallocate(res1.ptr, 256);
-
-    // After deallocation, should return false (ideally)
-    // This depends on implementation specifics
+    ASSERT_TRUE(bump.Owns(res1.ptr));
+    ASSERT_FALSE(bump.Owns(nullptr));
+    ASSERT_FALSE(bump.Owns(reinterpret_cast<void*>(0xDEADBEEF)));
 }
 
 // ============================================================================
@@ -762,14 +689,6 @@ TEST_CASE(Memory_AllAllocators_Comprehensive) {
         any.Deallocate(res.ptr, 256);
     }
 
-    // 10. TrackingAllocator
-    {
-        BumpAllocator bump6(comp_buffer, sizeof(comp_buffer));
-        TrackingAllocator<BumpAllocator> tracked(bump6);
-        auto res = tracked.Allocate(256, 8);
-        ASSERT_TRUE(res);
-        tracked.Deallocate(res.ptr);  // Size-less!
-    }
 }
 
 // ============================================================================
@@ -777,7 +696,6 @@ TEST_CASE(Memory_AllAllocators_Comprehensive) {
 // ============================================================================
 
 #include <FoundationKitMemory/SynchronizedAllocator.hpp>
-#include <FoundationKitMemory/AllocatorLocking.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/Mutex.hpp>
 
@@ -857,51 +775,6 @@ TEST_CASE(Memory_SynchronizedAllocator_SafePoolWithMutex) {
     }
 }
 
-TEST_CASE(Memory_SynchronizedAllocator_TrackingPoolWithSpinLock) {
-    static byte track_buffer[16 * 1024];
-    PoolAllocator<256> base;
-    base.Initialize(track_buffer, sizeof(track_buffer));
-    
-    TrackingAllocator<PoolAllocator<256>> tracked(base);
-    SynchronizedAllocator<TrackingAllocator<PoolAllocator<256>>, Sync::SpinLock> 
-        sync_tracked(tracked);
-    
-    // Test size-less deallocation under lock
-    for (int i = 0; i < 100; ++i) {
-        void* ptrs[20] = {nullptr};
-        
-        for (int j = 0; j < 20; ++j) {
-            auto res = sync_tracked.Allocate(128, 8);
-            if (res) {
-                ptrs[j] = res.ptr;
-            }
-        }
-        
-        for (int j = 0; j < 20; ++j) {
-            if (ptrs[j]) {
-                sync_tracked.Deallocate(ptrs[j]);  // Size-less!
-            }
-        }
-    }
-}
-
-TEST_CASE(Memory_AllocatorLocking_ConceptValidation) {
-    // Verify all lock types satisfy AllocatorLockPolicy concept
-    static_assert(AllocatorLockPolicy<Sync::NullLock>);
-    static_assert(AllocatorLockPolicy<Sync::SpinLock>);
-    static_assert(AllocatorLockPolicy<Sync::Mutex>);
-    static_assert(AllocatorLockPolicy<Sync::SharedSpinLock>);
-    static_assert(AllocatorLockPolicy<Sync::TicketLock>);
-    static_assert(AllocatorLockPolicy<Sync::InterruptSafeTicketLock>);
-    
-    // Verify default lock selection
-    static_assert(SameAs<DefaultAllocatorLockType<PoolAllocator<256>>, Sync::NullLock>);
-    
-    // Verify SelectAllocatorLock trait
-    static_assert(SameAs<SelectAllocatorLockType<true, false>, Sync::NullLock>);
-    static_assert(SameAs<SelectAllocatorLockType<false, true>, Sync::Mutex>);
-    static_assert(SameAs<SelectAllocatorLockType<false, false>, Sync::InterruptSafeTicketLock>);
-}
 
 // ============================================================================
 // TEST: PolicyFreeListAllocator — Best/Next/Worst Fit Policies

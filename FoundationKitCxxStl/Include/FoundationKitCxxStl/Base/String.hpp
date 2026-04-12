@@ -214,7 +214,7 @@ namespace FoundationKitCxxStl {
             SizeType next_cap = current_cap * 2;
             if (next_cap < required) next_cap = required;
 
-            const FoundationKitMemory::AllocResult res = m_allocator.Allocate(next_cap + 1, alignof(char));
+            const FoundationKitMemory::AllocationResult res = m_allocator.Allocate(next_cap + 1, alignof(char));
             if (!res.ok()) return Unexpected(FoundationKitMemory::MemoryError::OutOfMemory);
 
             auto new_ptr = static_cast<char*>(res.ptr);

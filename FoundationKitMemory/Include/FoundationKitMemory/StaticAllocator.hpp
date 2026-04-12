@@ -52,6 +52,6 @@ namespace FoundationKitMemory {
     };
 
     static_assert(IAllocator<StaticAllocator<1024>>);
-    static_assert(IClearable<StaticAllocator<1024>>);
+    static_assert(IClearableAllocator<StaticAllocator<1024>>);
 
 } // namespace FoundationKitMemory

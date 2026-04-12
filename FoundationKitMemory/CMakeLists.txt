@@ -20,12 +20,8 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/TrackingAllocator.hpp
     Include/FoundationKitMemory/UniquePtr.hpp
     Include/FoundationKitMemory/SharedPtr.hpp
-    Include/FoundationKitMemory/MemoryResource.hpp
     Include/FoundationKitMemory/MemoryRegion.hpp
-    Include/FoundationKitMemory/AllocatorFactory.hpp
-    Include/FoundationKitMemory/AdaptiveSegregator.hpp
     Include/FoundationKitMemory/SynchronizedAllocator.hpp
-    Include/FoundationKitMemory/AllocatorLocking.hpp
     Include/FoundationKitMemory/MemoryObject.hpp
     Include/FoundationKitMemory/ObjectPool.hpp
     Include/FoundationKitMemory/KernelHeap.hpp
@@ -37,6 +33,7 @@ set(FOUNDATIONKITMEMORY_HEADERS
     Include/FoundationKitMemory/PerCpuAllocator.hpp
     Include/FoundationKitMemory/PerCpuStatsAllocator.hpp
     Include/FoundationKitMemory/RcuAllocatorAdapter.hpp
+    Include/FoundationKitMemory/PoisoningAllocator.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES

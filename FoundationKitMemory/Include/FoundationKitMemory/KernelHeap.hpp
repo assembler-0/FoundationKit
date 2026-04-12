@@ -250,6 +250,26 @@ namespace FoundationKitMemory {
 
         [[nodiscard]] bool IsInitialized() const noexcept { return m_initialized; }
 
+        /// @brief Convenience factory: construct and initialise a KernelHeap in one call.
+        ///
+        /// Builds the large-object `PolicyFreeListAllocator<BestFitPolicy>` from
+        /// `large_buf`/`large_size` and calls `Initialize`. The caller owns the heap
+        /// instance; this method initialises it in place.
+        static void Create(
+            KernelHeap&         heap,
+            MemoryRegion        region,
+            u8                  slab_ratio,
+            void*               large_buf,
+            usize               large_size,
+            const SlabSizeClass classes[SlabCfg::NumClasses] = nullptr
+        ) noexcept {
+            FK_BUG_ON(!large_buf || large_size == 0,
+                "KernelHeap::Create: large_buf is null or large_size is zero");
+            const SlabSizeClass* cls = classes ? classes : DefaultSlabClasses;
+            PolicyFreeListAllocator<BestFitPolicy> large(large_buf, large_size);
+            heap.Initialize(region, slab_ratio, FoundationKitCxxStl::Move(large), cls);
+        }
+
     private:
         SlabTier  m_slab;
         BuddyTier m_buddy;

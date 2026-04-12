@@ -187,6 +187,13 @@ namespace FoundationKitMemory {
         MemoryRegion m_region;
     };
 
+    /// @brief Bind any allocator to a region. Deduction helper.
+    template <IAllocator Alloc>
+    [[nodiscard]] constexpr RegionAwareAllocator<Alloc>
+    MakeRegionAware(Alloc& alloc, MemoryRegion region) noexcept {
+        return RegionAwareAllocator<Alloc>(alloc, region);
+    }
+
     // ============================================================================
     // Region Pool: Manage Multiple Sub-Regions
     // ============================================================================
