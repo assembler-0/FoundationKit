@@ -1,8 +1,8 @@
 #include <Test/TestFramework.hpp>
 #include <FoundationKitCxxStl/Sync/RcuPtr.hpp>
 #include <FoundationKitCxxStl/Structure/RcuList.hpp>
-#include <FoundationKitMemory/RcuAllocatorAdapter.hpp>
-#include <FoundationKitMemory/FreeListAllocator.hpp>
+#include <FoundationKitMemory/Support/RcuAllocatorAdapter.hpp>
+#include <FoundationKitMemory/Allocators/FreeListAllocator.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitCxxStl::Sync;

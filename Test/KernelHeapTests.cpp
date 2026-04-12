@@ -1,5 +1,5 @@
 #include <Test/TestFramework.hpp>
-#include <FoundationKitMemory/KernelHeap.hpp>
+#include <FoundationKitMemory/Heap/KernelHeap.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;

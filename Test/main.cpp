@@ -1,6 +1,6 @@
 #include <Test/TestFramework.hpp>
-#include <FoundationKitMemory/BumpAllocator.hpp>
-#include <FoundationKitMemory/GlobalAllocator.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
+#include <FoundationKitMemory/Heap/GlobalAllocator.hpp>
 
 // Global test allocator (must be initialized before tests)
 static FoundationKitCxxStl::byte g_test_buffer[128 * 1024];

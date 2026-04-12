@@ -1,4 +1,4 @@
-#include <FoundationKitMemory/GlobalAllocator.hpp>
+#include <FoundationKitMemory/Heap/GlobalAllocator.hpp>
 
 namespace FoundationKitMemory {
 

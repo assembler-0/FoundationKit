@@ -1,7 +1,7 @@
 #include <Test/TestFramework.hpp>
 #include <FoundationKitCxxStl/Structure/XArray.hpp>
 #include <FoundationKitCxxStl/Structure/LruCache.hpp>
-#include <FoundationKitMemory/BumpAllocator.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitCxxStl::Structure;

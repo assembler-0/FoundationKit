@@ -4,7 +4,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 
 #if FOUNDATIONKITCXXABI_BRIDGE_GLOBAL_ALLOCATOR
-#  include <FoundationKitMemory/GlobalAllocator.hpp>
+#  include <FoundationKitMemory/Heap/GlobalAllocator.hpp>
 #endif
 
 using namespace FoundationKitCxxStl;

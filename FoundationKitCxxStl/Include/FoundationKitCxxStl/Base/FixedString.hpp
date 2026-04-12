@@ -5,7 +5,7 @@
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitCxxStl/Base/Format.hpp>
-#include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/Core/MemoryOperations.hpp>
 
 namespace FoundationKitCxxStl {
 

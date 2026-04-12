@@ -3,7 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
-#include <FoundationKitMemory/AnyAllocator.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 

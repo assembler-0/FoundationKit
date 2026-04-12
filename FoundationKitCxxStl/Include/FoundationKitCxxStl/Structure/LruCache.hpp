@@ -6,7 +6,7 @@
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Hash.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
-#include <FoundationKitMemory/AnyAllocator.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 

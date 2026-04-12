@@ -1,8 +1,8 @@
 #include <Test/TestFramework.hpp>
-#include <FoundationKitMemory/ReclaimChain.hpp>
-#include <FoundationKitMemory/KernelHeap.hpp>
-#include <FoundationKitMemory/FreeListAllocator.hpp>
-#include <FoundationKitMemory/BumpAllocator.hpp>
+#include <FoundationKitMemory/Support/ReclaimChain.hpp>
+#include <FoundationKitMemory/Heap/KernelHeap.hpp>
+#include <FoundationKitMemory/Allocators/FreeListAllocator.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;

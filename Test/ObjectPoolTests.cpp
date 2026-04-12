@@ -1,9 +1,9 @@
 #include <Test/TestFramework.hpp>
-#include <FoundationKitMemory/MemoryObject.hpp>
-#include <FoundationKitMemory/ObjectPool.hpp>
-#include <FoundationKitMemory/FreeListAllocator.hpp>
-#include <FoundationKitMemory/BumpAllocator.hpp>
-#include <FoundationKitMemory/StaticAllocator.hpp>
+#include <FoundationKitMemory/Core/MemoryObject.hpp>
+#include <FoundationKitMemory/Allocators/ObjectPool.hpp>
+#include <FoundationKitMemory/Allocators/FreeListAllocator.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
+#include <FoundationKitMemory/Allocators/StaticAllocator.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;

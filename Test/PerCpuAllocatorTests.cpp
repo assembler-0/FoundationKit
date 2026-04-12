@@ -1,8 +1,8 @@
 #include <Test/TestFramework.hpp>
-#include <FoundationKitMemory/PerCpuAllocator.hpp>
-#include <FoundationKitMemory/PerCpuStatsAllocator.hpp>
-#include <FoundationKitMemory/BumpAllocator.hpp>
-#include <FoundationKitMemory/SynchronizedAllocator.hpp>
+#include <FoundationKitMemory/Allocators/PerCpuAllocator.hpp>
+#include <FoundationKitMemory/Allocators/PerCpuStatsAllocator.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
+#include <FoundationKitMemory/Allocators/SynchronizedAllocator.hpp>
 #include <FoundationKitOsl/PerCpu.hpp>
 
 using namespace FoundationKitCxxStl;

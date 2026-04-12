@@ -1,53 +1,64 @@
 # FoundationKitMemory
 
 set(FOUNDATIONKITMEMORY_HEADERS
-        Include/FoundationKitMemory/MemoryCore.hpp
-        Include/FoundationKitMemory/MemoryCommon.hpp
-        Include/FoundationKitMemory/MemoryOperations.hpp
-        Include/FoundationKitMemory/GlobalAllocator.hpp
-        Include/FoundationKitMemory/AnyAllocator.hpp
-        Include/FoundationKitMemory/BumpAllocator.hpp
-        Include/FoundationKitMemory/FreeListAllocator.hpp
-        Include/FoundationKitMemory/SlabAllocator.hpp
-        Include/FoundationKitMemory/BuddyAllocator.hpp
-        Include/FoundationKitMemory/FallbackAllocator.hpp
-        Include/FoundationKitMemory/NullAllocator.hpp
-        Include/FoundationKitMemory/PoolAllocator.hpp
-        Include/FoundationKitMemory/SafeAllocator.hpp
-        Include/FoundationKitMemory/Segregator.hpp
-        Include/FoundationKitMemory/StaticAllocator.hpp
-        Include/FoundationKitMemory/StatsAllocator.hpp
-        Include/FoundationKitMemory/TrackingAllocator.hpp
-        Include/FoundationKitMemory/UniquePtr.hpp
-        Include/FoundationKitMemory/SharedPtr.hpp
-        Include/FoundationKitMemory/MemoryRegion.hpp
-        Include/FoundationKitMemory/SynchronizedAllocator.hpp
-        Include/FoundationKitMemory/MemoryObject.hpp
-        Include/FoundationKitMemory/ObjectPool.hpp
-        Include/FoundationKitMemory/KernelHeap.hpp
-        Include/FoundationKitMemory/ReclaimChain.hpp
-        Include/FoundationKitMemory/FragmentationReport.hpp
-        Include/FoundationKitMemory/MemorySafety.hpp
-        Include/FoundationKitMemory/RegionDescriptor.hpp
-        Include/FoundationKitMemory/PhysicalMemoryMap.hpp
-        Include/FoundationKitMemory/PerCpuAllocator.hpp
-        Include/FoundationKitMemory/PerCpuStatsAllocator.hpp
-        Include/FoundationKitMemory/RcuAllocatorAdapter.hpp
-        Include/FoundationKitMemory/PoisoningAllocator.hpp
-        Include/FoundationKitMemory/Vmm/AddressTypes.hpp
-        Include/FoundationKitMemory/Vmm/KernelMemoryManager.hpp
-        Include/FoundationKitMemory/Vmm/MemoryPressureManager.hpp
-        Include/FoundationKitMemory/Vmm/PageFrameAllocator.hpp
-        Include/FoundationKitMemory/Vmm/VirtualAddressSpace.hpp
-        Include/FoundationKitMemory/Vmm/VmaDescriptor.hpp
-        Include/FoundationKitMemory/Vmm/VmObject.hpp
-        Include/FoundationKitMemory/Vmm/VmmConcepts.hpp
-        Include/FoundationKitMemory/Vmm/PageDescriptor.hpp
-        Include/FoundationKitMemory/Vmm/PageDescriptorArray.hpp
-        Include/FoundationKitMemory/Vmm/PageQueue.hpp
-        Include/FoundationKitMemory/Vmm/VmPager.hpp
-        Include/FoundationKitMemory/Vmm/VmFault.hpp
-        Include/FoundationKitMemory/Vmm/AddressSpace.hpp
+        # Core
+        Include/FoundationKitMemory/Core/MemoryCore.hpp
+        Include/FoundationKitMemory/Core/MemoryCommon.hpp
+        Include/FoundationKitMemory/Core/MemoryObject.hpp
+        Include/FoundationKitMemory/Core/MemoryOperations.hpp
+        Include/FoundationKitMemory/Core/MemorySafety.hpp
+
+        # Allocators
+        Include/FoundationKitMemory/Allocators/AnyAllocator.hpp
+        Include/FoundationKitMemory/Allocators/BuddyAllocator.hpp
+        Include/FoundationKitMemory/Allocators/BumpAllocator.hpp
+        Include/FoundationKitMemory/Allocators/FallbackAllocator.hpp
+        Include/FoundationKitMemory/Allocators/FreeListAllocator.hpp
+        Include/FoundationKitMemory/Allocators/NullAllocator.hpp
+        Include/FoundationKitMemory/Allocators/ObjectPool.hpp
+        Include/FoundationKitMemory/Allocators/PerCpuAllocator.hpp
+        Include/FoundationKitMemory/Allocators/PerCpuStatsAllocator.hpp
+        Include/FoundationKitMemory/Allocators/PoisoningAllocator.hpp
+        Include/FoundationKitMemory/Allocators/PoolAllocator.hpp
+        Include/FoundationKitMemory/Allocators/SafeAllocator.hpp
+        Include/FoundationKitMemory/Allocators/Segregator.hpp
+        Include/FoundationKitMemory/Allocators/SlabAllocator.hpp
+        Include/FoundationKitMemory/Allocators/StaticAllocator.hpp
+        Include/FoundationKitMemory/Allocators/StatsAllocator.hpp
+        Include/FoundationKitMemory/Allocators/SynchronizedAllocator.hpp
+        Include/FoundationKitMemory/Allocators/TrackingAllocator.hpp
+
+        # Ptr
+        Include/FoundationKitMemory/Ptr/SharedPtr.hpp
+        Include/FoundationKitMemory/Ptr/UniquePtr.hpp
+
+        # Management
+        Include/FoundationKitMemory/Management/MemoryRegion.hpp
+        Include/FoundationKitMemory/Management/RegionDescriptor.hpp
+        Include/FoundationKitMemory/Management/PhysicalMemoryMap.hpp
+        Include/FoundationKitMemory/Management/AddressTypes.hpp
+        Include/FoundationKitMemory/Management/KernelMemoryManager.hpp
+        Include/FoundationKitMemory/Management/MemoryPressureManager.hpp
+        Include/FoundationKitMemory/Management/PageFrameAllocator.hpp
+        Include/FoundationKitMemory/Management/VirtualAddressSpace.hpp
+        Include/FoundationKitMemory/Management/VmaDescriptor.hpp
+        Include/FoundationKitMemory/Management/VmObject.hpp
+        Include/FoundationKitMemory/Management/VmmConcepts.hpp
+        Include/FoundationKitMemory/Management/PageDescriptor.hpp
+        Include/FoundationKitMemory/Management/PageDescriptorArray.hpp
+        Include/FoundationKitMemory/Management/PageQueue.hpp
+        Include/FoundationKitMemory/Management/VmPager.hpp
+        Include/FoundationKitMemory/Management/VmFault.hpp
+        Include/FoundationKitMemory/Management/AddressSpace.hpp
+
+        # Support
+        Include/FoundationKitMemory/Support/FragmentationReport.hpp
+        Include/FoundationKitMemory/Support/ReclaimChain.hpp
+        Include/FoundationKitMemory/Support/RcuAllocatorAdapter.hpp
+
+        # Heap
+        Include/FoundationKitMemory/Heap/KernelHeap.hpp
+        Include/FoundationKitMemory/Heap/GlobalAllocator.hpp
 )
 
 set(FOUNDATIONKITMEMORY_SOURCES

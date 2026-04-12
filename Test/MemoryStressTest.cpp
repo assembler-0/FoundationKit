@@ -4,36 +4,36 @@
 #include <Test/TestFramework.hpp>
 
 // Memory components - ALL allocators
-#include <FoundationKitMemory/MemoryCore.hpp>
-#include <FoundationKitMemory/MemoryCommon.hpp>
-#include <FoundationKitMemory/MemoryOperations.hpp>
-#include <FoundationKitMemory/BumpAllocator.hpp>
-#include <FoundationKitMemory/FreeListAllocator.hpp>
-#include <FoundationKitMemory/SlabAllocator.hpp>
-#include <FoundationKitMemory/PoolAllocator.hpp>
-#include <FoundationKitMemory/StaticAllocator.hpp>
-#include <FoundationKitMemory/NullAllocator.hpp>
-#include <FoundationKitMemory/StatsAllocator.hpp>
-#include <FoundationKitMemory/SafeAllocator.hpp>
-#include <FoundationKitMemory/AnyAllocator.hpp>
-#include <FoundationKitMemory/FallbackAllocator.hpp>
-#include <FoundationKitMemory/Segregator.hpp>
-#include <FoundationKitMemory/UniquePtr.hpp>
-#include <FoundationKitMemory/BuddyAllocator.hpp>
-#include <FoundationKitMemory/SharedPtr.hpp>
-#include <FoundationKitMemory/FragmentationReport.hpp>
+#include <FoundationKitMemory/Core/MemoryCore.hpp>
+#include <FoundationKitMemory/Core/MemoryCommon.hpp>
+#include <FoundationKitMemory/Core/MemoryOperations.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
+#include <FoundationKitMemory/Allocators/FreeListAllocator.hpp>
+#include <FoundationKitMemory/Allocators/SlabAllocator.hpp>
+#include <FoundationKitMemory/Allocators/PoolAllocator.hpp>
+#include <FoundationKitMemory/Allocators/StaticAllocator.hpp>
+#include <FoundationKitMemory/Allocators/NullAllocator.hpp>
+#include <FoundationKitMemory/Allocators/StatsAllocator.hpp>
+#include <FoundationKitMemory/Allocators/SafeAllocator.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
+#include <FoundationKitMemory/Allocators/FallbackAllocator.hpp>
+#include <FoundationKitMemory/Allocators/Segregator.hpp>
+#include <FoundationKitMemory/Ptr/UniquePtr.hpp>
+#include <FoundationKitMemory/Allocators/BuddyAllocator.hpp>
+#include <FoundationKitMemory/Ptr/SharedPtr.hpp>
+#include <FoundationKitMemory/Support/FragmentationReport.hpp>
 #include <FoundationKitCxxStl/Sync/TicketLock.hpp>
 #include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/InterruptSafe.hpp>
 
 // syntax check
-#include <FoundationKitMemory/Vmm/KernelMemoryManager.hpp>
-#include <FoundationKitMemory/Vmm/VmObject.hpp>
-#include <FoundationKitMemory/Vmm/VmaDescriptor.hpp>
-#include <FoundationKitMemory/Vmm/AddressTypes.hpp>
-#include <FoundationKitMemory/Vmm/PageDescriptorArray.hpp>
-#include <FoundationKitMemory/Vmm/PageQueue.hpp>
-#include <FoundationKitMemory/Vmm/VirtualAddressSpace.hpp>
+#include <FoundationKitMemory/Management/KernelMemoryManager.hpp>
+#include <FoundationKitMemory/Management/VmObject.hpp>
+#include <FoundationKitMemory/Management/VmaDescriptor.hpp>
+#include <FoundationKitMemory/Management/AddressTypes.hpp>
+#include <FoundationKitMemory/Management/PageDescriptorArray.hpp>
+#include <FoundationKitMemory/Management/PageQueue.hpp>
+#include <FoundationKitMemory/Management/VirtualAddressSpace.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;
@@ -704,7 +704,7 @@ TEST_CASE(Memory_AllAllocators_Comprehensive) {
 // TEST: SynchronizedAllocator - Thread-Safe Allocators (SMP Safety)
 // ============================================================================
 
-#include <FoundationKitMemory/SynchronizedAllocator.hpp>
+#include <FoundationKitMemory/Allocators/SynchronizedAllocator.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/Mutex.hpp>
 

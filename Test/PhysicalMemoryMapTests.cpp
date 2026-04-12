@@ -2,8 +2,8 @@
 /// @desc Unit tests for PhysicalMemoryMap<N> and ZoneAllocator<Alloc, N>.
 
 #include <Test/TestFramework.hpp>
-#include <FoundationKitMemory/PhysicalMemoryMap.hpp>
-#include <FoundationKitMemory/BumpAllocator.hpp>
+#include <FoundationKitMemory/Management/PhysicalMemoryMap.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;

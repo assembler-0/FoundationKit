@@ -8,7 +8,7 @@
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/Locks.hpp>
-#include <FoundationKitMemory/AnyAllocator.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 

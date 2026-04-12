@@ -27,11 +27,11 @@
 #include <FoundationKitCxxStl/Structure/SinglyLinkedList.hpp>
 
 // Memory components
-#include <FoundationKitMemory/BumpAllocator.hpp>
-#include <FoundationKitMemory/AnyAllocator.hpp>
-#include <FoundationKitMemory/UniquePtr.hpp>
-#include <FoundationKitMemory/SharedPtr.hpp>
-#include <FoundationKitMemory/PoolAllocator.hpp>
+#include <FoundationKitMemory/Allocators/BumpAllocator.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
+#include <FoundationKitMemory/Ptr/UniquePtr.hpp>
+#include <FoundationKitMemory/Ptr/SharedPtr.hpp>
+#include <FoundationKitMemory/Allocators/PoolAllocator.hpp>
 
 using namespace FoundationKitCxxStl;
 using namespace FoundationKitMemory;

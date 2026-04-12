@@ -3,7 +3,7 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bit.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
-#include <FoundationKitMemory/MemoryOperations.hpp>
+#include <FoundationKitMemory/Core/MemoryOperations.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 

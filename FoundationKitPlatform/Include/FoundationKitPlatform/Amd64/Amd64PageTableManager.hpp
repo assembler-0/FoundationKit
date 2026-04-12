@@ -1,7 +1,7 @@
 #pragma once
 
-#include <FoundationKitMemory/Vmm/VmmConcepts.hpp>
-#include <FoundationKitMemory/Vmm/AddressTypes.hpp>
+#include <FoundationKitMemory/Management/VmmConcepts.hpp>
+#include <FoundationKitMemory/Management/AddressTypes.hpp>
 #include <FoundationKitPlatform/Amd64/Paging.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>

@@ -4,8 +4,8 @@
 #include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
-#include <FoundationKitMemory/MemoryOperations.hpp>
-#include <FoundationKitMemory/AnyAllocator.hpp>
+#include <FoundationKitMemory/Core/MemoryOperations.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
 #include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {

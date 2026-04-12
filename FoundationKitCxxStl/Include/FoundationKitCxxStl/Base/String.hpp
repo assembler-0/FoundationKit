@@ -5,9 +5,9 @@
 #include <FoundationKitCxxStl/Base/Expected.hpp>
 #include <FoundationKitCxxStl/Base/StringView.hpp>
 #include <FoundationKitCxxStl/Base/Vector.hpp>
-#include <FoundationKitMemory/AnyAllocator.hpp>
-#include <FoundationKitMemory/MemoryOperations.hpp>
-#include <FoundationKitMemory/UniquePtr.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
+#include <FoundationKitMemory/Core/MemoryOperations.hpp>
+#include <FoundationKitMemory/Ptr/UniquePtr.hpp>
 
 namespace FoundationKitCxxStl {
 
