@@ -2,7 +2,7 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
-#include <FoundationKitCxxStl/Base/StaticVector.hpp>
+#include <FoundationKitCxxStl/Base/FixedVector.hpp>
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/Locks.hpp>
@@ -196,7 +196,7 @@ namespace FoundationKitCxxStl::Sync {
             // Snapshot the list under the lock, then invoke outside it.
             // This prevents a callback from re-entering CallAfterGracePeriod
             // while we hold the lock, which would deadlock.
-            StaticVector<RcuCallback, MaxCallbacks> local;
+            FixedVector<RcuCallback, MaxCallbacks> local;
             {
                 LockGuard guard(m_lock);
                 local = Move(m_callbacks);
@@ -214,7 +214,7 @@ namespace FoundationKitCxxStl::Sync {
         // QS report; m_lock + m_callbacks are written only by writers.
         alignas(64) Atomic<u64>                      m_pending_mask[kWords];
         alignas(64) SpinLock                         m_lock;
-                    StaticVector<RcuCallback, MaxCallbacks> m_callbacks;
+                    FixedVector<RcuCallback, MaxCallbacks> m_callbacks;
     };
 
     // =========================================================================

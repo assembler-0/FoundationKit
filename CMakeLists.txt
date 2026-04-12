@@ -40,6 +40,9 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/RcuInfrastructureTest.cpp
         Test/AtomicFlagAndTaggedPtrTests.cpp
         Test/BitSpinLockAndAtomicPairTests.cpp
+        Test/AugmentedRbTreeAndHeapTests.cpp
+        Test/XArrayAndLruCacheTests.cpp
+        Test/SkipListAndBTreeTests.cpp
     )
 
     target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitPlatform)

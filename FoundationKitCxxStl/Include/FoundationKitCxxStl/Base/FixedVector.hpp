@@ -6,7 +6,7 @@
 #include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
-namespace FoundationKitCxxStl::Structure {
+namespace FoundationKitCxxStl {
 
     /// @brief A stack-based vector with fixed capacity. No heap allocation.
     /// @tparam T The type of elements.

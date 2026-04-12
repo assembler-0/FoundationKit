@@ -1,6 +1,7 @@
 #pragma once
 
 #include <FoundationKitMemory/RegionDescriptor.hpp>
+#include <FoundationKitCxxStl/Structure/XArray.hpp>
 
 namespace FoundationKitMemory {
 
@@ -56,9 +57,20 @@ namespace FoundationKitMemory {
             m_frozen = true;
         }
 
-        /// @brief Find the zone containing ptr. O(MaxZones).
+        /// @brief Find the zone containing ptr. O(log₆₄ n) via XArray PFN index,
+        ///        falling back to O(MaxZones) linear scan before the index is built.
         /// @return Pointer to the descriptor, or nullptr if no zone contains ptr.
         [[nodiscard]] const RegionDescriptor* FindZone(const void* ptr) const noexcept {
+            // Fast path: XArray keyed by page frame number.
+            // The index is populated by BuildPfnIndex() after all zones are registered.
+            if (m_pfn_index_built) {
+                const usize pfn = reinterpret_cast<uptr>(ptr) >> kPageShift;
+                const usize* zone_idx = m_pfn_index.Load(pfn);
+                if (zone_idx && *zone_idx < m_count)
+                    return &m_zones[*zone_idx];
+                return nullptr;
+            }
+            // Slow path: linear scan (used during early boot before BuildPfnIndex).
             for (usize i = 0; i < m_count; ++i) {
                 if (m_zones[i].Contains(ptr)) return &m_zones[i];
             }
@@ -90,10 +102,52 @@ namespace FoundationKitMemory {
         [[nodiscard]] bool  IsFrozen()  const noexcept { return m_frozen; }
         [[nodiscard]] usize ZoneCount() const noexcept { return m_count;  }
 
+        /// @brief Build the PFN → zone index for O(log₆₄ n) FindZone() lookups.
+        ///
+        /// Must be called after Freeze() and after an allocator is available.
+        /// Each page frame covered by a registered zone gets an entry in the
+        /// XArray pointing back to the zone's index in m_zones[].
+        ///
+        /// @param alloc  Allocator used to back the XArray's internal nodes.
+        ///               Must outlive this PhysicalMemoryMap.
+        template <FoundationKitMemory::IAllocator Alloc>
+        void BuildPfnIndex(Alloc alloc) noexcept {
+            FK_BUG_ON(!m_frozen,
+                "PhysicalMemoryMap::BuildPfnIndex: must be called after Freeze()");
+            FK_BUG_ON(m_pfn_index_built,
+                "PhysicalMemoryMap::BuildPfnIndex: index already built");
+
+            // Rebuild the XArray with the supplied allocator.
+            // We use placement-new into the existing storage since XArray is
+            // not default-constructible with a deferred allocator.
+            new (&m_pfn_index) FoundationKitCxxStl::Structure::XArray<usize, Alloc>(alloc);
+
+            for (usize i = 0; i < m_count; ++i) {
+                const uptr base = reinterpret_cast<uptr>(m_zones[i].base);
+                const uptr end  = base + m_zones[i].size;
+                for (uptr pfn = base >> kPageShift; pfn < (end >> kPageShift); ++pfn) {
+                    // Store the zone index. We use a static per-zone index cell
+                    // to avoid allocating per-page storage.
+                    m_zone_indices[i] = i;
+                    const bool ok = m_pfn_index.Store(pfn, &m_zone_indices[i]);
+                    FK_BUG_ON(!ok,
+                        "PhysicalMemoryMap::BuildPfnIndex: XArray::Store failed at PFN={}", pfn);
+                }
+            }
+            m_pfn_index_built = true;
+        }
+
     private:
+        static constexpr usize kPageShift = 12; // 4 KiB pages
+
         RegionDescriptor m_zones[MaxZones] = {};
+        usize            m_zone_indices[MaxZones] = {}; // stable storage for XArray values
+        // XArray is type-erased here via AnyAllocator so PhysicalMemoryMap
+        // doesn't need to be templated on the allocator type.
+        FoundationKitCxxStl::Structure::XArray<usize> m_pfn_index;
         usize            m_count           = 0;
         bool             m_frozen          = false;
+        bool             m_pfn_index_built = false;
     };
 
     // ============================================================================

@@ -3,7 +3,7 @@
 #include <FoundationKitCxxStl/Base/Bit.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>
 #include <FoundationKitCxxStl/Base/Tuple.hpp>
-#include <FoundationKitCxxStl/Base/StaticVector.hpp>
+#include <FoundationKitCxxStl/Base/FixedVector.hpp>
 
 using namespace FoundationKitCxxStl;
 
@@ -73,7 +73,7 @@ TEST_CASE(Tuple_Basic) {
 }
 
 TEST_CASE(StaticVector_Basic) {
-    StaticVector<int, 5> v;
+    FixedVector<int, 5> v;
     ASSERT_TRUE(v.Empty());
     ASSERT_EQ(v.Size(), 0);
     
@@ -95,7 +95,7 @@ TEST_CASE(StaticVector_Basic) {
     ASSERT_TRUE(v.Empty());
     ASSERT_EQ(v.Size(), 0);
     
-    StaticVector<int, 2> v2;
+    FixedVector<int, 2> v2;
     ASSERT_TRUE(v2.PushBack(10));
     ASSERT_TRUE(v2.PushBack(20));
     ASSERT_FALSE(v2.PushBack(30)); // Full

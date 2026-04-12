@@ -25,34 +25,40 @@ set(FOUNDATIONKITCXXSTL_HEADERS
     Include/FoundationKitCxxStl/Base/Vector.hpp
     Include/FoundationKitCxxStl/Base/KernelError.hpp
     Include/FoundationKitCxxStl/Base/FixedString.hpp
-    Include/FoundationKitCxxStl/Base/StaticVector.hpp
+    Include/FoundationKitCxxStl/Base/FixedVector.hpp
     Include/FoundationKitCxxStl/Base/PlacementNew.hpp
     Include/FoundationKitCxxStl/Base/Safety.hpp
     Include/FoundationKitCxxStl/Base/Flags.hpp
     Include/FoundationKitCxxStl/Base/LazyInit.hpp
+    Include/FoundationKitCxxStl/Base/FlatMap.hpp
+    Include/FoundationKitCxxStl/Base/HashMap.hpp
     Include/FoundationKitCxxStl/Meta/Concepts.hpp
     Include/FoundationKitCxxStl/Std/initializer_list
     Include/FoundationKitCxxStl/Structure/BitSet.hpp
     Include/FoundationKitCxxStl/Structure/CircularLinkedList.hpp
     Include/FoundationKitCxxStl/Structure/DoublyLinkedList.hpp
-    Include/FoundationKitCxxStl/Structure/HashMap.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveDoublyLinkedList.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveSinglyLinkedList.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveAvlTree.hpp
     Include/FoundationKitCxxStl/Structure/IntrusiveRedBlackTree.hpp
+    Include/FoundationKitCxxStl/Structure/AugmentedIntrusiveRbTree.hpp
+    Include/FoundationKitCxxStl/Structure/IntrusiveMinHeap.hpp
+    Include/FoundationKitCxxStl/Structure/XArray.hpp
+    Include/FoundationKitCxxStl/Structure/LruCache.hpp
+    Include/FoundationKitCxxStl/Structure/IntrusiveSkipList.hpp
+    Include/FoundationKitCxxStl/Structure/BTree.hpp
     Include/FoundationKitCxxStl/Structure/RingBuffer.hpp
-    Include/FoundationKitCxxStl/Structure/FlatMap.hpp
     Include/FoundationKitCxxStl/Structure/CircularLog.hpp
     Include/FoundationKitCxxStl/Structure/AtomicBitmap.hpp
     Include/FoundationKitCxxStl/Structure/InterruptSafeQueue.hpp
     Include/FoundationKitCxxStl/Structure/MpscQueue.hpp
     Include/FoundationKitCxxStl/Structure/RcuList.hpp
+    Include/FoundationKitCxxStl/Structure/WorkQueue.hpp
     Include/FoundationKitCxxStl/Sync/AtomicFlag.hpp
     Include/FoundationKitCxxStl/Sync/AtomicPair.hpp
     Include/FoundationKitCxxStl/Sync/BitSpinLock.hpp
     Include/FoundationKitCxxStl/Sync/Cas.hpp
     Include/FoundationKitCxxStl/Sync/TaggedPtr.hpp
-    Include/FoundationKitCxxStl/Structure/WorkQueue.hpp
     Include/FoundationKitCxxStl/Sync/Rcu.hpp
     Include/FoundationKitCxxStl/Sync/RcuPtr.hpp
     Include/FoundationKitCxxStl/Sync/SeqLock.hpp
