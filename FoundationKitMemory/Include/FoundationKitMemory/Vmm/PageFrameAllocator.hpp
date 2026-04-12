@@ -48,7 +48,8 @@ namespace FoundationKitMemory {
         /// @param base   Physical base address (must be page-aligned).
         /// @param pages  Number of pages in this zone.
         /// @param zone   Zone type tag (DmaCoherent, Generic, etc.).
-        void RegisterZone(PhysicalAddress base, usize pages, RegionType zone) noexcept {
+        /// @param virt   Optional virtual address mapping of this zone.
+        void RegisterZone(PhysicalAddress base, usize pages, RegionType zone, void* virt = nullptr) noexcept {
             FK_BUG_ON(m_booted,
                 "PageFrameAllocator::RegisterZone: called after Boot() — zone table is frozen");
             FK_BUG_ON(m_zone_count >= MaxZones,
@@ -66,7 +67,7 @@ namespace FoundationKitMemory {
                     "PageFrameAllocator::RegisterZone: new zone overlaps existing zone[{}]", i);
             }
 
-            m_zones[m_zone_count] = {base, pages, zone};
+            m_zones[m_zone_count] = {base, pages, zone, virt};
             ++m_zone_count;
         }
 
