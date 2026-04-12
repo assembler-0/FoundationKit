@@ -2,6 +2,7 @@
 
 #include <FoundationKitMemory/ReclaimChain.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
+#include <FoundationKitMemory/Vmm/AddressTypes.hpp>
 
 namespace FoundationKitMemory {
 
