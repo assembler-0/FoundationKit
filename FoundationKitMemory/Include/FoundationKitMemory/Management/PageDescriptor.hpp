@@ -40,7 +40,7 @@ namespace FoundationKitMemory {
     // PageFlags — per-page attribute bits
     // =========================================================================
 
-    /// @brief Per-page flags. Stored as a u16 bitfield.
+    /// @brief Per-page flags. Stored atomically as a u16.
     enum class PageFlags : u16 {
         None       = 0,
         Dirty      = 1 << 0,   ///< Page contents differ from backing store.
@@ -78,24 +78,23 @@ namespace FoundationKitMemory {
 
     /// @brief Per-physical-page metadata indexed by PFN.
     ///
-    /// @desc  One descriptor per physical page frame in the system. Provides:
-    ///        - State machine with FK_BUG_ON on illegal transitions.
-    ///        - Atomic map_count for PTE reference tracking.
-    ///        - Intrusive doubly-linked list node for LRU queue membership.
-    ///        - Owner VmObject pointer + offset for reverse mapping.
-    ///
     ///        Layout is cache-line aware: hot fields (state, flags, lru) are
     ///        in the first 64 bytes; cold fields (owner, owner_offset) follow.
     struct PageDescriptor {
         // ----------------------------------------------------------------
         // Hot fields (first cache line)
         // ----------------------------------------------------------------
-        Structure::IntrusiveDoublyLinkedListNode lru;   ///< LRU queue linkage.
-        PageState  state  = PageState::Free;            ///< Current lifecycle state.
-        PageFlags  flags  = PageFlags::None;            ///< Attribute bits.
+        Structure::IntrusiveDoublyLinkedListNode lru;   ///< LRU queue linkage (protected by PageQueue::m_lock).
+
+        /// @brief Current lifecycle state — Sync::Atomic for SMP safety.
+        Sync::Atomic<u8> state{static_cast<u8>(PageState::Free)};
+
+        /// @brief Per-page attribute bits — Sync::Atomic for SMP safety.
+        Sync::Atomic<u16> flags{0};
+
         u8         order  = 0;                          ///< Compound order (0 = single page, 1 = 2 pages, etc.)
         u8         _pad0  = 0;
-        Pfn        pfn    = {};                         ///< Self-reference PFN (for validation).
+        Pfn        pfn    = {};                         ///< Self-reference PFN (immutable after InitCompoundFolio).
 
         /// @brief Number of PTEs mapping this page. Atomic for concurrent map/unmap.
         ///        0 = unmapped, >0 = mapped. Used by rmap and eviction decisions.
@@ -104,8 +103,12 @@ namespace FoundationKitMemory {
         // ----------------------------------------------------------------
         // Cold fields (second cache line on most architectures)
         // ----------------------------------------------------------------
-        VmObject*  owner         = nullptr;             ///< Owning VmObject (nullable for free/wired pages).
-        u64        owner_offset  = 0;                   ///< Byte offset within owning VmObject.
+
+        /// @brief Owning VmObject — atomic to prevent torn-pointer observer bugs.
+        Sync::Atomic<uptr>   a_owner{0};
+
+        /// @brief Byte offset within the owning VmObject — atomic for the same reason.
+        Sync::Atomic<u64>    a_owner_offset{0};
 
         // ----------------------------------------------------------------
         // State Transition API
@@ -113,16 +116,15 @@ namespace FoundationKitMemory {
 
         /// @brief Validate and execute a state transition.
         /// @param new_state  Target state.
-        ///
-        /// @desc  Every transition is validated. Illegal transitions FK_BUG immediately.
-        ///        The LRU node is NOT manipulated here — that is the PageQueue's
-        ///        responsibility. This only sets the state field.
         void TransitionTo(PageState new_state) noexcept {
-            FK_BUG_ON(state == new_state,
+            const u8 raw_current = state.Load(Sync::MemoryOrder::Acquire);
+            const auto current   = static_cast<PageState>(raw_current);
+
+            FK_BUG_ON(current == new_state,
                 "PageDescriptor::TransitionTo: self-transition to {} is a no-op bug (pfn={})",
                 static_cast<u8>(new_state), pfn.value);
 
-            switch (state) {
+            switch (current) {
                 case PageState::Free:
                     FK_BUG_ON(new_state != PageState::Active && new_state != PageState::Wired,
                         "PageDescriptor::TransitionTo: illegal Free→{} (pfn={}) — "
@@ -163,16 +165,43 @@ namespace FoundationKitMemory {
                     break;
             }
 
-            state = new_state;
+            // AcqRel: we have acquired the current state above; now we release
+            // the new state to all observers.  Any CPU reading state with Acquire
+            // will see all stores that happened before this point.
+            state.Store(static_cast<u8>(new_state), Sync::MemoryOrder::Release);
         }
 
         // ----------------------------------------------------------------
-        // Flag manipulation
+        // State accessor
         // ----------------------------------------------------------------
 
-        void SetFlag(PageFlags flag) noexcept { flags = flags | flag; }
-        void ClearFlag(PageFlags flag) noexcept { flags = flags & (~flag); }
-        [[nodiscard]] bool TestFlag(PageFlags flag) const noexcept { return HasPageFlag(flags, flag); }
+        /// @brief Read the current state with Acquire ordering.
+        [[nodiscard]] PageState State() const noexcept {
+            return static_cast<PageState>(state.Load(Sync::MemoryOrder::Acquire));
+        }
+
+        /// @brief Atomically set a flag bit.
+        void SetFlag(PageFlags flag) noexcept {
+            // FetchOr: LOCK OR on x86-64.  AcqRel ensures the flag is
+            // visible to any CPU that reads flags with Acquire ordering.
+            flags.FetchOr(static_cast<u16>(flag), Sync::MemoryOrder::AcqRel);
+        }
+
+        /// @brief Atomically clear a flag bit.
+        void ClearFlag(PageFlags flag) noexcept {
+            // FetchAnd: LOCK AND on x86-64.
+            flags.FetchAnd(static_cast<u16>(~static_cast<u16>(flag)), Sync::MemoryOrder::AcqRel);
+        }
+
+        [[nodiscard]] bool TestFlag(PageFlags flag) const noexcept {
+            return HasPageFlag(
+                static_cast<PageFlags>(flags.Load(Sync::MemoryOrder::Acquire)),
+                flag);
+        }
+
+        [[nodiscard]] PageFlags Flags() const noexcept {
+            return static_cast<PageFlags>(flags.Load(Sync::MemoryOrder::Acquire));
+        }
 
         // ----------------------------------------------------------------
         // Map count manipulation
@@ -198,22 +227,33 @@ namespace FoundationKitMemory {
             return map_count.Load(Sync::MemoryOrder::Relaxed) == 0;
         }
 
-        // ----------------------------------------------------------------
-        // Owner binding (for VmObject reverse mapping)
-        // ----------------------------------------------------------------
-
+        /// @brief Atomically bind an owner VmObject and offset.
+        ///
+        /// @desc  Uses Release ordering so that any CPU reading owner with
+        ///        Acquire sees a consistent (non-torn) pointer AND the
+        ///        freshly-written owner_offset in the correct order.
         void SetOwner(VmObject* new_owner, u64 offset) noexcept {
-            owner = new_owner;
-            owner_offset = offset;
+            // Write offset first (Release) then the pointer (Release).
+            // A reader that loads the pointer with Acquire will then see
+            // the offset as well — no torn-pair is possible.
+            a_owner_offset.Store(offset, Sync::MemoryOrder::Release);
+            a_owner.Store(reinterpret_cast<uptr>(new_owner), Sync::MemoryOrder::Release);
         }
 
+        /// @brief Atomically clear the owner binding.
         void ClearOwner() noexcept {
-            owner = nullptr;
-            owner_offset = 0;
+            // AcqRel: acquire current state, release zero to observers.
+            a_owner.Store(0, Sync::MemoryOrder::Release);
+            a_owner_offset.Store(0, Sync::MemoryOrder::Release);
         }
 
-        [[nodiscard]] VmObject* Owner() const noexcept { return owner; }
-        [[nodiscard]] u64 OwnerOffset() const noexcept { return owner_offset; }
+        [[nodiscard]] VmObject* Owner() const noexcept {
+            return reinterpret_cast<VmObject*>(a_owner.Load(Sync::MemoryOrder::Acquire));
+        }
+
+        [[nodiscard]] u64 OwnerOffset() const noexcept {
+            return a_owner_offset.Load(Sync::MemoryOrder::Acquire);
+        }
 
         // ----------------------------------------------------------------
         // Compound page queries
@@ -240,20 +280,21 @@ namespace FoundationKitMemory {
 
         /// @brief Full sanity check. Call from diagnostic/debug paths.
         void Verify() const noexcept {
+            const PageState s = State();
             FK_BUG_ON(!pfn.IsValid(),
                 "PageDescriptor::Verify: invalid PFN");
             FK_BUG_ON(IsTail() && IsHead(),
                 "PageDescriptor::Verify: page is both Head and Tail (pfn={})", pfn.value);
-            FK_BUG_ON(state == PageState::Free && !IsUnmapped(),
+            FK_BUG_ON(s == PageState::Free && !IsUnmapped(),
                 "PageDescriptor::Verify: Free page has non-zero map_count (pfn={}, map_count={})",
                 pfn.value, map_count.Load(Sync::MemoryOrder::Relaxed));
-            FK_BUG_ON(state == PageState::Free && TestFlag(PageFlags::Dirty),
+            FK_BUG_ON(s == PageState::Free && TestFlag(PageFlags::Dirty),
                 "PageDescriptor::Verify: Free page has Dirty flag (pfn={})", pfn.value);
-            FK_BUG_ON(state == PageState::Free && TestFlag(PageFlags::Locked),
+            FK_BUG_ON(s == PageState::Free && TestFlag(PageFlags::Locked),
                 "PageDescriptor::Verify: Free page has Locked flag (pfn={})", pfn.value);
-            FK_BUG_ON(TestFlag(PageFlags::Writeback) && state != PageState::Laundry,
+            FK_BUG_ON(TestFlag(PageFlags::Writeback) && s != PageState::Laundry,
                 "PageDescriptor::Verify: Writeback flag set but state is not Laundry (pfn={}, state={})",
-                pfn.value, static_cast<u8>(state));
+                pfn.value, static_cast<u8>(s));
         }
     };
 
@@ -331,12 +372,12 @@ namespace FoundationKitMemory {
 
         [[nodiscard]] PageState State() const noexcept {
             FK_BUG_ON(!head, "Folio::State: null head");
-            return head->state;
+            return head->State();
         }
 
         [[nodiscard]] PageFlags Flags() const noexcept {
             FK_BUG_ON(!head, "Folio::Flags: null head");
-            return head->flags;
+            return head->Flags();
         }
 
         void SetFlag(PageFlags flag) const noexcept {
@@ -390,26 +431,25 @@ namespace FoundationKitMemory {
         // Owner binding (for VmObject reverse mapping)
         // ----------------------------------------------------------------
 
+        /// @brief Atomically bind an owner to the head descriptor.
         void SetOwner(VmObject* owner, u64 offset) const noexcept {
             FK_BUG_ON(!head, "Folio::SetOwner: null head");
-            head->owner = owner;
-            head->owner_offset = offset;
+            head->SetOwner(owner, offset);
         }
 
         void ClearOwner() const noexcept {
             FK_BUG_ON(!head, "Folio::ClearOwner: null head");
-            head->owner = nullptr;
-            head->owner_offset = 0;
+            head->ClearOwner();
         }
 
         [[nodiscard]] VmObject* Owner() const noexcept {
             FK_BUG_ON(!head, "Folio::Owner: null head");
-            return head->owner;
+            return head->Owner();
         }
 
         [[nodiscard]] u64 OwnerOffset() const noexcept {
             FK_BUG_ON(!head, "Folio::OwnerOffset: null head");
-            return head->owner_offset;
+            return head->OwnerOffset();
         }
 
         // ----------------------------------------------------------------
@@ -464,22 +504,25 @@ namespace FoundationKitMemory {
 
         const usize count = 1ULL << order;
 
-        // Head page
+        // Head page — use direct atomic stores (we are the sole writer here,
+        // Release ordering so the rest of the kernel sees a consistent page).
         pages[0].pfn   = base_pfn;
         pages[0].order = order;
-        pages[0].state = PageState::Free;
-        pages[0].flags = (order > 0) ? PageFlags::Head : PageFlags::None;
-        pages[0].owner = nullptr;
-        pages[0].owner_offset = 0;
+        pages[0].state.Store(static_cast<u8>(PageState::Free), Sync::MemoryOrder::Release);
+        pages[0].flags.Store(
+            static_cast<u16>((order > 0) ? PageFlags::Head : PageFlags::None),
+            Sync::MemoryOrder::Release);
+        pages[0].a_owner.Store(0, Sync::MemoryOrder::Relaxed);
+        pages[0].a_owner_offset.Store(0, Sync::MemoryOrder::Relaxed);
 
         // Tail pages
         for (usize i = 1; i < count; ++i) {
             pages[i].pfn   = Pfn{base_pfn.value + i};
             pages[i].order = order;
-            pages[i].state = PageState::Free;
-            pages[i].flags = PageFlags::Compound;
-            pages[i].owner = nullptr;
-            pages[i].owner_offset = 0;
+            pages[i].state.Store(static_cast<u8>(PageState::Free), Sync::MemoryOrder::Release);
+            pages[i].flags.Store(static_cast<u16>(PageFlags::Compound), Sync::MemoryOrder::Release);
+            pages[i].a_owner.Store(0, Sync::MemoryOrder::Relaxed);
+            pages[i].a_owner_offset.Store(0, Sync::MemoryOrder::Relaxed);
         }
     }
 

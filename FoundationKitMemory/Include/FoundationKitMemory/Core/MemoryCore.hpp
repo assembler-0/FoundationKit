@@ -173,140 +173,145 @@ namespace FoundationKitMemory {
     };
 
     // ============================================================================
-    // Runtime Polymorphic Allocator (RTTI-free virtual interface)
+    // Type-Erased BasicMemoryResource (Virtual-Free)
     // ============================================================================
 
-    /// @brief Base class for type-erased allocators (no virtual destructor overhead if not needed).
-    /// @desc This is used when you need runtime polymorphism but can't use templates.
+    /// @brief Type-erased structure of function pointers.
+    /// @desc  Replaces the old virtual-class BasicMemoryResource to eliminate
+    ///        hosted ABI constraints (__cxa_pure_virtual, vtables, RTTI).
     struct BasicMemoryResource {
-        /// @brief Virtual destructor for cleanup (optional, can be omitted if no cleanup needed).
-        virtual ~BasicMemoryResource() = default;
+        void* ctx = nullptr;
 
-        /// @brief Allocate 'size' bytes with 'align' alignment.
-        [[nodiscard]] virtual AllocationResult Allocate(usize size, usize align) noexcept = 0;
+        AllocationResult (*allocate_fn)(void*, usize, usize) noexcept = nullptr;
+        void             (*deallocate_size_fn)(void*, void*, usize) noexcept = nullptr;
+        void             (*deallocate_fn)(void*, void*) noexcept = nullptr;
+        bool             (*owns_fn)(const void*, const void*) noexcept = nullptr;
+        AllocationResult (*reallocate_fn)(void*, void*, usize, usize, usize) noexcept = nullptr;
+        void             (*deallocate_all_fn)(void*) noexcept = nullptr;
+        usize            (*bytes_allocated_fn)(const void*) noexcept = nullptr;
 
-        /// @brief Deallocate memory previously allocated (size required).
-        virtual void Deallocate(void* ptr, usize size) noexcept = 0;
-
-        /// @brief Deallocate memory previously allocated (size not required).
-        /// @desc Only works if the underlying allocator tracks sizes (e.g., TrackingAllocator).
-        ///       Default implementation calls Deallocate(ptr, 0), which may fail or bug.
-        virtual void Deallocate(void* ptr) noexcept {
-            Deallocate(ptr, 0);
+        [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept {
+            return allocate_fn(ctx, size, align);
         }
 
-        /// @brief Check if this resource owns the pointer.
-        [[nodiscard]] virtual bool Owns(const void* ptr) const noexcept = 0;
-
-        /// @brief Optional reallocation support (default falls back to alloc+copy+free).
-        [[nodiscard]] virtual AllocationResult Reallocate(void* ptr, usize old_size, usize new_size, usize align) noexcept {
-            FK_BUG_ON(ptr == nullptr && old_size > 0, "Reallocate: null pointer with non-zero old_size ({})", old_size);
-            
-            if (new_size == 0) {
-                Deallocate(ptr, old_size);
-                return AllocationResult::Failure();
-            }
-
-            if (new_size <= old_size) {
-                return {ptr, new_size, MemoryError::None};
-            }
-
-            AllocationResult new_alloc = Allocate(new_size, align);
-            if (!new_alloc) return new_alloc;
-
-            if (ptr) {
-                // Perform byte copy
-                auto* src = static_cast<const byte*>(ptr);
-                auto* dst = static_cast<byte*>(new_alloc.ptr);
-                
-                FK_BUG_ON(src == dst, "Reallocate: logic error - Allocate() returned the same pointer as old ptr");
-                
-                for (usize i = 0; i < old_size; ++i) {
-                    dst[i] = src[i];
-                }
-                Deallocate(ptr, old_size);
-            }
-            return new_alloc;
+        void Deallocate(void* ptr, usize size) noexcept {
+            deallocate_size_fn(ctx, ptr, size);
         }
 
-        /// @brief Optional: Clear all allocations at once (only if allocator supports it).
-        virtual void DeallocateAll() noexcept {}
+        void Deallocate(void* ptr) noexcept {
+            deallocate_fn(ctx, ptr);
+        }
 
-        /// @brief Optional: Report allocated bytes (only if allocator tracks this).
-        [[nodiscard]] virtual usize BytesAllocated() const noexcept { return 0; }
+        [[nodiscard]] bool Owns(const void* ptr) const noexcept {
+            return owns_fn(ctx, ptr);
+        }
+
+        [[nodiscard]] AllocationResult Reallocate(void* ptr, usize old_size, usize new_size, usize align) noexcept {
+            return reallocate_fn(ctx, ptr, old_size, new_size, align);
+        }
+
+        void DeallocateAll() noexcept {
+            deallocate_all_fn(ctx);
+        }
+
+        [[nodiscard]] usize BytesAllocated() const noexcept {
+            return bytes_allocated_fn(ctx);
+        }
     };
 
     // ============================================================================
-    // Wrapper: Concept Allocator -> BasicMemoryResource
+    // AnyAllocatorCreator: Type-erasure mechanics
     // ============================================================================
 
-    /// @brief Converts any concept-based allocator into a type-erased BasicMemoryResource.
-    /// @tparam Alloc Must satisfy IAllocator<Alloc>
+    /// @brief Creates a BasicMemoryResource table for a specific allocator type.
     template <IAllocator Alloc>
-    struct AllocatorWrapper final : BasicMemoryResource {
-        Alloc& allocator;
-
-        explicit constexpr AllocatorWrapper(Alloc& alloc) noexcept : allocator(alloc) {}
-
-        [[nodiscard]] AllocationResult Allocate(usize size, usize align) noexcept override {
-            FK_BUG_ON(size == 0, "AllocatorWrapper::Allocate: zero size requested");
-            const Alignment a{align}; // Validates align is power-of-2
-            
-            AllocationResult result = allocator.Allocate(size, align);
-            FK_BUG_ON(result.ptr != nullptr && (reinterpret_cast<uptr>(result.ptr) % align) != 0,
-                "AllocatorWrapper::Allocate: underlying allocator returned unaligned pointer (ptr: {}, align: {})",
-                result.ptr, align);
-            
-            return result;
+    struct AnyAllocatorCreator {
+        static AllocationResult Allocate(void* ctx, usize size, usize align) noexcept {
+            FK_BUG_ON(size == 0, "AnyAllocatorCreator::Allocate: zero size requested");
+            const Alignment a{align};
+            auto res = static_cast<Alloc*>(ctx)->Allocate(size, align);
+            FK_BUG_ON(res.ptr != nullptr && (reinterpret_cast<uptr>(res.ptr) % align) != 0,
+                "AnyAllocatorCreator::Allocate: underlying allocator returned unaligned pointer");
+            return res;
         }
 
-        void Deallocate(void* ptr, usize size) noexcept override {
-            FK_BUG_ON(ptr == nullptr && size > 0, "AllocatorWrapper::Deallocate: null pointer with size ({})", size);
-            allocator.Deallocate(ptr, size);
+        static void DeallocateSize(void* ctx, void* ptr, usize size) noexcept {
+            FK_BUG_ON(ptr == nullptr && size > 0, "AnyAllocatorCreator::DeallocateSize: null pointer with size");
+            static_cast<Alloc*>(ctx)->Deallocate(ptr, size);
         }
 
-        void Deallocate(void* ptr) noexcept override {
-            if constexpr (requires { allocator.Deallocate(ptr); }) {
-                allocator.Deallocate(ptr);
+        static void Deallocate(void* ctx, void* ptr) noexcept {
+            if constexpr (requires { static_cast<Alloc*>(ctx)->Deallocate(ptr); }) {
+                static_cast<Alloc*>(ctx)->Deallocate(ptr);
             } else {
-                FK_BUG_ON(ptr != nullptr, "AllocatorWrapper::Deallocate: unsized deallocate requested but not supported (must call with size)");
-                allocator.Deallocate(ptr, 0);
+                FK_BUG_ON(ptr != nullptr, "AnyAllocatorCreator::Deallocate: unsized deallocate requested but not supported");
+                static_cast<Alloc*>(ctx)->Deallocate(ptr, 0);
             }
         }
 
-        [[nodiscard]] bool Owns(const void* ptr) const noexcept override {
-            return allocator.Owns(ptr);
+        static bool Owns(const void* ctx, const void* ptr) noexcept {
+            return static_cast<const Alloc*>(ctx)->Owns(ptr);
         }
 
-        [[nodiscard]] AllocationResult Reallocate(void* ptr, usize old_size, usize new_size, usize align) noexcept override {
-            FK_BUG_ON(ptr == nullptr && old_size > 0, "AllocatorWrapper::Reallocate: null pointer with non-zero old_size ({})", old_size);
-            
+        static AllocationResult Reallocate(void* ctx, void* ptr, usize old_size, usize new_size, usize align) noexcept {
+            FK_BUG_ON(ptr == nullptr && old_size > 0, "AnyAllocatorCreator::Reallocate: null pointer with non-zero old_size");
             if constexpr (IReallocatableAllocator<Alloc>) {
-                return allocator.Reallocate(ptr, old_size, new_size, align);
+                return static_cast<Alloc*>(ctx)->Reallocate(ptr, old_size, new_size, align);
             } else {
-                return BasicMemoryResource::Reallocate(ptr, old_size, new_size, align);
+                if (new_size == 0) {
+                    DeallocateSize(ctx, ptr, old_size);
+                    return AllocationResult::Failure();
+                }
+                if (new_size <= old_size) {
+                    return {ptr, new_size, MemoryError::None};
+                }
+                AllocationResult new_alloc = Allocate(ctx, new_size, align);
+                if (!new_alloc) return new_alloc;
+                if (ptr) {
+                    auto* src = static_cast<const byte*>(ptr);
+                    auto* dst = static_cast<byte*>(new_alloc.ptr);
+                    FK_BUG_ON(src == dst, "AnyAllocatorCreator::Reallocate: allocate returned same pointer");
+                    for (usize i = 0; i < old_size; ++i) dst[i] = src[i];
+                    DeallocateSize(ctx, ptr, old_size);
+                }
+                return new_alloc;
             }
         }
 
-        void DeallocateAll() noexcept override {
+        static void DeallocateAll(void* ctx) noexcept {
             if constexpr (IClearableAllocator<Alloc>) {
-                allocator.DeallocateAll();
+                static_cast<Alloc*>(ctx)->DeallocateAll();
             }
         }
 
-        [[nodiscard]] usize BytesAllocated() const noexcept override {
+        static usize BytesAllocated(const void* ctx) noexcept {
             if constexpr (IStatefulAllocator<Alloc>) {
-                return allocator.BytesAllocated();
+                return static_cast<const Alloc*>(ctx)->BytesAllocated();
             }
             return 0;
         }
+
+        static BasicMemoryResource Create(Alloc& a) noexcept {
+            return BasicMemoryResource{
+                .ctx = &a,
+                .allocate_fn = &Allocate,
+                .deallocate_size_fn = &DeallocateSize,
+                .deallocate_fn = &Deallocate,
+                .owns_fn = &Owns,
+                .reallocate_fn = &Reallocate,
+                .deallocate_all_fn = &DeallocateAll,
+                .bytes_allocated_fn = &BytesAllocated
+            };
+        }
     };
 
     // ============================================================================
-    // Backwards Compatibility Aliases
+    // Wrapper Helper (replaces AllocatorWrapper<T>)
     // ============================================================================
 
     template <IAllocator Alloc>
-    using MemoryResourceWrapper = AllocatorWrapper<Alloc>;
+    [[nodiscard]] BasicMemoryResource MakeMemoryResource(Alloc& alloc) noexcept {
+        return AnyAllocatorCreator<Alloc>::Create(alloc);
+    }
 
 } // namespace FoundationKitMemory

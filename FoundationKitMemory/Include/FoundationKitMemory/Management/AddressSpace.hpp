@@ -354,9 +354,13 @@ namespace FoundationKitMemory {
                 VirtualAddress page_va = vma->base + offset;
                 auto pa_opt = m_ptm.Translate(page_va);
                 if (pa_opt.HasValue()) {
-                    m_ptm.Protect(page_va, hw_flags);
+                    if (!m_ptm.Protect(page_va, hw_flags)) {
+                        // HW Protect failure is critical (usually PT allocation failure).
+                        return Unexpected(MemoryError::OutOfMemory);
+                    }
                 }
             }
+            // SMP NOTE: Broadcast shootdown if changing to more restrictive permissions.
             m_ptm.FlushTlbRange(vma->base, vma->size);
 
             return {};
@@ -459,10 +463,24 @@ namespace FoundationKitMemory {
                             auto ro_flags = static_cast<RegionFlags>(
                                 static_cast<u8>(parent_vma->flags)
                                 & ~static_cast<u8>(RegionFlags::Writable));
-                            m_ptm.Protect(page_va, ro_flags);
+
+                            if (!m_ptm.Protect(page_va, ro_flags)) {
+                                child.m_ptm.Unmap(child_vma->base, offset);
+                                child.m_vma_pool.Deallocate(child_vma);
+                                result = Unexpected(MemoryError::OutOfMemory);
+                                return;
+                            }
 
                             // Map same PA into child as read-only.
-                            child.m_ptm.Map(page_va, pa_opt.Value(), kPageSize, ro_flags);
+                            bool mapped = child.m_ptm.Map(page_va, pa_opt.Value(), kPageSize, ro_flags);
+                            if (!mapped) {
+                                // Undo allocation and fail. Restore parent's protection.
+                                m_ptm.Protect(page_va, parent_vma->flags);
+                                child.m_ptm.Unmap(child_vma->base, offset);
+                                child.m_vma_pool.Deallocate(child_vma);
+                                result = Unexpected(MemoryError::OutOfMemory);
+                                return;
+                            }
                         }
                     }
                     m_ptm.FlushTlbRange(parent_vma->base, parent_vma->size);
@@ -573,7 +591,11 @@ namespace FoundationKitMemory {
                 right->backing->AddRef();
             }
 
-            m_ptm.Shatter(split_point);
+            auto shatter_res = m_ptm.Shatter(split_point);
+            if (!shatter_res) {
+                 m_vma_pool.Deallocate(right);
+                 return Unexpected(MemoryError::OutOfMemory);
+            }
 
             m_vas.Remove(vma);
             vma->size = left_size;
@@ -583,6 +605,14 @@ namespace FoundationKitMemory {
             return right;
         }
 
+    public:
+        // ----------------------------------------------------------------
+        // Accessors (for reverse mapping and diagnostics)
+        // ----------------------------------------------------------------
+        [[nodiscard]] VirtualAddressSpace& GetVas() noexcept { return m_vas; }
+        [[nodiscard]] const VirtualAddressSpace& GetVas() const noexcept { return m_vas; }
+
+    private:
         // ----------------------------------------------------------------
         // State
         // ----------------------------------------------------------------

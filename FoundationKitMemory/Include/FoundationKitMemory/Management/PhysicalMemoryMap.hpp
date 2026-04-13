@@ -1,5 +1,6 @@
 #pragma once
 
+#include <FoundationKitMemory/Management/AddressTypes.hpp>
 #include <FoundationKitMemory/Management/RegionDescriptor.hpp>
 #include <FoundationKitCxxStl/Structure/XArray.hpp>
 
@@ -138,8 +139,6 @@ namespace FoundationKitMemory {
         }
 
     private:
-        static constexpr usize kPageShift = 12; // 4 KiB pages
-
         RegionDescriptor m_zones[MaxZones] = {};
         usize            m_zone_indices[MaxZones] = {}; // stable storage for XArray values
         // XArray is type-erased here via AnyAllocator so PhysicalMemoryMap

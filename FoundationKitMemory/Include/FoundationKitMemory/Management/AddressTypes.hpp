@@ -3,6 +3,14 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 
+#ifndef FK_PAGE_SHIFT
+#   define FK_PAGE_SHIFT 12
+#endif
+
+#ifndef FK_PHYS_ADDR_BITS
+#   define FK_PHYS_ADDR_BITS 52
+#endif
+
 namespace FoundationKitMemory {
 
     using namespace FoundationKitCxxStl;
@@ -43,6 +51,37 @@ namespace FoundationKitMemory {
         [[nodiscard]] constexpr bool           operator<=(VirtualAddress o)  const noexcept { return value <= o.value; }
     };
 
+    /// @brief Strong type for the Higher Half Direct Map (HHDM) base offset.
+    ///
+    /// @desc  The platform supplies this value once at boot. Every physical-to-
+    ///        virtual translation must go through this type rather than through a
+    ///        raw uptr cast.  Using a raw uptr for HHDM arithmetic is the primary
+    ///        source of silent memory corruption when the offset drifts.
+    struct HhdmOffset {
+        uptr value = 0;
+
+        constexpr HhdmOffset() noexcept = default;
+        explicit constexpr HhdmOffset(uptr v) noexcept : value(v) {
+            FK_BUG_ON(v == 0, "HhdmOffset: zero HHDM base is not a valid configuration");
+        }
+
+        /// @brief Translate a physical address to a kernel-virtual pointer.
+        [[nodiscard]] constexpr void* ToVirtual(uptr pa) const noexcept {
+            return reinterpret_cast<void*>(value + pa);
+        }
+
+        /// @brief Recover the physical address from a kernel-virtual pointer.
+        [[nodiscard]] constexpr uptr ToPhysical(const void* vptr) const noexcept {
+            const uptr vaddr = reinterpret_cast<uptr>(vptr);
+            FK_BUG_ON(vaddr < value,
+                "HhdmOffset::ToPhysical: virtual address {:#x} is below HHDM base {:#x} — "
+                "this is not a HHDM pointer", vaddr, value);
+            return vaddr - value;
+        }
+
+        [[nodiscard]] constexpr bool IsNull() const noexcept { return value == 0; }
+    };
+
     // =========================================================================
     // Pfn — Page Frame Number
     // =========================================================================
@@ -58,10 +97,17 @@ namespace FoundationKitMemory {
     // Page size constants and conversion helpers
     // =========================================================================
 
-    static constexpr usize kPageSize  = 4096;
-    static constexpr usize kPageShift = 12;
+    /// @brief Base page shift in bits, configurable via -DFK_PAGE_SHIFT=N.
+    static constexpr usize kPageShift = FK_PAGE_SHIFT;
+
+    /// @brief Base page size in bytes. Derived from kPageShift — never a literal.
+    static constexpr usize kPageSize  = usize(1) << kPageShift;
+
+    /// @brief Bit-mask for the byte-offset within a page.
     static constexpr usize kPageMask  = kPageSize - 1;
 
+    // Large page constants (architecture-specific; AMD64 only uses these for
+    // PTM logic so they remain hardcoded here — they are NOT the base page size).
     static constexpr usize kPageSize1G = 1024 * 1024 * 1024;
     static constexpr usize kPageSize2M = 2 * 1024 * 1024;
 
@@ -69,6 +115,20 @@ namespace FoundationKitMemory {
     static constexpr usize kPageShift1G = 30;
     static constexpr usize kPageMask2M  = kPageSize2M - 1;
     static constexpr usize kPageMask1G  = kPageSize1G - 1;
+
+    // Maximum physical address value representable with FK_PHYS_ADDR_BITS.
+    static constexpr uptr kMaxPhysAddr =
+        (FK_PHYS_ADDR_BITS >= 64) ? ~uptr(0)
+                                   : ((uptr(1) << FK_PHYS_ADDR_BITS) - 1);
+
+    /// @brief Assert that a physical address is within the platform maximum.
+    ///        Call from any allocation / mapping path that receives raw PA values.
+    inline void AssertValidPhysicalAddress(PhysicalAddress pa) noexcept {
+        FK_BUG_ON(pa.value > kMaxPhysAddr,
+            "AssertValidPhysicalAddress: physical address {:#x} exceeds platform maximum {:#x} "
+            "(FK_PHYS_ADDR_BITS={}). Possible firmware bug or caller corruption.",
+            pa.value, kMaxPhysAddr, FK_PHYS_ADDR_BITS);
+    }
 
     [[nodiscard]] constexpr Pfn PhysicalToPfn(PhysicalAddress pa) noexcept {
         return {pa.value >> kPageShift};
@@ -87,7 +147,7 @@ namespace FoundationKitMemory {
         return (n + kPageMask) & ~kPageMask;
     }
 
-    /// @brief Number of base (4K) pages needed to cover `bytes` (rounds up).
+    /// @brief Number of base pages needed to cover `bytes` (rounds up).
     [[nodiscard]] constexpr usize PageCount(usize bytes) noexcept {
         return (bytes + kPageMask) >> kPageShift;
     }

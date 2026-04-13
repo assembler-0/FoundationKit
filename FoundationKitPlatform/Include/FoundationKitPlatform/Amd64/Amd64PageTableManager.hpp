@@ -7,6 +7,7 @@
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>
+#include <FoundationKitCxxStl/Sync/Atomic.hpp>
 
 namespace FoundationKitPlatform::Amd64 {
 
@@ -17,11 +18,17 @@ namespace FoundationKitPlatform::Amd64 {
     ///
     /// @desc  Dynamically handles 4-level and 5-level paging based on `m_mode`.
     ///        Supports dynamic shattering and promotion of large pages.
-    template <IPageFrameAllocator Pfa, typename PhysToVirt>
+    ///
+    ///        P-3/P-4 FIXES:
+    ///        - Uses IPhysicalMemoryAccessor instead of raw p2v lambda.
+    ///        - Injects SeqCst thread fences (MFENCE) after all PTE store
+    ///          sites to prevent HW asynchronous page translation races.
+    ///        - Full support for Cacheable vs DeviceMemory PAT mappings.
+    template <IPageFrameAllocator Pfa, IPhysicalMemoryAccessor Acc>
     class Amd64PageTableManager {
     public:
-        constexpr Amd64PageTableManager(Pfa& pfa, PhysicalAddress root_pa, PagingMode mode, PhysToVirt&& p2v) noexcept
-            : m_pfa(pfa), m_root_pa(root_pa), m_mode(mode), m_p2v(Forward<PhysToVirt>(p2v))
+        constexpr Amd64PageTableManager(Pfa& pfa, PhysicalAddress root_pa, PagingMode mode, Acc&& acc) noexcept
+            : m_pfa(pfa), m_root_pa(root_pa), m_mode(mode), m_acc(Forward<Acc>(acc))
         {
             FK_BUG_ON(m_root_pa.IsNull(), "Amd64PageTableManager: root physical address is null");
         }
@@ -60,7 +67,9 @@ namespace FoundationKitPlatform::Amd64 {
             usize remaining = sz;
             
             while (remaining > 0) {
-                const auto walk = WalkPageTable(m_p2v(m_root_pa.value), current_va.value, m_mode, m_p2v);
+                const auto walk = WalkPageTable(reinterpret_cast<uptr>(m_acc.ToVirtual(m_root_pa)), current_va.value, m_mode,
+                    [this](uptr pa) { return reinterpret_cast<uptr>(m_acc.ToVirtual(PhysicalAddress{pa})); });
+
                 if (!walk.present) {
                     current_va.value += kPageSize;
                     remaining = (remaining > kPageSize) ? remaining - kPageSize : 0;
@@ -82,12 +91,13 @@ namespace FoundationKitPlatform::Amd64 {
                 u64 table_pa = m_root_pa.value;
                 const u32 root_level = static_cast<u32>(m_mode);
                 for (u32 level = root_level; level > walk.level; --level) {
-                    u64* table = reinterpret_cast<u64*>(m_p2v(table_pa));
+                    u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
                     table_pa = EntryPhysAddr(table[PageTableIndex(current_va.value, level)]);
                 }
 
-                u64* table = reinterpret_cast<u64*>(m_p2v(table_pa));
+                u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
                 table[PageTableIndex(current_va.value, walk.level)] = 0;
+                Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
 
                 current_va.value += step_size;
                 remaining = (remaining > step_size) ? remaining - step_size : 0;
@@ -96,7 +106,9 @@ namespace FoundationKitPlatform::Amd64 {
 
         /// @brief Demote a huge page covering `va` into smaller constituents (e.g. 1 2MB page into 512 4K pages)
         [[nodiscard]] Expected<void, MemoryError> Shatter(VirtualAddress va) noexcept {
-            const auto walk = WalkPageTable(m_p2v(m_root_pa.value), va.value, m_mode, m_p2v);
+            const auto walk = WalkPageTable(reinterpret_cast<uptr>(m_acc.ToVirtual(m_root_pa)), va.value, m_mode,
+                    [this](uptr pa) { return reinterpret_cast<uptr>(m_acc.ToVirtual(PhysicalAddress{pa})); });
+
             if (!walk.present || !walk.large) return {}; // Already shattered or not present.
 
             FK_BUG_ON(walk.level < 2 || walk.level > 3, "Amd64Ptm: Unrecognized huge page level for shatter");
@@ -105,8 +117,8 @@ namespace FoundationKitPlatform::Amd64 {
             auto alloc_res = m_pfa.AllocatePages(1, RegionType::Generic);
             if (!alloc_res) return Unexpected(MemoryError::OutOfMemory);
             
-            u64 new_table_pa = PfnToPhysical(alloc_res.Value()).value;
-            u64* new_table = reinterpret_cast<u64*>(m_p2v(new_table_pa));
+            PhysicalAddress new_table_pa = PfnToPhysical(alloc_res.Value());
+            u64* new_table = reinterpret_cast<u64*>(m_acc.ToVirtual(new_table_pa));
 
             u64 step_size = (walk.level == 3) ? kPageSize2M : kPageSize; // 1G -> 2M (L3->L2) or 2M -> 4K (L2->L1)
             u64 phys_base = EntryPhysAddr(walk.entry) & (walk.level == 3 ? kPageMask1G : kPageMask2M);
@@ -118,16 +130,18 @@ namespace FoundationKitPlatform::Amd64 {
             for (u32 i = 0; i < kPageTableEntries; ++i) {
                 new_table[i] = EntryBuild(phys_base + (i * step_size), flags);
             }
+            Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
 
             // Install the new table into the parent level
             u64 parent_table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > walk.level; --level) {
-                u64* t = reinterpret_cast<u64*>(m_p2v(parent_table_pa));
+                u64* t = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{parent_table_pa}));
                 parent_table_pa = EntryPhysAddr(t[PageTableIndex(va.value, level)]);
             }
 
-            u64* parent_table = reinterpret_cast<u64*>(m_p2v(parent_table_pa));
-            parent_table[PageTableIndex(va.value, walk.level)] = EntryBuild(new_table_pa, ToFlags(PageEntryFlags::Present) | PageEntryFlags::Writable | PageEntryFlags::User);
+            u64* parent_table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{parent_table_pa}));
+            parent_table[PageTableIndex(va.value, walk.level)] = EntryBuild(new_table_pa.value, ToFlags(PageEntryFlags::Present) | PageEntryFlags::Writable | PageEntryFlags::User);
+            Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
 
             TlbFlushPage(va.value); // Architectural safety
             return {};
@@ -135,22 +149,80 @@ namespace FoundationKitPlatform::Amd64 {
 
         /// @brief Promote `sz` bytes starting at `va` into a single huge page if memory is physically contiguous.
         bool Promote(VirtualAddress va, usize sz) noexcept {
-            // Complex generic promote is omitted for brevity, but logically entails checking if 512 contiguous underlying 4K entries resolve linearly
-            // and then replacing the Level 2 table with a single Level 2 P-bit entry.
-            return false;
+            // Check preconditions for 2M promotion.
+            if (!IsPageAligned(va.value) || sz < kPageSize2M || (va.value % kPageSize2M) != 0) {
+                return false;
+            }
+
+            const auto walk = WalkPageTable(reinterpret_cast<uptr>(m_acc.ToVirtual(m_root_pa)), va.value, m_mode,
+                    [this](uptr pa) { return reinterpret_cast<uptr>(m_acc.ToVirtual(PhysicalAddress{pa})); });
+
+            // If it's already a large page, or absent, we can't promote it here.
+            if (!walk.present || walk.large || walk.level != 1) return false;
+
+            // Gather the L2 (PDE) entry PA
+            u64 table_pa = m_root_pa.value;
+            for (u32 level = static_cast<u32>(m_mode); level > 2; --level) {
+                u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
+                table_pa = EntryPhysAddr(table[PageTableIndex(va.value, level)]);
+            }
+
+            u64* pd_table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
+            u32 pde_idx = PageTableIndex(va.value, 2);
+            u64 pde = pd_table[pde_idx];
+
+            if (!EntryHasFlag(pde, PageEntryFlags::Present)) return false;
+
+            // `pde` points to a PT (Level 1 Table). We check all 512 entries.
+            u64 pt_pa = EntryPhysAddr(pde);
+            u64* pt_table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{pt_pa}));
+
+            // We require that all 512 entries are Present, form a contiguous chunk of physical memory,
+            // and share the same permissions.
+            u64 first_pte = pt_table[0];
+            if (!EntryHasFlag(first_pte, PageEntryFlags::Present)) return false;
+
+            PhysicalAddress base_pa = PhysicalAddress{EntryPhysAddr(first_pte)};
+            if ((base_pa.value % kPageSize2M) != 0) return false;
+
+            PageEntryFlagSet base_flags = PageEntryFlagSet(first_pte) & ~PageEntryFlags::PageSize;
+
+            for (u32 i = 1; i < kPageTableEntries; ++i) {
+                u64 pte = pt_table[i];
+                if (!EntryHasFlag(pte, PageEntryFlags::Present)) return false;
+
+                if (EntryPhysAddr(pte) != base_pa.value + (i * kPageSize)) return false;
+                
+                PageEntryFlagSet flags = PageEntryFlagSet(pte) & ~PageEntryFlags::PageSize;
+                if (flags != base_flags) return false; // permissions must match
+            }
+
+            // Everything matches. Replace L2 PDE with a huge page entry.
+            base_flags |= PageEntryFlags::PageSize;
+            pd_table[pde_idx] = EntryBuild(base_pa.value, base_flags);
+            Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
+
+            TlbFlushPage(va.value);
+
+            // Reclaim the now-orphaned Level 1 page table.
+            m_pfa.FreePages(PhysicalToPfn(PhysicalAddress{pt_pa}), 1);
+
+            return true;
         }
 
         bool Protect(VirtualAddress va, RegionFlags flags) noexcept {
-            const auto walk = WalkPageTable(m_p2v(m_root_pa.value), va.value, m_mode, m_p2v);
+            const auto walk = WalkPageTable(reinterpret_cast<uptr>(m_acc.ToVirtual(m_root_pa)), va.value, m_mode,
+                    [this](uptr pa) { return reinterpret_cast<uptr>(m_acc.ToVirtual(PhysicalAddress{pa})); });
+
             if (!walk.present) return false;
 
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > walk.level; --level) {
-                u64* table = reinterpret_cast<u64*>(m_p2v(table_pa));
+                u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
                 table_pa = EntryPhysAddr(table[PageTableIndex(va.value, level)]);
             }
 
-            u64* table = reinterpret_cast<u64*>(m_p2v(table_pa));
+            u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
             u32 idx = PageTableIndex(va.value, walk.level);
             u64 phys = EntryPhysAddr(table[idx]);
             
@@ -158,11 +230,14 @@ namespace FoundationKitPlatform::Amd64 {
             if (walk.large) amd_flags |= PageEntryFlags::PageSize;
             
             table[idx] = EntryBuild(phys, amd_flags);
+            Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
             return true;
         }
 
         Optional<PhysicalAddress> Translate(VirtualAddress va) noexcept {
-            const auto walk = WalkPageTable(m_p2v(m_root_pa.value), va.value, m_mode, m_p2v);
+            const auto walk = WalkPageTable(reinterpret_cast<uptr>(m_acc.ToVirtual(m_root_pa)), va.value, m_mode,
+                    [this](uptr pa) { return reinterpret_cast<uptr>(m_acc.ToVirtual(PhysicalAddress{pa})); });
+
             if (!walk.present) return {};
             return PhysicalAddress{walk.phys_addr};
         }
@@ -179,16 +254,12 @@ namespace FoundationKitPlatform::Amd64 {
 
         /// @brief Implementation of IPageTableManager::ZeroPhysical.
         void ZeroPhysical(PhysicalAddress pa) noexcept {
-            MemoryZero(reinterpret_cast<void*>(m_p2v(pa.value)), kPageSize);
+            m_acc.ZeroPage(pa);
         }
 
         /// @brief Implementation of IPageTableManager::CopyPhysical.
         void CopyPhysical(PhysicalAddress src, PhysicalAddress dst) noexcept {
-            MemoryCopy(
-                reinterpret_cast<void*>(m_p2v(dst.value)),
-                reinterpret_cast<const void*>(m_p2v(src.value)),
-                kPageSize
-            );
+            m_acc.CopyPage(src, dst);
         }
 
     private:
@@ -197,7 +268,7 @@ namespace FoundationKitPlatform::Amd64 {
             
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > target_level; --level) {
-                u64* table = reinterpret_cast<u64*>(m_p2v(table_pa));
+                u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
                 u32 idx = PageTableIndex(va.value, level);
                 u64 entry = table[idx];
 
@@ -205,19 +276,20 @@ namespace FoundationKitPlatform::Amd64 {
                     auto alloc_res = m_pfa.AllocatePages(1, RegionType::Generic);
                     if (!alloc_res.HasValue()) return false;
 
-                    u64 new_table_pa = PfnToPhysical(alloc_res.Value()).value;
-                    u64* new_table_ptr = reinterpret_cast<u64*>(m_p2v(new_table_pa));
-                    for (u32 i = 0; i < kPageTableEntries; ++i) new_table_ptr[i] = 0;
+                    PhysicalAddress new_table_pa = PfnToPhysical(alloc_res.Value());
+                    u64* new_table_ptr = reinterpret_cast<u64*>(m_acc.ToVirtual(new_table_pa));
+                    m_acc.ZeroPage(new_table_pa); // Replaces manual for loop zeroing
 
-                    entry = EntryBuild(new_table_pa, ToFlags(PageEntryFlags::Present) | PageEntryFlags::Writable | PageEntryFlags::User);
+                    entry = EntryBuild(new_table_pa.value, ToFlags(PageEntryFlags::Present) | PageEntryFlags::Writable | PageEntryFlags::User);
                     table[idx] = entry;
+                    Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
                 }
                 
                 if (EntryHasFlag(entry, PageEntryFlags::PageSize)) return false; // Collision with huge page
                 table_pa = EntryPhysAddr(entry);
             }
 
-            u64* table = reinterpret_cast<u64*>(m_p2v(table_pa));
+            u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
             u32 idx = PageTableIndex(va.value, target_level);
             if (EntryHasFlag(table[idx], PageEntryFlags::Present)) return false;
 
@@ -225,6 +297,7 @@ namespace FoundationKitPlatform::Amd64 {
             if (target_level > 1) amd_flags |= PageEntryFlags::PageSize;
 
             table[idx] = EntryBuild(pa.value, amd_flags);
+            Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
             return true;
         }
 
@@ -234,14 +307,20 @@ namespace FoundationKitPlatform::Amd64 {
             if (HasRegionFlag(flags, RegionFlags::User))       res |= PageEntryFlags::User;
             if (!HasRegionFlag(flags, RegionFlags::Executable)) res |= PageEntryFlags::NoExecute;
             if (HasRegionFlag(flags, RegionFlags::Pinned))     res |= PageEntryFlags::Global;
+            
+            // Map Cacheable trait to PAT bit combinations.
+            // On AMD64, PCD = 1, PWT = 1 is strong uncacheable. Default is write-back.
+            if (!HasRegionFlag(flags, RegionFlags::Cacheable)) {
+                res |= PageEntryFlags::CacheDisable | PageEntryFlags::WriteThrough;
+            }
+
             return res;
         }
 
         Pfa&            m_pfa;
         PhysicalAddress m_root_pa;
         PagingMode      m_mode;
-        PhysToVirt      m_p2v;
+        Acc             m_acc;
     };
 
 } // namespace FoundationKitPlatform::Amd64
- 

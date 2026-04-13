@@ -77,11 +77,10 @@ namespace FoundationKitMemory {
                 PageDescriptor* desc = &m_descriptors[i];
                 FoundationKitCxxStl::ConstructAt<PageDescriptor>(desc);
                 desc->pfn   = Pfn{m_base_pfn.value + i};
-                desc->state = PageState::Free;
-                desc->flags = PageFlags::None;
+                desc->state.Store(static_cast<u8>(PageState::Free), Sync::MemoryOrder::Release);
+                desc->flags.Store(0, Sync::MemoryOrder::Release);
                 desc->order = 0;
-                desc->owner = nullptr;
-                desc->owner_offset = 0;
+                desc->SetOwner(nullptr, 0);
             }
 
             m_initialized = true;
@@ -215,7 +214,7 @@ namespace FoundationKitMemory {
                 "PageDescriptorArray::CountByState: not initialized");
             usize result = 0;
             for (usize i = 0; i < m_count; ++i) {
-                if (m_descriptors[i].state == target) ++result;
+                if (m_descriptors[i].State() == target) ++result;
             }
             return result;
         }

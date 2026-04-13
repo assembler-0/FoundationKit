@@ -61,6 +61,9 @@ namespace FoundationKitMemory {
     ///        - `Collapse()` — merge shadow chain when only one reference remains.
     class VmObject final : public MemoryObjectBase<MemoryObjectType::VmObject> {
     public:
+        /// @brief Hard cap on shadow chain depth.
+        static constexpr usize kMaxShadowDepth = 64;
+
         /// @brief Intrusive RB-Tree customised with a Root() accessor.
         struct PageTree : IntrusiveRbTree<VmPage, FOUNDATIONKITCXXSTL_OFFSET_OF(VmPage, rb)> {
             [[nodiscard]] RbNode* Root() const noexcept { return this->m_root; }
@@ -202,36 +205,48 @@ namespace FoundationKitMemory {
         ///          - If not: steal the page (move it into our tree).
         ///        Then detach the shadow.
         ///
-        ///        Thread safety: Caller must ensure no concurrent faults on this
-        ///        object during collapse. Typically called under VMA lock.
-        ///        This implementation takes BOTH this->m_lock and parent->m_lock
-        ///        following a strict hierarchy (shadow -> this) to prevent deadlocks.
-        ///
         /// @return True if collapse was performed, false if conditions not met.
         bool Collapse() noexcept {
-            Sync::UniqueLock guard(m_lock);
+            SharedPtr<VmObject> shadow_ref;
+            {
+                Sync::SharedLock guard(m_lock);
+                shadow_ref = m_shadow;
+            }
 
-            // Collapse only if we have exactly one reference and a shadow.
-            if (RefCount() != 1 || !m_shadow) return false;
+            if (!shadow_ref) return false;
 
-            VmObject* parent = m_shadow.Get();
-            if (!parent) return false;
+            VmObject* parent = shadow_ref.Get();
+            FK_BUG_ON(parent == nullptr,
+                "VmObject::Collapse: GetShadow() returned non-null SharedPtr but Get() is null — "
+                "SharedPtr control block corruption");
 
-            // Strict lock ordering: shadow MUST be locked before this if we ever held both,
-            // but here we already hold 'this'. For collapse, we assume 'this' is private
-            // (RefCount == 1) and 'parent' is being merged INTO it.
-            // To be safe, we try_lock the parent or require the caller to hold both.
-            // As Lead Architect, we enforce: parent MUST be locked.
-            Sync::UniqueLock parent_guard(parent->m_lock);
+            VmObject* first  = (reinterpret_cast<uptr>(this) <= reinterpret_cast<uptr>(parent))
+                               ? this : parent;
+            VmObject* second = (first == this) ? parent : this;
 
-            // In-order traversal using the tree's First/Next.
+            FK_BUG_ON(first == second,
+                "VmObject::Collapse: this == parent — object cannot shadow itself (addr={:#x})",
+                reinterpret_cast<uptr>(this));
+
+            Sync::UniqueLock<Sync::SharedSpinLock> first_guard(first->m_lock);
+            Sync::UniqueLock<Sync::SharedSpinLock> second_guard(second->m_lock);
+
+            const usize rc = m_ref_count.Load(Sync::MemoryOrder::Acquire);
+            if (rc != 1 || !m_shadow) return false;
+
             VmPage* p = parent->m_pages.First();
             while (p) {
                 VmPage* next_p = parent->m_pages.Next(p);
 
-                // Only pull if we don't have an OVERLAPPING block in this object.
                 if (!FindBlockContaining(p->offset)) {
-                    // Remove from parent, insert into us.
+                    // Extra range check: ensure p's end offset doesn't collide with
+                    // any existing block in this object.
+                    FK_BUG_ON(
+                        p->size_bytes > 0 && FindBlockContaining(p->EndOffset() - 1) != nullptr,
+                        "VmObject::Collapse: parent page at offset={:#x} size={} overlaps "
+                        "existing block in child — illegal page tree state",
+                        p->offset, p->size_bytes);
+
                     parent->m_pages.Remove(p);
                     parent->m_resident_count.FetchSub(1, Sync::MemoryOrder::Relaxed);
 
@@ -256,11 +271,21 @@ namespace FoundationKitMemory {
         // ----------------------------------------------------------------
 
         /// @brief Resolves the physical address backing the given offset.
+        ///
         /// @desc  Traverses the shadow chain recursively. Returns the closest PFN
         ///        and the exact physical byte offset of the request.
         [[nodiscard]] Optional<PhysicalAddress> Lookup(u64 offset) const noexcept {
             const VmObject* current = this;
+            usize depth = 0;
+
             while (current) {
+                FK_BUG_ON(++depth > kMaxShadowDepth,
+                    "VmObject::Lookup: shadow chain depth {} exceeded maximum {} — "
+                    "likely infinite loop or unbounded fork depth without Collapse() (offset={:#x}). "
+                    "Fix: call Collapse() aggressively on exec/exit, or increase kMaxShadowDepth "
+                    "only after root-causing the chain growth.",
+                    depth, kMaxShadowDepth, offset);
+
                 Sync::SharedLock guard(current->m_lock); // Protect concurrent reads to m_shadow / m_pages
                 VmPage* page = current->FindBlockContaining(offset);
                 if (page) {
@@ -283,10 +308,21 @@ namespace FoundationKitMemory {
         void InsertBlock(VmPage* page) noexcept {
             FK_BUG_ON(page == nullptr, "VmObject::InsertBlock: null page");
             FK_BUG_ON(page->size_bytes == 0, "VmObject::InsertBlock: zero size");
-            
+
             Sync::UniqueLock guard(m_lock);
-            FK_BUG_ON(FindBlockContaining(page->offset) != nullptr, 
-                "VmObject::InsertBlock: overlapping block implies logic error");
+
+            FK_BUG_ON(FindBlockContaining(page->offset) != nullptr,
+                "VmObject::InsertBlock: a block already covers start offset {:#x} — "
+                "overlapping insert implies logic error (double fault resolution?)",
+                page->offset);
+
+            // Check the end of the new block won't stomp an existing block.
+            if (page->size_bytes > 1) {
+                FK_BUG_ON(FindBlockContaining(page->EndOffset() - 1) != nullptr,
+                    "VmObject::InsertBlock: new block [{:#x}, {:#x}) tail overlaps an existing block — "
+                    "caller must split or coalesce before inserting",
+                    page->offset, page->EndOffset());
+            }
 
             m_pages.Insert(page, [](const VmPage& a, const VmPage& b) noexcept {
                 if (a.offset < b.offset) return -1;

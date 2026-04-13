@@ -40,33 +40,18 @@ namespace FoundationKitMemory {
         ///          It is the caller's responsibility to ensure thread-safe initialization.
         template <IAllocator Alloc>
         static void Initialize(Alloc& allocator) noexcept {
-            BasicMemoryResource* resource_ptr = nullptr;
+            static BasicMemoryResource s_resource;
 
-            if constexpr (FoundationKitCxxStl::BaseOf<BasicMemoryResource, Alloc>) {
-                resource_ptr = static_cast<BasicMemoryResource*>(&allocator);
-            } else {
-                alignas(AllocatorWrapper<Alloc>)
-                static byte s_wrapper_storage[sizeof(AllocatorWrapper<Alloc>)];
-
-                if (m_allocator.UnsafeGet() == nullptr) {
-                    resource_ptr = FoundationKitCxxStl::ConstructAt<AllocatorWrapper<Alloc>>(
-                        s_wrapper_storage, allocator
-                    );
-                } else {
-                    resource_ptr = reinterpret_cast<AllocatorWrapper<Alloc>*>(s_wrapper_storage);
-                }
-            }
-
-            FK_BUG_ON(resource_ptr == nullptr,
-                "GlobalAllocatorSystem::Initialize: failed to resolve memory resource pointer");
-
-            // StoreInitial uses a Release store — correct for a once-written pointer.
-            // FK_BUG_ON fires if called twice (StoreInitial asserts the old value is null).
             if (m_allocator.UnsafeGet() != nullptr) {
                 FK_LOG_WARN("GlobalAllocatorSystem initialized more than once - ignoring subsequent initialization");
                 return;
             }
-            m_allocator.StoreInitial(resource_ptr);
+
+            s_resource = MakeMemoryResource(allocator);
+
+            // StoreInitial uses a Release store — correct for a once-written pointer.
+            // FK_BUG_ON fires if called twice (StoreInitial asserts the old value is null).
+            m_allocator.StoreInitial(&s_resource);
         }
 
         /// @brief Retrieve the global allocator.

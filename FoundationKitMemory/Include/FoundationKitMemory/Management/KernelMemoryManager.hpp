@@ -94,10 +94,10 @@ namespace FoundationKitMemory {
             if (m_pd_array.Contains(pfn)) {
                 PageDescriptor& desc = m_pd_array.Get(pfn);
 
-                FK_BUG_ON(desc.state != PageState::Free,
+                FK_BUG_ON(desc.State() != PageState::Free,
                     "KernelMemoryManager::AllocatePage: PFA returned PFN {} "
                     "but descriptor is not Free (state={})",
-                    pfn.value, static_cast<u8>(desc.state));
+                    pfn.value, static_cast<u8>(desc.State()));
 
                 m_queues.Activate(&desc);
             }
@@ -149,7 +149,7 @@ namespace FoundationKitMemory {
             // Clear compound flags on tail pages.
             for (usize i = 1; i < page_count; ++i) {
                 PageDescriptor& tail = m_pd_array.Get(pfn + i);
-                tail.state = PageState::Free;
+                tail.state.Store(static_cast<u8>(PageState::Free), Sync::MemoryOrder::Release);
                 tail.ClearFlag(PageFlags::Compound);
                 tail.ClearFlag(PageFlags::Head);
             }
@@ -244,7 +244,7 @@ namespace FoundationKitMemory {
         // Kernel address space operations (backward-compatible)
         // ----------------------------------------------------------------
 
-        /// @brief Allocate kernel virtual memory (maps pages immediately).
+        /// @brief Allocate kernel virtual memory (eagerly wires pages, no split-brain).
         [[nodiscard]] Expected<VirtualAddress, MemoryError>
         AllocateKernel(usize pages, RegionFlags flags,
                        RegionType zone = RegionType::Generic) noexcept {
@@ -269,37 +269,47 @@ namespace FoundationKitMemory {
             const Pfn pfn = pfn_result.Value();
             const PhysicalAddress pa = PfnToPhysical(pfn);
 
-            // Initialise page descriptors.
+            // Initialise page descriptors and Wire them (kernel pages are never evictable).
             for (usize i = 0; i < pages; ++i) {
                 Pfn p = pfn + i;
                 if (m_pd_array.Contains(p)) {
-                    m_queues.Activate(&m_pd_array.Get(p));
+                    PageDescriptor& desc = m_pd_array.Get(p);
+                    m_queues.Activate(&desc);
+                    // Wire: kernel stacks, DMA buffers, slab pages are pinned.
+                    m_queues.Wire(&desc);
                 }
             }
-
+            
             auto va_result = m_kernel_as.MapAnonymous(
                 VirtualAddress{}, byte_size,
-                VmaProt::ReadWrite, VmaFlags::Anonymous | VmaFlags::Private);
+                VmaProt::ReadWrite,
+                VmaFlags::Private);
 
             if (!va_result) {
+                // Un-wire and free descriptors.
                 for (usize i = 0; i < pages; ++i) {
                     Pfn p = pfn + i;
                     if (m_pd_array.Contains(p)) {
-                        m_queues.Free(&m_pd_array.Get(p));
+                        PageDescriptor& desc = m_pd_array.Get(p);
+                        m_queues.Unwire(&desc);
+                        m_queues.Free(&desc);
                     }
                 }
                 m_pfa.FreePages(pfn, pages);
                 return Unexpected(va_result.Error());
             }
+
             const VirtualAddress va = va_result.Value();
 
-            // Map in page tables.
+            // Install the PTEs.  flags comes from the caller (e.g., Readable | Writable).
             if (!m_ptm.Map(va, pa, byte_size, flags)) {
                 m_kernel_as.Unmap(va, byte_size);
                 for (usize i = 0; i < pages; ++i) {
                     Pfn p = pfn + i;
                     if (m_pd_array.Contains(p)) {
-                        m_queues.Free(&m_pd_array.Get(p));
+                        PageDescriptor& desc = m_pd_array.Get(p);
+                        m_queues.Unwire(&desc);
+                        m_queues.Free(&desc);
                     }
                 }
                 m_pfa.FreePages(pfn, pages);
@@ -357,9 +367,25 @@ namespace FoundationKitMemory {
         ///        1. First demote cold Active pages to Inactive.
         ///        2. Then scan Inactive for clean eviction candidates.
         ///        3. Transition candidates to Free.
+        /// @brief Scan for reclaimable pages and free them.
+        ///
+        /// @param target_pages  Number of pages to try to reclaim.
+        /// @return Actual number of pages reclaimed.
+        ///
+        /// @desc  Drives the PageQueueSet scanner:
+        ///        1. Demote cold Active pages to Inactive.
+        ///        2. Scan Inactive for clean eviction candidates.
+        ///        3. For each candidate:
+        ///             a. Unmap its PTE from every address space via reverse map.
+        ///             b. Flush TLB for unmapped VA(s).
+        ///             c. Unlink from VmObject page tree.
+        ///             d. Decrement map_count per removed PTE.
+        ///             e. FK_BUG_ON(!IsUnmapped()) before relinquishing physical frame.
+        ///             f. Transition to Free via PageQueueSet::Free().
+        ///        4. Release physical page to PFA.
         [[nodiscard]] usize ScanForReclaim(usize target_pages) noexcept {
             // Phase 1: Demote cold active pages.
-            const usize demote_target = target_pages * 2; // Demote more than needed.
+            const usize demote_target = target_pages * 2;
             m_queues.ScanActive(demote_target);
 
             // Phase 2: Find eviction candidates in inactive queue.
@@ -374,16 +400,56 @@ namespace FoundationKitMemory {
                 PageDescriptor* page = candidates[i];
                 FK_BUG_ON(page == nullptr,
                     "KernelMemoryManager::ScanForReclaim: null candidate at index {}", i);
+                VmObject* owner = page->Owner();
+                if (owner != nullptr) {
+                    const u64 owner_off = page->OwnerOffset();
 
-                // The page was dequeued from inactive by ScanInactive.
-                // Transition it to Free.
-                page->TransitionTo(PageState::Free);
+                    m_kernel_as.GetVas().ForEach([&](VmaDescriptor* vma) noexcept {
+                        if (!vma || !vma->backing || vma->backing.Get() != owner) return;
+                        if (owner_off < vma->backing_offset ||
+                            owner_off >= vma->backing_offset + vma->size) return;
+
+                        // Compute the VA corresponding to this backing offset.
+                        const usize vma_offset = owner_off - vma->backing_offset;
+                        const VirtualAddress page_va = vma->base + vma_offset;
+
+                        // Unmap the PTE.
+                        m_ptm.Unmap(page_va, kPageSize);
+                        m_ptm.FlushTlb(page_va);
+
+                        // Decrement map count.
+                        page->MapCountDec();
+                    });
+
+                    // Unlink from the owning VmObject's page tree.
+                    // Find the VmPage node and remove it.
+                    owner->ForEachPage([&](const VmPage& vp) noexcept {
+                        if (vp.pfn == page->pfn) {
+                            // RemoveBlock requires a non-const VmPage* — use a cast.
+                            // We found the node by address, pointer identity is guaranteed.
+                            owner->RemoveBlock(const_cast<VmPage*>(&vp));
+                        }
+                    });
+
+                    page->ClearOwner();
+                }
+
+                FK_BUG_ON(!page->IsUnmapped(),
+                    "KernelMemoryManager::ScanForReclaim: page pfn={} still has {} active PTEs "
+                    "after unmap attempt — reverse-map is incomplete or has a bug. "
+                    "Freeing a mapped page would be a physical frame UAF.",
+                    page->pfn.value,
+                    page->map_count.Load(Sync::MemoryOrder::Relaxed));
+
                 page->ClearFlag(PageFlags::Dirty);
                 page->ClearFlag(PageFlags::Referenced);
-                page->ClearOwner();
-                m_queues.FreeQueue().Enqueue(page);
+                page->TransitionTo(PageState::Free);
+                {
+                    Sync::UniqueLock<Sync::SpinLock> guard(m_queues.FreeQueue().m_lock);
+                    m_queues.FreeQueue().EnqueueUnlocked(page);
+                }
 
-                // Free the physical page.
+                // Release physical page to the PFA.
                 m_pfa.FreePages(page->pfn, 1);
                 ++reclaimed;
             }

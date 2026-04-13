@@ -342,9 +342,8 @@ TEST_CASE(Memory_BuddyAllocator_BinaryTree) {
 
 TEST_CASE(Memory_AnyAllocator_TypeErasure) {
     BumpAllocator bump(g_bump_buffer, sizeof(g_bump_buffer));
-    AllocatorWrapper<BumpAllocator> wrapped(bump);
-
-    AnyAllocator any(&wrapped);
+    auto resource = MakeMemoryResource(bump);
+    AnyAllocator any(&resource);
 
     // Test allocation through type-erased interface
     auto res1 = any.Allocate(256, 8);
@@ -691,8 +690,8 @@ TEST_CASE(Memory_AllAllocators_Comprehensive) {
     // 9. AnyAllocator
     {
         BumpAllocator bump5(comp_buffer, sizeof(comp_buffer));
-        AllocatorWrapper<BumpAllocator> wrapped(bump5);
-        AnyAllocator any(&wrapped);
+        auto resource = MakeMemoryResource(bump5);
+        AnyAllocator any(&resource);
         auto res = any.Allocate(256, 8);
         ASSERT_TRUE(res);
         any.Deallocate(res.ptr, 256);

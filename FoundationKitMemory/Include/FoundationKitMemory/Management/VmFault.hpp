@@ -275,8 +275,37 @@ namespace FoundationKitMemory {
             new_page->pfn = pfn;
             ctx.backing->InsertBlock(new_page);
 
-            // Map into page tables.
-            m_ptm.Map(ctx.aligned_va, pa, kPageSize, VmaProtToRegionFlags(ctx.vma->prot, ctx.vma->vma_flags));
+            // Map into page tables and check the return value.
+            const bool mapped = m_ptm.Map(
+                ctx.aligned_va, pa, kPageSize,
+                VmaProtToRegionFlags(ctx.vma->prot, ctx.vma->vma_flags));
+
+            if (!mapped) {
+                ctx.backing->RemoveBlock(new_page);
+                m_vma_alloc.Deallocate(new_page, sizeof(VmPage));
+
+                if (m_pd_array.Contains(pfn)) {
+                    PageDescriptor& desc = m_pd_array.Get(pfn);
+                    desc.MapCountDec();
+                    desc.ClearOwner();
+                }
+                m_pfa.FreePages(pfn, 1);
+
+                // Re-resolve PA from the racing resolver's mapping.
+                auto existing_pa = m_ptm.Translate(ctx.aligned_va);
+                FK_BUG_ON(!existing_pa.HasValue(),
+                    "VmFault::ResolveZeroFill: Map() returned false (concurrent fault) but "
+                    "Translate() also finds no mapping for VA={:#x} — inconsistent PTM state",
+                    ctx.aligned_va.value);
+                return FaultResult{
+                    .resolved_pa   = existing_pa.Value(),
+                    .type          = FaultType::ZeroFill,
+                    .was_major     = false,
+                    .was_zero_fill = true,
+                    .was_cow_break = false,
+                };
+            }
+
             m_ptm.FlushTlb(ctx.aligned_va);
 
             return FaultResult{
@@ -344,10 +373,20 @@ namespace FoundationKitMemory {
             cow_page->pfn = new_pfn;
             ctx.backing->InsertBlock(cow_page);
 
-            // Remap with full permissions.
             m_ptm.Unmap(ctx.aligned_va, kPageSize);
-            m_ptm.Map(ctx.aligned_va, new_pa, kPageSize, VmaProtToRegionFlags(ctx.vma->prot, ctx.vma->vma_flags));
-            m_ptm.FlushTlb(ctx.aligned_va);
+            m_ptm.FlushTlbAll();   // Local CPU: invalidate stale read-only PTE.
+
+            const bool mapped = m_ptm.Map(
+                ctx.aligned_va, new_pa, kPageSize,
+                VmaProtToRegionFlags(ctx.vma->prot, ctx.vma->vma_flags));
+
+            FK_BUG_ON(!mapped,
+                "VmFault::ResolveCopyOnWrite: Map() failed for VA={:#x} PA={:#x} after Unmap() — "
+                "PTM state is inconsistent (OOM during PT allocation, or stale PTE not cleared). "
+                "new_pfn={}, fault_offset={:#x}",
+                ctx.aligned_va.value, new_pa.value, new_pfn.value, ctx.fault_offset);
+
+            m_ptm.FlushTlb(ctx.aligned_va);  // Local CPU: install new writable PTE.
 
             return FaultResult{
                 .resolved_pa   = new_pa,
@@ -391,8 +430,22 @@ namespace FoundationKitMemory {
                     static_cast<u8>(map_flags) & ~static_cast<u8>(RegionFlags::Writable));
             }
 
-            m_ptm.Map(ctx.aligned_va, pa, kPageSize, map_flags);
-            m_ptm.FlushTlb(ctx.aligned_va);
+            const bool mapped = m_ptm.Map(ctx.aligned_va, pa, kPageSize, map_flags);
+            if (!mapped) {
+                // Roll back the spurious MapCountInc.
+                if (m_pd_array.Contains(PhysicalToPfn(pa))) {
+                    PageDescriptor& desc = m_pd_array.GetByPhysical(pa);
+                    desc.MapCountDec();
+                }
+                // The page is already mapped by the concurrent path — verify.
+                auto existing_pa = m_ptm.Translate(ctx.aligned_va);
+                FK_BUG_ON(!existing_pa.HasValue(),
+                    "VmFault::ResolvePageIn: Map() returned false (concurrent fault) but "
+                    "Translate() also finds no mapping for VA={:#x} — inconsistent PTM state",
+                    ctx.aligned_va.value);
+            } else {
+                m_ptm.FlushTlb(ctx.aligned_va);
+            }
 
             return FaultResult{
                 .resolved_pa   = pa,
