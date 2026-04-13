@@ -407,29 +407,14 @@ namespace FoundationKitMemory {
         // Physical page operations via temporary mappings
         // ----------------------------------------------------------------
 
-        /// @brief Zero a physical page via a temporary kernel mapping.
+        /// @brief Zero a physical page via the architecture's direct access mechanism.
         void ZeroPhysicalPage(VmFaultContext& /*ctx*/, PhysicalAddress pa) noexcept {
-            // Direct physical access via the kernel's linear map.
-            // The kernel is expected to have a linear map of all physical memory
-            // at a known offset. We cast PA → kernel VA via the linear map.
-            //
-            // If no linear map exists, this must use explicit temporary mappings.
-            // For now, assume the PageTableManager provides a direct-access path.
-            //
-            // This is architecture-dependent. Ceryx maps all physical RAM at
-            // HHDM (Higher Half Direct Map).
-            auto va = m_ptm.Translate(VirtualAddress{pa.value});
-            (void)va; // In production, use HHDM offset.
-            // Fallback: zero via kernel-known HHDM offset.
+            m_ptm.ZeroPhysical(pa);
         }
 
-        /// @brief Copy contents from one physical page to another.
-        void CopyPhysicalPage(VmFaultContext& /*ctx*/,
-                              PhysicalAddress /*src_pa*/,
-                              PhysicalAddress /*dst_pa*/) noexcept {
-            // Same HHDM-based approach as ZeroPhysicalPage.
-            // In production, the kernel provides a CopyPhysicalPage primitive
-            // that maps both pages and does a memcpy.
+        /// @brief Copy a physical page via the architecture's direct access mechanism.
+        void CopyPhysicalPage(VmFaultContext& /*ctx*/, PhysicalAddress src_pa, PhysicalAddress dst_pa) noexcept {
+            m_ptm.CopyPhysical(src_pa, dst_pa);
         }
 
     private:

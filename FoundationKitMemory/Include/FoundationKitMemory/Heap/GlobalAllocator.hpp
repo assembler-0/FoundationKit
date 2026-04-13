@@ -95,9 +95,9 @@ namespace FoundationKitMemory {
         // RcuPtr with a 1-CPU domain: the global allocator is written once at boot.
         // The domain is never armed (no grace period needed) — RcuPtr is used
         // purely for its Acquire-load read path and Release-store publish path.
-        using GlobalAllocDomain = FoundationKitCxxStl::Sync::RcuDomain<1>;
+        using GlobalAllocDomain = RcuDomain<1>;
         static GlobalAllocDomain                                          m_domain;
-        static FoundationKitCxxStl::Sync::RcuPtr<BasicMemoryResource,
+        static RcuPtr<BasicMemoryResource,
                                                   GlobalAllocDomain>      m_allocator;
 
         GlobalAllocatorSystem() = delete;

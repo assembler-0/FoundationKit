@@ -84,6 +84,10 @@ namespace FoundationKitMemory {
         { pt.FlushTlbRange(va, sz)      } -> SameAs<void>;
         /// @brief Flush the entire TLB (use only when unavoidable).
         { pt.FlushTlbAll()              } -> SameAs<void>;
+        /// @brief Zero a physical page.
+        { pt.ZeroPhysical(pa)           } -> SameAs<void>;
+        /// @brief Copy a physical page.
+        { pt.CopyPhysical(pa, pa)       } -> SameAs<void>;
     };
 
 } // namespace FoundationKitMemory

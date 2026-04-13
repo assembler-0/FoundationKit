@@ -2,6 +2,7 @@
 
 #include <FoundationKitMemory/Management/VmmConcepts.hpp>
 #include <FoundationKitMemory/Management/AddressTypes.hpp>
+#include <FoundationKitMemory/Core/MemoryOperations.hpp>
 #include <FoundationKitPlatform/Amd64/Paging.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
@@ -176,6 +177,20 @@ namespace FoundationKitPlatform::Amd64 {
 
         [[nodiscard]] PhysicalAddress RootPhysicalAddress() const noexcept { return m_root_pa; }
 
+        /// @brief Implementation of IPageTableManager::ZeroPhysical.
+        void ZeroPhysical(PhysicalAddress pa) noexcept {
+            MemoryZero(reinterpret_cast<void*>(m_p2v(pa.value)), kPageSize);
+        }
+
+        /// @brief Implementation of IPageTableManager::CopyPhysical.
+        void CopyPhysical(PhysicalAddress src, PhysicalAddress dst) noexcept {
+            MemoryCopy(
+                reinterpret_cast<void*>(m_p2v(dst.value)),
+                reinterpret_cast<const void*>(m_p2v(src.value)),
+                kPageSize
+            );
+        }
+
     private:
         bool MapAtLevel(VirtualAddress va, PhysicalAddress pa, RegionFlags flags, u32 target_level) noexcept {
             FK_BUG_ON(target_level < 1 || target_level > 3, "MapAtLevel: invalid target level {}", target_level);
@@ -229,3 +244,4 @@ namespace FoundationKitPlatform::Amd64 {
     };
 
 } // namespace FoundationKitPlatform::Amd64
+ 
