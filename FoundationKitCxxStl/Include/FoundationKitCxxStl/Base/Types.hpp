@@ -3,6 +3,8 @@
 #include <FoundationKitCxxStl/Base/Compiler.hpp>
 #include <FoundationKitPlatform/MachineWidth.hpp>
 
+#define FOUNDATIONKITCXXSTL_BOOL_TO_STR(a) a ? "Yes" : "No"
+
 namespace FoundationKitCxxStl {
     using i8  = signed char;
     using u8  = unsigned char;

@@ -162,8 +162,18 @@ namespace FoundationKitPlatform::Arm64 {
     }
 
     // =========================================================================
-    // Processor ID
+    // Processor ID & Topology
     // =========================================================================
+
+    /// @brief Logical processor topology information.
+    struct CpuTopology {
+        u64 mpidr;            ///< Full MPIDR_EL1 value.
+        u32 affinity0;        ///< Aff0: logical CPU within a cluster.
+        u32 affinity1;        ///< Aff1: cluster ID.
+        u32 affinity2;        ///< Aff2: package / socket ID.
+        u32 affinity3;        ///< Aff3: extended socket ID (usually 0).
+        u32 cluster_id;       ///< Combined cluster identification.
+    };
 
     /// @brief Reads the current CPU ID from MPIDR_EL1.
     ///
@@ -177,6 +187,63 @@ namespace FoundationKitPlatform::Arm64 {
         u64 val;
         __asm__ volatile("mrs %0, mpidr_el1" : "=r"(val));
         return val;
+    }
+
+    /// @brief Reads topology information from MPIDR_EL1.
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE CpuTopology GetTopology() noexcept {
+        const u64 mpidr = ReadMpidr();
+        CpuTopology t{};
+        t.mpidr = mpidr;
+
+        // MPIDR_EL1 layout (64-bit):
+        // [7:0]   - Aff0
+        // [15:8]  - Aff1
+        // [23:16] - Aff2
+        // [31:25] - Reserved
+        // [39:32] - Aff3
+        // [24]    - MT (Multi-threading enabled if 1)
+        // [30]    - U (Uniprocessor if 1)
+
+        t.affinity0 = static_cast<u32>(mpidr & 0xFFu);
+        t.affinity1 = static_cast<u32>((mpidr >> 8) & 0xFFu);
+        t.affinity2 = static_cast<u32>((mpidr >> 16) & 0xFFu);
+        t.affinity3 = static_cast<u32>((mpidr >> 32) & 0xFFu);
+
+        // Cluster ID is usually Aff1 + Aff2 + Aff3 depending on the implementation.
+        // We provide the raw components for maximum flexibility.
+        t.cluster_id = t.affinity1;
+
+        return t;
+    }
+
+    /// @brief Reads the Main ID Register (MIDR_EL1).
+    ///
+    /// Contains Implementer, Variant, Architecture, PartNum and Revision.
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadMidr() noexcept {
+        u64 val;
+        __asm__ volatile("mrs %0, midr_el1" : "=r"(val));
+        return val;
+    }
+
+    /// @brief ARM CPU Implementation details.
+    struct CpuImplementation {
+        u8 implementer; ///< [31:24] Implementer code (e.g., 0x41 = ARM).
+        u8 variant;     ///< [23:20] Variant number.
+        u8 architecture; ///< [19:16] Constant 0xF.
+        u16 part_number; ///< [15:4] Part number (e.g., 0xD08 = Cortex-A72).
+        u8 revision;    ///< [3:0] Revision number (patch level).
+    };
+
+    /// @brief Decodes the MIDR_EL1 register.
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE CpuImplementation GetImplementation() noexcept {
+        const u64 midr = ReadMidr();
+        CpuImplementation i{};
+        i.implementer = static_cast<u8>((midr >> 24) & 0xFFu);
+        i.variant = static_cast<u8>((midr >> 20) & 0xFu);
+        i.architecture = static_cast<u8>((midr >> 16) & 0xFu);
+        i.part_number = static_cast<u16>((midr >> 4) & 0xFFFu);
+        i.revision = static_cast<u8>(midr & 0xFu);
+        return i;
     }
 
     /// @brief Reads the OS-defined CPU ID from TPIDR_EL1.
