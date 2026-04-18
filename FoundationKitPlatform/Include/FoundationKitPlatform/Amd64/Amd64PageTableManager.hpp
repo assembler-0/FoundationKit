@@ -279,7 +279,6 @@ namespace FoundationKitPlatform::Amd64 {
                     if (!alloc_res.HasValue()) return false;
 
                     PhysicalAddress new_table_pa = PfnToPhysical(alloc_res.Value());
-                    u64* new_table_ptr = reinterpret_cast<u64*>(m_acc.ToVirtual(new_table_pa));
                     m_acc.ZeroPage(new_table_pa); // Replaces manual for loop zeroing
 
                     entry = Paging::EntryBuild(new_table_pa.value, ToFlags(Paging::PageEntryFlags::Present) |
