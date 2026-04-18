@@ -86,6 +86,20 @@ namespace FoundationKitCxxStl {
     template <typename T>
     using RemoveReferenceT =  RemoveReference<T>::Type;
 
+    /// @brief Remove array extent from a type.
+    template <typename T>           struct RemoveExtent       { using Type = T; };
+    template <typename T>           struct RemoveExtent<T[]>  { using Type = T; };
+    template <typename T, usize N>  struct RemoveExtent<T[N]> { using Type = T; };
+
+    template <typename T>
+    using RemoveReferenceT = RemoveReference<T>::Type;
+
+    /// @brief Casts a value to an R-value reference to enable move semantics.
+    template <typename T>
+    [[nodiscard]] constexpr RemoveReferenceT<T>&& Move(T&& arg) noexcept {
+        return static_cast<RemoveReferenceT<T>&&>(arg);
+    }
+
     /// @brief Declares an object of type T in an unevaluated context.
     /// @note This function has NO implementation. It is only for type traits and concepts.
     template <typename T>
