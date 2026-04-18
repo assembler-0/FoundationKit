@@ -1,6 +1,6 @@
 #pragma once
 
-#include <FoundationKitCxxStl/Meta/Concepts.hpp>
+#include <FoundationKitCxxStl/Sync/Locks.hpp>
 
 namespace FoundationKitCxxStl::Sync {
 

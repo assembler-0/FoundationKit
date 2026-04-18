@@ -1,7 +1,7 @@
 #pragma once
 
 #include <FoundationKitOsl/Osl.hpp>
-#include <FoundationKitCxxStl/Meta/Concepts.hpp>
+#include <FoundationKitCxxStl/Sync/Locks.hpp>
 #include <FoundationKitCxxStl/Sync/SpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/TicketLock.hpp>
 

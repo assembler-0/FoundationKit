@@ -4,23 +4,26 @@
 
 namespace FoundationKitCxxStl {
 
+    // --- Core Language Concepts ---
+
+    /// @brief Checks if T and U are the same type.
     template <typename T, typename U>
     concept SameAs = __is_same(T, U);
 
-    /// @brief Remove const, volatile, and reference qualifiers.
-    template <typename T>
-    struct RemoveCvRef {
-        using Type = __remove_cvref(T);
-    };
+    /// @brief Checks if Derived is derived from Base.
+    template <typename Derived, typename Base>
+    concept DerivedFrom = __is_base_of(Base, Derived) &&
+                         __is_convertible_to(const volatile Derived*, const volatile Base*);
 
-    template <typename T>
-    using Unqualified = RemoveCvRef<T>::Type;
-
+    /// @brief Checks if From is convertible to To.
     template <typename From, typename To>
     concept ConvertibleTo = __is_convertible_to(From, To);
 
+    /// @brief Checks if Base is a base class of Derived.
     template <typename Base, typename Derived>
     concept BaseOf = __is_base_of(Base, Derived);
+
+    // --- Primary Type Categories ---
 
     template <typename T> concept Integral        = __is_integral(T);
     template <typename T> concept FloatingPoint    = __is_floating_point(T);
@@ -35,7 +38,7 @@ namespace FoundationKitCxxStl {
     template <typename T> concept RValueReference  = __is_rvalue_reference(T);
     template <typename T> concept Reference        = LValueReference<T> || RValueReference<T>;
     template <typename T> concept Void             = __is_void(T);
-    template <typename T> concept NullPointer      = SameAs<T, decltype(nullptr)>;
+    template <typename T> concept NullPointer      = SameAs<T, nullptr_t>;
     template <typename T> concept IsArray          = __is_array(T);
     template <typename T> concept Abstract         = __is_abstract(T);
     template <typename T> concept Final            = __is_final(T);
@@ -65,81 +68,120 @@ namespace FoundationKitCxxStl {
     template <typename T>
     concept Referenceable = !Void<T>;
 
-    template <typename T>
-    concept DefaultConstructible   = __is_constructible(T);
+    // --- Meta-programming Utilities ---
 
     template <typename T>
-    concept CopyConstructible      = __is_constructible(T, const T&);
+    struct RemoveCvRef {
+        using Type = __remove_cvref(T);
+    };
 
     template <typename T>
-    concept MoveConstructible      = __is_constructible(T, T&&);
+    using Unqualified = RemoveCvRef<T>::Type;
 
     template <typename T>
-    concept CopyAssignable         = __is_assignable(T&, const T&);
+    struct RemoveReference      { using Type = T; };
+    template <typename T> struct RemoveReference<T&>  { using Type = T; };
+    template <typename T> struct RemoveReference<T&&> { using Type = T; };
 
     template <typename T>
-    concept MoveAssignable         = __is_assignable(T&, T&&);
+    using RemoveReferenceT =  RemoveReference<T>::Type;
+
+    /// @brief Declares an object of type T in an unevaluated context.
+    /// @note This function has NO implementation. It is only for type traits and concepts.
+    template <typename T>
+    T&& DeclVal() noexcept;
+
+    // --- Construction & Destruction ---
 
     template <typename T>
-    concept Destructible           = __is_trivially_destructible(T);
+    concept Destructible = (ObjectType<T> || Reference<T>) && requires(T& t) {
+        { t.~T() } noexcept;
+    };
 
     template <typename T>
-    concept TriviallyDefaultConstructible = __is_trivially_constructible(T);
+    concept TriviallyDestructible = Destructible<T> && __is_trivially_destructible(T);
 
     template <typename T>
-    concept TriviallyCopyConstructible    = __is_trivially_constructible(T, const T&);
-
-    template <typename T>
-    concept TriviallyMoveConstructible    = __is_trivially_constructible(T, T&&);
-
-    template <typename T>
-    concept TriviallyCopyAssignable       = __is_trivially_assignable(T&, const T&);
-
-    template <typename T>
-    concept TriviallyMoveAssignable       = __is_trivially_assignable(T&, T&&);
-
-    template <typename T>
-    concept TriviallyDestructible         = __is_trivially_destructible(T);
-
-    template <typename T>
-    concept TriviallyCopyable = __is_trivially_copyable(T);
-
-    template <typename T>
-    concept Trivial = __is_trivial(T);
-
-    template <typename T>
-    concept StandardLayout = __is_standard_layout(T);
-
-    template <typename T>
-    concept POD = Trivial<T> && StandardLayout<T>;
+    concept NothrowDestructible = Destructible<T> && requires(T& t) {
+        { t.~T() } noexcept;
+    };
 
     template <typename T, typename... Args>
-    concept ConstructibleFrom = __is_constructible(T, Args...);
-
-    template <typename T, typename U>
-    concept AssignableFrom = __is_assignable(T&, U);
+    concept ConstructibleFrom = Destructible<T> && __is_constructible(T, Args...);
 
     template <typename T>
-    concept EqualityComparable = requires(const T& a, const T& b) {
-        { a == b } -> ConvertibleTo<bool>;
-        { a != b } -> ConvertibleTo<bool>;
+    concept DefaultConstructible = ConstructibleFrom<T>;
+
+    template <typename T>
+    concept MoveConstructible = ConstructibleFrom<T, T> && ConvertibleTo<T, T>;
+
+    template <typename T>
+    concept CopyConstructible = MoveConstructible<T> &&
+                               ConstructibleFrom<T, T&> && ConvertibleTo<T&, T> &&
+                               ConstructibleFrom<T, const T&> && ConvertibleTo<const T&, T> &&
+                               ConstructibleFrom<T, const T> && ConvertibleTo<const T, T>;
+
+    // --- Assignment ---
+
+    template <typename LHS, typename RHS>
+    concept AssignableFrom =
+        LValueReference<LHS> &&
+        requires(LHS lhs, RHS&& rhs) {
+            { lhs = static_cast<RHS&&>(rhs) } -> SameAs<LHS>;
+        };
+
+    // --- Common Concepts ---
+
+    template <typename T>
+    void Swap(T& a, T& b) noexcept; // Forward declaration
+
+    template <typename T>
+    concept Swappable = requires(T& a, T& b) {
+        { Swap(a, b) } noexcept;
     };
 
     template <typename T, typename U>
-    concept EqualityComparableWith = requires(const T& a, const U& b) {
-        { a == b } -> ConvertibleTo<bool>;
-        { a != b } -> ConvertibleTo<bool>;
-        { b == a } -> ConvertibleTo<bool>;
-        { b != a } -> ConvertibleTo<bool>;
-    };
+    concept SwappableWith =
+        requires(T&& t, U&& u) {
+            { Swap(static_cast<T&&>(t), static_cast<T&&>(t)) } noexcept;
+            { Swap(static_cast<U&&>(u), static_cast<U&&>(u)) } noexcept;
+            { Swap(static_cast<T&&>(t), static_cast<U&&>(u)) } noexcept;
+            { Swap(static_cast<U&&>(u), static_cast<T&&>(t)) } noexcept;
+        };
+
+    // --- Comparison Concepts ---
+
+    template <typename T>
+    concept BooleanTestable = ConvertibleTo<T, bool> &&
+        requires(T&& t) {
+            { !static_cast<T&&>(t) } -> ConvertibleTo<bool>;
+        };
+
+    template <typename T, typename U>
+    concept WeaklyEqualityComparableWith =
+        requires(const Unqualified<T>& t, const Unqualified<U>& u) {
+            { t == u } -> BooleanTestable;
+            { t != u } -> BooleanTestable;
+            { u == t } -> BooleanTestable;
+            { u != t } -> BooleanTestable;
+        };
+
+    template <typename T>
+    concept EqualityComparable = WeaklyEqualityComparableWith<T, T>;
+
+    template <typename T, typename U>
+    concept EqualityComparableWith =
+        EqualityComparable<T> &&
+        EqualityComparable<U> &&
+        WeaklyEqualityComparableWith<T, U>;
 
     template <typename T>
     concept TotallyOrdered = EqualityComparable<T> &&
-        requires(const T& a, const T& b) {
-            { a <  b } -> ConvertibleTo<bool>;
-            { a >  b } -> ConvertibleTo<bool>;
-            { a <= b } -> ConvertibleTo<bool>;
-            { a >= b } -> ConvertibleTo<bool>;
+        requires(const Unqualified<T>& a, const Unqualified<T>& b) {
+            { a <  b } -> BooleanTestable;
+            { a >  b } -> BooleanTestable;
+            { a <= b } -> BooleanTestable;
+            { a >= b } -> BooleanTestable;
         };
 
     template <typename T>
@@ -147,27 +189,49 @@ namespace FoundationKitCxxStl {
         { a <=> b };
     };
 
+    // --- Object Concepts ---
+
+    template <typename T>
+    concept Movable = ObjectType<T> && MoveConstructible<T> &&
+                     AssignableFrom<T&, T> && Swappable<T>;
+
+    template <typename T>
+    concept Copyable = Movable<T> && CopyConstructible<T> &&
+                      AssignableFrom<T&, T&> &&
+                      AssignableFrom<T&, const T&> &&
+                      AssignableFrom<T&, const T>;
+
+    template <typename T>
+    concept TriviallyCopyable = Copyable<T> && __is_trivially_copyable(T);
+    
+    template <typename T>
+    concept Semiregular = Copyable<T> && DefaultConstructible<T>;
+
+    template <typename T>
+    concept Regular = Semiregular<T> && EqualityComparable<T>;
+
+    // --- Callable Concepts ---
 
     template <typename F, typename... Args>
     concept Invocable = requires(F&& f, Args&&... args) {
         static_cast<F&&>(f)(static_cast<Args&&>(args)...);
     };
 
-    template <typename F, typename R, typename... Args>
-    concept InvocableR = Invocable<F, Args...> &&
-        requires(F&& f, Args&&... args) {
-            { static_cast<F&&>(f)(static_cast<Args&&>(args)...) }
-                -> ConvertibleTo<R>;
-        };
+    template <typename F, typename... Args>
+    concept RegularInvocable = Invocable<F, Args...>;
 
     template <typename F, typename... Args>
-    concept Predicate = InvocableR<F, bool, Args...>;
+    concept Predicate = RegularInvocable<F, Args...> &&
+                       BooleanTestable<decltype(DeclVal<F>()(DeclVal<Args>()...))>;
 
-    template <typename F, typename T>
-    concept Relation = Predicate<F, T, T>;
+    template <typename R, typename T, typename U>
+    concept Relation = Predicate<R, T, T> && Predicate<R, U, U> &&
+                      Predicate<R, T, U> && Predicate<R, U, T>;
 
-    template <typename T>
-    T&& DeclVal() noexcept; // TODO
+    template <typename R, typename T, typename U>
+    concept StrictWeakOrder = Relation<R, T, U>;
+
+    // --- Iterator Concepts ---
 
     template <typename I>
     concept Iterator = requires(I it) {
@@ -211,6 +275,8 @@ namespace FoundationKitCxxStl {
             { it[n]   };
         };
 
+    // --- Range Concepts ---
+
     template <typename R>
     concept Range = requires(R& r) {
         { r.begin() } -> Iterator;
@@ -222,6 +288,8 @@ namespace FoundationKitCxxStl {
         { r.begin() } -> ForwardIterator;
         { r.end()   } -> SameAs<decltype(r.begin())>;
     };
+
+    // --- Miscellaneous ---
 
     template <typename T>
     struct MakeUnsigned;
@@ -236,7 +304,7 @@ namespace FoundationKitCxxStl {
     template <> struct MakeUnsigned<u64>  { using Type = u64; };
 
     template <typename T>
-    using MakeUnsignedT = typename MakeUnsigned<T>::Type;
+    using MakeUnsignedT = MakeUnsigned<T>::Type;
 
     template <typename T, usize N>
     concept FitsInBytes = sizeof(T) <= N;
@@ -244,8 +312,16 @@ namespace FoundationKitCxxStl {
     template <typename T, usize N>
     concept AlignmentAtMost = alignof(T) <= N;
 
+    template <typename T>
+    concept StandardLayout = __is_standard_layout(T);
+
+    template <typename T>
+    concept POD = __is_trivial(T) && StandardLayout<T>;
+
     template <typename T, usize N>
     concept StorableInBuffer = FitsInBytes<T, N> && TriviallyCopyable<T>;
+
+    // --- Internal Validation ---
 
     static_assert(Integral<u32>,          "u32 must satisfy Integral");
     static_assert(Integral<i64>,          "i64 must satisfy Integral");
@@ -255,34 +331,7 @@ namespace FoundationKitCxxStl {
     static_assert(!Pointer<u32>,          "u32 must not satisfy Pointer");
     static_assert(SameAs<u32, u32>,       "SameAs identity must hold");
     static_assert(!SameAs<u32, i32>,      "SameAs must distinguish sign");
-    static_assert(TriviallyCopyable<u64>, "u64 must be trivially copyable");
-    static_assert(POD<u32>,               "u32 must be POD");
+    static_assert(TriviallyCopyable<u64>, "u64 must satisfy TriviallyCopyable");
     static_assert(StandardLayout<u32>,    "u32 must be standard layout");
-
-    // ========================================================================
-    // Lock Concepts (for synchronization primitives)
-    // ========================================================================
-
-    /// @brief Basic lock interface: Lock() and Unlock().
-    template <typename L>
-    concept BasicLockable = requires(L& lock) {
-        { lock.Lock() } -> SameAs<void>;
-        { lock.Unlock() } -> SameAs<void>;
-    };
-
-    /// @brief Enhanced lockable: Lock(), Unlock(), TryLock().
-    template <typename L>
-    concept Lockable = BasicLockable<L> && requires(L& lock) {
-        { lock.TryLock() } -> SameAs<bool>;
-    };
-
-    /// @brief Shared lock interface: LockShared(), UnlockShared(), Lock() for exclusive, Unlock() for unlock.
-    template <typename L>
-    concept SharedLockable = requires(L& lock) {
-        { lock.LockShared() } -> SameAs<void>;
-        { lock.UnlockShared() } -> SameAs<void>;
-        { lock.Lock() } -> SameAs<void>;
-        { lock.Unlock() } -> SameAs<void>;
-    };
 
 } // namespace FoundationKitCxxStl
