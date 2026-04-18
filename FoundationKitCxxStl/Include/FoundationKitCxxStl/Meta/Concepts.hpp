@@ -113,13 +113,33 @@ namespace FoundationKitCxxStl {
     concept DefaultConstructible = ConstructibleFrom<T>;
 
     template <typename T>
+    concept TriviallyDefaultConstructible = DefaultConstructible<T> && __is_trivially_constructible(T);
+
+    template <typename T>
+    concept NothrowDefaultConstructible = DefaultConstructible<T> && __is_nothrow_constructible(T);
+
+    template <typename T>
     concept MoveConstructible = ConstructibleFrom<T, T> && ConvertibleTo<T, T>;
+
+    template <typename T>
+    concept TriviallyMoveConstructible = MoveConstructible<T> && __is_trivially_constructible(T, T);
+
+    template <typename T>
+    concept NothrowMoveConstructible = MoveConstructible<T> && __is_nothrow_constructible(T, T);
 
     template <typename T>
     concept CopyConstructible = MoveConstructible<T> &&
                                ConstructibleFrom<T, T&> && ConvertibleTo<T&, T> &&
                                ConstructibleFrom<T, const T&> && ConvertibleTo<const T&, T> &&
                                ConstructibleFrom<T, const T> && ConvertibleTo<const T, T>;
+
+    template <typename T>
+    concept TriviallyCopyConstructible = CopyConstructible<T> &&
+                                        __is_trivially_constructible(T, const T&);
+
+    template <typename T>
+    concept NothrowCopyConstructible = CopyConstructible<T> &&
+                                      __is_nothrow_constructible(T, const T&);
 
     // --- Assignment ---
 
@@ -129,6 +149,24 @@ namespace FoundationKitCxxStl {
         requires(LHS lhs, RHS&& rhs) {
             { lhs = static_cast<RHS&&>(rhs) } -> SameAs<LHS>;
         };
+
+    template <typename T>
+    concept CopyAssignable = AssignableFrom<T&, const T&>;
+
+    template <typename T>
+    concept TriviallyCopyAssignable = CopyAssignable<T> && __is_trivially_assignable(T&, const T&);
+
+    template <typename T>
+    concept NothrowCopyAssignable = CopyAssignable<T> && __is_nothrow_assignable(T&, const T&);
+
+    template <typename T>
+    concept MoveAssignable = AssignableFrom<T&, T>;
+
+    template <typename T>
+    concept TriviallyMoveAssignable = MoveAssignable<T> && __is_trivially_assignable(T&, T);
+
+    template <typename T>
+    concept NothrowMoveAssignable = MoveAssignable<T> && __is_nothrow_assignable(T&, T);
 
     // --- Common Concepts ---
 
@@ -332,6 +370,8 @@ namespace FoundationKitCxxStl {
     static_assert(SameAs<u32, u32>,       "SameAs identity must hold");
     static_assert(!SameAs<u32, i32>,      "SameAs must distinguish sign");
     static_assert(TriviallyCopyable<u64>, "u64 must satisfy TriviallyCopyable");
+    static_assert(TriviallyMoveConstructible<u32>, "u32 must satisfy TriviallyMoveConstructible");
+    static_assert(TriviallyMoveAssignable<u32>, "u32 must satisfy TriviallyMoveAssignable");
     static_assert(StandardLayout<u32>,    "u32 must be standard layout");
 
 } // namespace FoundationKitCxxStl

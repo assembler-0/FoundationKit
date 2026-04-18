@@ -6,11 +6,6 @@
 
 namespace FoundationKitCxxStl {
 
-    /// @brief Remove reference from a type.
-    template <typename T> struct RemoveReference      { using Type = T; };
-    template <typename T> struct RemoveReference<T&>  { using Type = T; };
-    template <typename T> struct RemoveReference<T&&> { using Type = T; };
-
     /// @brief Remove array extent from a type.
     template <typename T>           struct RemoveExtent       { using Type = T; };
     template <typename T>           struct RemoveExtent<T[]>  { using Type = T; };
