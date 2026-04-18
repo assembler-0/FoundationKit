@@ -9,7 +9,7 @@
 #include <FoundationKitCxxStl/Base/Flags.hpp>
 #include <FoundationKitPlatform/Amd64/ControlRegs.hpp>
 
-namespace FoundationKitPlatform::Amd64 {
+namespace FoundationKitPlatform::Amd64::Paging {
 
     using namespace FoundationKitCxxStl;
 
@@ -31,7 +31,7 @@ namespace FoundationKitPlatform::Amd64 {
     /// @brief Reads CR4.LA57 to determine the active paging mode.
     /// Safe to call at any point after paging is enabled.
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE PagingMode DetectPagingMode() noexcept {
-        return (ReadCr4() & static_cast<u64>(Cr4Flags::La57))
+        return (ControlRegs::ReadCr4() & static_cast<u64>(ControlRegs::Cr4Flags::La57))
             ? PagingMode::Level5
             : PagingMode::Level4;
     }
@@ -97,12 +97,22 @@ namespace FoundationKitPlatform::Amd64 {
         NoExecute    = 1ull << 63,  ///< NX  — execution disabled (requires EFER.NXE)
     };
 
+    [[nodiscard]] constexpr PageEntryFlags operator|(PageEntryFlags a, PageEntryFlags b) noexcept {
+        return static_cast<PageEntryFlags>(static_cast<u64>(a) | static_cast<u64>(b));
+    }
+    [[nodiscard]] constexpr PageEntryFlags operator&(PageEntryFlags a, PageEntryFlags b) noexcept {
+        return static_cast<PageEntryFlags>(static_cast<u64>(a) & static_cast<u64>(b));
+    }
+    [[nodiscard]] constexpr PageEntryFlags operator~(PageEntryFlags a) noexcept {
+        return static_cast<PageEntryFlags>(~static_cast<u64>(a));
+    }
+
     // =========================================================================
     // Entry Helpers
     // =========================================================================
 
     /// @brief Type-safe flag set for page table entries.
-    using PageEntryFlagSet = FoundationKitCxxStl::Flags<PageEntryFlags>;
+    using PageEntryFlagSet = Flags<PageEntryFlags>;
 
     /// @brief Returns true if the given flag is set in an entry.
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool EntryHasFlag(u64 entry, PageEntryFlags flag) noexcept {
@@ -362,8 +372,8 @@ namespace FoundationKitPlatform::Amd64 {
             "mov %%rax, %%cr4\n\t"
             "or  %1,    %%rax\n\t"   // restore PGE
             "mov %%rax, %%cr4"
-            :: "i"(~static_cast<u64>(Cr4Flags::Pge)),
-               "i"(static_cast<u64>(Cr4Flags::Pge))
+            :: "i"(~static_cast<u64>(ControlRegs::Cr4Flags::Pge)),
+               "i"(static_cast<u64>(ControlRegs::Cr4Flags::Pge))
             : "rax", "memory"
         );
     }

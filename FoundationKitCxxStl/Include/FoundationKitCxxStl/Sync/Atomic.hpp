@@ -124,4 +124,9 @@ namespace FoundationKitCxxStl::Sync {
         mutable T m_value;
     };
 
+    /// @brief Establishes memory synchronization ordering of non-atomic and relaxed atomic accesses.
+    FOUNDATIONKITCXXSTL_ALWAYS_INLINE void AtomicThreadFence(MemoryOrder order) noexcept {
+        CompilerBuiltins::AtomicThreadFence(static_cast<int>(order));
+    }
+
 } // namespace FoundationKitCxxStl::Sync

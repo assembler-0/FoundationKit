@@ -27,7 +27,7 @@ namespace FoundationKitPlatform::Amd64 {
     template <IPageFrameAllocator Pfa, IPhysicalMemoryAccessor Acc>
     class Amd64PageTableManager {
     public:
-        constexpr Amd64PageTableManager(Pfa& pfa, PhysicalAddress root_pa, PagingMode mode, Acc&& acc) noexcept
+        constexpr Amd64PageTableManager(Pfa& pfa, PhysicalAddress root_pa, Paging::PagingMode mode, Acc&& acc) noexcept
             : m_pfa(pfa), m_root_pa(root_pa), m_mode(mode), m_acc(Forward<Acc>(acc))
         {
             FK_BUG_ON(m_root_pa.IsNull(), "Amd64PageTableManager: root physical address is null");
@@ -92,7 +92,7 @@ namespace FoundationKitPlatform::Amd64 {
                 const u32 root_level = static_cast<u32>(m_mode);
                 for (u32 level = root_level; level > walk.level; --level) {
                     u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
-                    table_pa = EntryPhysAddr(table[PageTableIndex(current_va.value, level)]);
+                    table_pa = Paging::EntryPhysAddr(table[Paging::PageTableIndex(current_va.value, level)]);
                 }
 
                 u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
@@ -124,10 +124,10 @@ namespace FoundationKitPlatform::Amd64 {
             u64 phys_base = EntryPhysAddr(walk.entry) & (walk.level == 3 ? kPageMask1G : kPageMask2M);
             
             // Retain original permissions but drop PageSize flag
-            PageEntryFlagSet flags = PageEntryFlagSet(walk.entry) & ~PageEntryFlags::PageSize;
-            if (walk.level - 1 > 1) flags |= PageEntryFlags::PageSize; // If stepping L3->L2, L2 pages are still large
+            Paging::PageEntryFlagSet flags = PageEntryFlagSet(walk.entry) & ~Paging::PageEntryFlags::PageSize;
+            if (walk.level - 1 > 1) flags |= Paging::PageEntryFlags::PageSize; // If stepping L3->L2, L2 pages are still large
 
-            for (u32 i = 0; i < kPageTableEntries; ++i) {
+            for (u32 i = 0; i < Paging::kPageTableEntries; ++i) {
                 new_table[i] = EntryBuild(phys_base + (i * step_size), flags);
             }
             Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
@@ -136,14 +136,16 @@ namespace FoundationKitPlatform::Amd64 {
             u64 parent_table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > walk.level; --level) {
                 u64* t = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{parent_table_pa}));
-                parent_table_pa = EntryPhysAddr(t[PageTableIndex(va.value, level)]);
+                parent_table_pa = Paging::EntryPhysAddr(t[Paging::PageTableIndex(va.value, level)]);
             }
 
             u64* parent_table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{parent_table_pa}));
-            parent_table[PageTableIndex(va.value, walk.level)] = EntryBuild(new_table_pa.value, ToFlags(PageEntryFlags::Present) | PageEntryFlags::Writable | PageEntryFlags::User);
+            parent_table[PageTableIndex(va.value, walk.level)] = Paging::EntryBuild(new_table_pa.value,
+                ToFlags(Paging::PageEntryFlags::Present) | Paging::PageEntryFlags::Writable | Paging::PageEntryFlags::User
+            );
             Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
 
-            TlbFlushPage(va.value); // Architectural safety
+            Paging::TlbFlushPage(va.value); // Architectural safety
             return {};
         }
 
@@ -164,45 +166,45 @@ namespace FoundationKitPlatform::Amd64 {
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > 2; --level) {
                 u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
-                table_pa = EntryPhysAddr(table[PageTableIndex(va.value, level)]);
+                table_pa = Paging::EntryPhysAddr(table[Paging::PageTableIndex(va.value, level)]);
             }
 
             u64* pd_table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
-            u32 pde_idx = PageTableIndex(va.value, 2);
+            u32 pde_idx = Paging::PageTableIndex(va.value, 2);
             u64 pde = pd_table[pde_idx];
 
-            if (!EntryHasFlag(pde, PageEntryFlags::Present)) return false;
+            if (!Paging::EntryHasFlag(pde, Paging::PageEntryFlags::Present)) return false;
 
             // `pde` points to a PT (Level 1 Table). We check all 512 entries.
-            u64 pt_pa = EntryPhysAddr(pde);
+            u64 pt_pa = Paging::EntryPhysAddr(pde);
             u64* pt_table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{pt_pa}));
 
             // We require that all 512 entries are Present, form a contiguous chunk of physical memory,
             // and share the same permissions.
             u64 first_pte = pt_table[0];
-            if (!EntryHasFlag(first_pte, PageEntryFlags::Present)) return false;
+            if (!Paging::EntryHasFlag(first_pte, Paging::PageEntryFlags::Present)) return false;
 
-            PhysicalAddress base_pa = PhysicalAddress{EntryPhysAddr(first_pte)};
+            auto base_pa = PhysicalAddress{Paging::EntryPhysAddr(first_pte)};
             if ((base_pa.value % kPageSize2M) != 0) return false;
 
-            PageEntryFlagSet base_flags = PageEntryFlagSet(first_pte) & ~PageEntryFlags::PageSize;
+            Paging::PageEntryFlagSet base_flags = Paging::PageEntryFlagSet(first_pte) & ~Paging::PageEntryFlags::PageSize;
 
-            for (u32 i = 1; i < kPageTableEntries; ++i) {
+            for (u32 i = 1; i < Paging::kPageTableEntries; ++i) {
                 u64 pte = pt_table[i];
-                if (!EntryHasFlag(pte, PageEntryFlags::Present)) return false;
+                if (!Paging::EntryHasFlag(pte, Paging::PageEntryFlags::Present)) return false;
 
-                if (EntryPhysAddr(pte) != base_pa.value + (i * kPageSize)) return false;
+                if (Paging::EntryPhysAddr(pte) != base_pa.value + (i * kPageSize)) return false;
                 
-                PageEntryFlagSet flags = PageEntryFlagSet(pte) & ~PageEntryFlags::PageSize;
+                Paging::PageEntryFlagSet flags = Paging::PageEntryFlagSet(pte) & ~Paging::PageEntryFlags::PageSize;
                 if (flags != base_flags) return false; // permissions must match
             }
 
             // Everything matches. Replace L2 PDE with a huge page entry.
-            base_flags |= PageEntryFlags::PageSize;
+            base_flags |= Paging::PageEntryFlags::PageSize;
             pd_table[pde_idx] = EntryBuild(base_pa.value, base_flags);
             Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
 
-            TlbFlushPage(va.value);
+            Paging::TlbFlushPage(va.value);
 
             // Reclaim the now-orphaned Level 1 page table.
             m_pfa.FreePages(PhysicalToPfn(PhysicalAddress{pt_pa}), 1);
@@ -219,15 +221,15 @@ namespace FoundationKitPlatform::Amd64 {
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > walk.level; --level) {
                 u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
-                table_pa = EntryPhysAddr(table[PageTableIndex(va.value, level)]);
+                table_pa = Paging::EntryPhysAddr(table[Paging::PageTableIndex(va.value, level)]);
             }
 
             u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
             u32 idx = PageTableIndex(va.value, walk.level);
-            u64 phys = EntryPhysAddr(table[idx]);
+            u64 phys = Paging::EntryPhysAddr(table[idx]);
             
-            PageEntryFlagSet amd_flags = ToAmd64Flags(flags);
-            if (walk.large) amd_flags |= PageEntryFlags::PageSize;
+            Paging::PageEntryFlagSet amd_flags = ToAmd64Flags(flags);
+            if (walk.large) amd_flags |= Paging::PageEntryFlags::PageSize;
             
             table[idx] = EntryBuild(phys, amd_flags);
             Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
@@ -242,13 +244,13 @@ namespace FoundationKitPlatform::Amd64 {
             return PhysicalAddress{walk.phys_addr};
         }
 
-        void FlushTlb(VirtualAddress va) noexcept { TlbFlushPage(va.value); }
+        void FlushTlb(VirtualAddress va) noexcept { Paging::TlbFlushPage(va.value); }
         
         void FlushTlbRange(VirtualAddress va, usize sz) noexcept {
-            for (usize off = 0; off < sz; off += kPageSize) TlbFlushPage(va.value + off);
+            for (usize off = 0; off < sz; off += kPageSize) Paging::TlbFlushPage(va.value + off);
         }
 
-        void FlushTlbAll() noexcept { TlbFlushAll(); }
+        void FlushTlbAll() noexcept { Paging::TlbFlushAll(); }
 
         [[nodiscard]] PhysicalAddress RootPhysicalAddress() const noexcept { return m_root_pa; }
 
@@ -269,10 +271,10 @@ namespace FoundationKitPlatform::Amd64 {
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > target_level; --level) {
                 u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
-                u32 idx = PageTableIndex(va.value, level);
+                u32 idx = Paging::PageTableIndex(va.value, level);
                 u64 entry = table[idx];
 
-                if (!EntryHasFlag(entry, PageEntryFlags::Present)) {
+                if (!Paging::EntryHasFlag(entry, Paging::PageEntryFlags::Present)) {
                     auto alloc_res = m_pfa.AllocatePages(1, RegionType::Generic);
                     if (!alloc_res.HasValue()) return false;
 
@@ -280,38 +282,40 @@ namespace FoundationKitPlatform::Amd64 {
                     u64* new_table_ptr = reinterpret_cast<u64*>(m_acc.ToVirtual(new_table_pa));
                     m_acc.ZeroPage(new_table_pa); // Replaces manual for loop zeroing
 
-                    entry = EntryBuild(new_table_pa.value, ToFlags(PageEntryFlags::Present) | PageEntryFlags::Writable | PageEntryFlags::User);
+                    entry = Paging::EntryBuild(new_table_pa.value, ToFlags(Paging::PageEntryFlags::Present) |
+                        Paging::PageEntryFlags::Writable | Paging::PageEntryFlags::User
+                    );
                     table[idx] = entry;
                     Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
                 }
                 
-                if (EntryHasFlag(entry, PageEntryFlags::PageSize)) return false; // Collision with huge page
-                table_pa = EntryPhysAddr(entry);
+                if (Paging::EntryHasFlag(entry, Paging::PageEntryFlags::PageSize)) return false; // Collision with huge page
+                table_pa = Paging::EntryPhysAddr(entry);
             }
 
             u64* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
-            u32 idx = PageTableIndex(va.value, target_level);
-            if (EntryHasFlag(table[idx], PageEntryFlags::Present)) return false;
+            u32 idx = Paging::PageTableIndex(va.value, target_level);
+            if (Paging::EntryHasFlag(table[idx], Paging::PageEntryFlags::Present)) return false;
 
-            PageEntryFlagSet amd_flags = ToAmd64Flags(flags);
-            if (target_level > 1) amd_flags |= PageEntryFlags::PageSize;
+            Paging::PageEntryFlagSet amd_flags = ToAmd64Flags(flags);
+            if (target_level > 1) amd_flags |= Paging::PageEntryFlags::PageSize;
 
-            table[idx] = EntryBuild(pa.value, amd_flags);
+            table[idx] = Paging::EntryBuild(pa.value, amd_flags);
             Sync::AtomicThreadFence(Sync::MemoryOrder::SeqCst);
             return true;
         }
 
-        static PageEntryFlagSet ToAmd64Flags(RegionFlags flags) noexcept {
-            PageEntryFlagSet res = ToFlags(PageEntryFlags::Present);
-            if (HasRegionFlag(flags, RegionFlags::Writable))   res |= PageEntryFlags::Writable;
-            if (HasRegionFlag(flags, RegionFlags::User))       res |= PageEntryFlags::User;
-            if (!HasRegionFlag(flags, RegionFlags::Executable)) res |= PageEntryFlags::NoExecute;
-            if (HasRegionFlag(flags, RegionFlags::Pinned))     res |= PageEntryFlags::Global;
+        static Paging::PageEntryFlagSet ToAmd64Flags(RegionFlags flags) noexcept {
+            Paging::PageEntryFlagSet res = ToFlags(Paging::PageEntryFlags::Present);
+            if (HasRegionFlag(flags, RegionFlags::Writable))   res |= Paging::PageEntryFlags::Writable;
+            if (HasRegionFlag(flags, RegionFlags::User))       res |= Paging::PageEntryFlags::User;
+            if (!HasRegionFlag(flags, RegionFlags::Executable)) res |= Paging::PageEntryFlags::NoExecute;
+            if (HasRegionFlag(flags, RegionFlags::Pinned))     res |= Paging::PageEntryFlags::Global;
             
             // Map Cacheable trait to PAT bit combinations.
             // On AMD64, PCD = 1, PWT = 1 is strong uncacheable. Default is write-back.
             if (!HasRegionFlag(flags, RegionFlags::Cacheable)) {
-                res |= PageEntryFlags::CacheDisable | PageEntryFlags::WriteThrough;
+                res |= Paging::PageEntryFlags::CacheDisable | Paging::PageEntryFlags::WriteThrough;
             }
 
             return res;
@@ -319,7 +323,7 @@ namespace FoundationKitPlatform::Amd64 {
 
         Pfa&            m_pfa;
         PhysicalAddress m_root_pa;
-        PagingMode      m_mode;
+        Paging::PagingMode      m_mode;
         Acc             m_acc;
     };
 

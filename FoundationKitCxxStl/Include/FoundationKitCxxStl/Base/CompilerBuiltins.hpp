@@ -213,6 +213,11 @@ namespace FoundationKitCxxStl::Base::CompilerBuiltins {
         __atomic_thread_fence(__ATOMIC_SEQ_CST);
     }
 
+    /// @brief Issue an atomic thread fence with specified ordering.
+    inline void AtomicThreadFence(int order) noexcept {
+        __atomic_thread_fence(order);
+    }
+
     /// @brief Issue an acquire memory barrier.
     inline void AcquireBarrier() noexcept {
         __atomic_thread_fence(__ATOMIC_ACQUIRE);

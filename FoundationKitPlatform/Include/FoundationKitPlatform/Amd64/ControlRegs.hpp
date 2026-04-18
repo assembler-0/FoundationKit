@@ -8,7 +8,7 @@
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitPlatform/Bitfield.hpp>
 
-namespace FoundationKitPlatform::Amd64 {
+namespace FoundationKitPlatform::Amd64::ControlRegs {
 
     using namespace FoundationKitCxxStl;
 
