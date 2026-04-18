@@ -106,4 +106,9 @@ extern "C" {
     void OslMicroDelay(u64 microseconds) {
         (void)microseconds;
     }
+
+    static char hostos_name[16] = "WhateverOS12345";
+    char* OslGetHostOsName() {
+        return hostos_name;
+    }
 }

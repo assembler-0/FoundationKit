@@ -6,6 +6,7 @@
 #include <FoundationKitCxxStl/Base/Logger.hpp>
 #include <FoundationKitPlatform/HostArchitecture.hpp>
 #include <FoundationKitPlatform/MachineWidth.hpp>
+#include <FoundationKitOsl/Osl.hpp>
 #if defined(FOUNDATIONKITPLATFORM_ARCH_X86_64)
 #include <FoundationKitPlatform/Amd64/Cpu.hpp>
 #elif defined(FOUNDATIONKITPLATFORM_ARCH_ARM64)
@@ -19,6 +20,7 @@ namespace FoundationKitCxxStl {
         FK_LOG_INFO("FoundationKit (R) configuration:");
         FK_LOG_INFO("   |---> Host architecture: {}", FOUNDATIONKITPLATFORM_ARCH_NAME);
         FK_LOG_INFO("   |---> Host machine width: {}", FOUNDATIONKITPLATFORM_MACHINE_WITDH);
+        FK_LOG_INFO("   |---> Host OS: {}", FoundationKitOsl::OslGetHostOsName());
         FK_LOG_INFO("   |---> Compiler: {}", FOUNDATIONKIT_COMPILER);
         FK_LOG_INFO("   |---> Compiler 128-bit integer support: {}", FOUNDATIONKITCXXSTL_BOOL_TO_STR(FOUNDATIONKITCXXSTL_HAS_INT128));
 #if defined(FOUNDATIONKITPLATFORM_ARCH_X86_64)

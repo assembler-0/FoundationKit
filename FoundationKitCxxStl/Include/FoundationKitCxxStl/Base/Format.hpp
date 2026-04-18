@@ -279,11 +279,37 @@ namespace FoundationKitCxxStl {
         }
     };
 
-    template <usize N>
-    struct Formatter<char[N]> : Formatter<const char*> {};
+    template <>
+    struct Formatter<char*> : Formatter<const char*> {
+        template <typename Sink>
+        void Format(Sink& sb, char* const& value, const FormatSpec& spec = {}) {
+            Formatter<const char*>::Format(sb, static_cast<const char*>(value), spec);
+        }
+    };
 
     template <usize N>
-    struct Formatter<const char[N]> : Formatter<const char*> {};
+    struct Formatter<char[N]> : Formatter<const char*> {
+        template <typename Sink>
+        void Format(Sink& sb, const char (&value)[N], const FormatSpec& spec = {}) {
+            usize len = 0;
+            while (len < N && value[len]) len++;
+            Detail::WriteWithPadding(sb, len, spec, [&] {
+                sb.Append(value, len);
+            });
+        }
+    };
+
+    template <usize N>
+    struct Formatter<const char[N]> : Formatter<const char*> {
+        template <typename Sink>
+        void Format(Sink& sb, const char (&value)[N], const FormatSpec& spec = {}) {
+            usize len = 0;
+            while (len < N && value[len]) len++;
+            Detail::WriteWithPadding(sb, len, spec, [&] {
+                sb.Append(value, len);
+            });
+        }
+    };
 
     template <>
     struct Formatter<bool> {
@@ -355,6 +381,10 @@ namespace FoundationKitCxxStl {
     struct Formatter<T> {
         template <typename Sink>
         void Format(Sink& sb, const T& value, const FormatSpec& spec = {}) {
+            if constexpr (SameAs<T, char*> || SameAs<T, const char*>) {
+                Formatter<const char*>().Format(sb, value, spec);
+                return;
+            }
             if (!value) {
                 Detail::WriteWithPadding(sb, 4, spec, [&] {
                     sb.Append("null", 4);

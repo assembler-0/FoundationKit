@@ -627,4 +627,11 @@ TEST_CASE(Base_LoggingAndFormatting) {
     StringBuilder sb(any_alloc);
     sb.Format("Mixed: {} {} {} {} {}", -1, 2u, 'A', "BCD", StringView("EFG"));
     ASSERT_EQ(StringCompare(sb.View(), "Mixed: -1 2 A BCD EFG"), 0);
+
+    // Test char* formatting (the fix)
+    char mutable_str[] = "Mutable";
+    char* ptr = mutable_str;
+    StringBuilder sb2(any_alloc);
+    sb2.Format("Ptr: {}", ptr);
+    ASSERT_EQ(StringCompare(sb2.View(), "Ptr: Mutable"), 0);
 }

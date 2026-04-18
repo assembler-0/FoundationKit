@@ -77,6 +77,9 @@ namespace FoundationKitOsl {
     /// @brief Check if interrupts are enabled.
     bool OslIsInterruptEnabled();
 
+    /// @brief Get host OS name
+    char* OslGetHostOsName();
+
     }
 
 } // namespace FoundationKitOsl
