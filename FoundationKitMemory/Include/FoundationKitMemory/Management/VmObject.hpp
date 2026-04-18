@@ -226,10 +226,10 @@ namespace FoundationKitMemory {
                 "VmObject::Collapse: this == parent — object cannot shadow itself (addr={:#x})",
                 reinterpret_cast<uptr>(this));
 
-            UniqueLock first_guard(first->m_lock);
-            UniqueLock second_guard(second->m_lock);
+            Sync::UniqueLock first_guard(first->m_lock);
+            Sync::UniqueLock second_guard(second->m_lock);
 
-            const usize rc = m_ref_count.Load(MemoryOrder::Acquire);
+            const usize rc = m_ref_count.Load(Sync::MemoryOrder::Acquire);
             if (rc != 1 || !m_shadow) return false;
 
             VmPage* p = parent->m_pages.First();

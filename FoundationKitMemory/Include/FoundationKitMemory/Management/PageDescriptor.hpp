@@ -87,10 +87,10 @@ namespace FoundationKitMemory {
         Structure::IntrusiveDoublyLinkedListNode lru;   ///< LRU queue linkage (protected by PageQueue::m_lock).
 
         /// @brief Current lifecycle state — Sync::Atomic for SMP safety.
-        Atomic<u8> state{static_cast<u8>(PageState::Free)};
+        Sync::Atomic<u8> state{static_cast<u8>(PageState::Free)};
 
         /// @brief Per-page attribute bits — Sync::Atomic for SMP safety.
-        Atomic<u16> flags{0};
+        Sync::Atomic<u16> flags{0};
 
         u8         order  = 0;                          ///< Compound order (0 = single page, 1 = 2 pages, etc.)
         u8         _pad0  = 0;
@@ -98,7 +98,7 @@ namespace FoundationKitMemory {
 
         /// @brief Number of PTEs mapping this page. Atomic for concurrent map/unmap.
         ///        0 = unmapped, >0 = mapped. Used by rmap and eviction decisions.
-        Atomic<u32> map_count{0};
+        Sync::Atomic<u32> map_count{0};
 
         // ----------------------------------------------------------------
         // Cold fields (second cache line on most architectures)

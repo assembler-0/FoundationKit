@@ -51,20 +51,20 @@ namespace FoundationKitMemory {
 
         /// @brief Add a page to the tail of this queue (cold end).  Acquires lock.
         void Enqueue(PageDescriptor* page) noexcept {
-            UniqueLock guard(m_lock);
+            Sync::UniqueLock guard(m_lock);
             EnqueueUnlocked(page);
         }
 
         /// @brief Remove and return the page at the head (hot end).  Acquires lock.
         /// @return Head PageDescriptor, or nullptr if queue is empty.
         [[nodiscard]] PageDescriptor* Dequeue() noexcept {
-            UniqueLock guard(m_lock);
+            Sync::UniqueLock guard(m_lock);
             return DequeueUnlocked();
         }
 
         /// @brief Remove a specific page from anywhere in the queue. O(1).  Acquires lock.
         void Remove(PageDescriptor* page) noexcept {
-            UniqueLock guard(m_lock);
+            Sync::UniqueLock guard(m_lock);
             RemoveUnlocked(page);
         }
 
@@ -202,12 +202,12 @@ namespace FoundationKitMemory {
             FK_BUG_ON(page == nullptr, "PageQueueSet::Activate: null page");
             {
                 PageQueue& src = QueueForState(page->State());
-                UniqueLock src_guard(src.m_lock);
+                Sync::UniqueLock src_guard(src.m_lock);
                 src.RemoveUnlocked(page);
                 page->TransitionTo(PageState::Active);
             }
             {
-                UniqueLock dst_guard(m_active.m_lock);
+                Sync::UniqueLock dst_guard(m_active.m_lock);
                 m_active.EnqueueUnlocked(page);
             }
         }
@@ -219,12 +219,12 @@ namespace FoundationKitMemory {
                 "PageQueueSet::Deactivate: page is not Active (pfn={}, state={})",
                 page->pfn.value, static_cast<u8>(page->State()));
             {
-                UniqueLock src_guard(m_active.m_lock);
+                Sync::UniqueLock src_guard(m_active.m_lock);
                 m_active.RemoveUnlocked(page);
                 page->TransitionTo(PageState::Inactive);
             }
             {
-                UniqueLock dst_guard(m_inactive.m_lock);
+                Sync::UniqueLock dst_guard(m_inactive.m_lock);
                 m_inactive.EnqueueUnlocked(page);
             }
         }
@@ -236,12 +236,12 @@ namespace FoundationKitMemory {
                 "PageQueueSet::Reactivate: page is not Inactive (pfn={}, state={})",
                 page->pfn.value, static_cast<u8>(page->State()));
             {
-                UniqueLock src_guard(m_inactive.m_lock);
+                Sync::UniqueLock src_guard(m_inactive.m_lock);
                 m_inactive.RemoveUnlocked(page);
                 page->TransitionTo(PageState::Active);
             }
             {
-                UniqueLock dst_guard(m_active.m_lock);
+                Sync::UniqueLock dst_guard(m_active.m_lock);
                 m_active.EnqueueUnlocked(page);
             }
         }
@@ -251,12 +251,12 @@ namespace FoundationKitMemory {
             FK_BUG_ON(page == nullptr, "PageQueueSet::Wire: null page");
             {
                 PageQueue& src = QueueForState(page->State());
-                UniqueLock src_guard(src.m_lock);
+                Sync::UniqueLock src_guard(src.m_lock);
                 src.RemoveUnlocked(page);
                 page->TransitionTo(PageState::Wired);
             }
             {
-                UniqueLock dst_guard(m_wired.m_lock);
+                Sync::UniqueLock dst_guard(m_wired.m_lock);
                 m_wired.EnqueueUnlocked(page);
             }
         }
@@ -268,12 +268,12 @@ namespace FoundationKitMemory {
                 "PageQueueSet::Unwire: page is not Wired (pfn={}, state={})",
                 page->pfn.value, static_cast<u8>(page->State()));
             {
-                UniqueLock src_guard(m_wired.m_lock);
+                Sync::UniqueLock src_guard(m_wired.m_lock);
                 m_wired.RemoveUnlocked(page);
                 page->TransitionTo(PageState::Active);
             }
             {
-                UniqueLock dst_guard(m_active.m_lock);
+                Sync::UniqueLock dst_guard(m_active.m_lock);
                 m_active.EnqueueUnlocked(page);
             }
         }
@@ -289,13 +289,13 @@ namespace FoundationKitMemory {
                 "only dirty pages go to laundry",
                 page->pfn.value);
             {
-                UniqueLock src_guard(m_inactive.m_lock);
+                Sync::UniqueLock src_guard(m_inactive.m_lock);
                 m_inactive.RemoveUnlocked(page);
                 page->TransitionTo(PageState::Laundry);
                 page->SetFlag(PageFlags::Writeback);
             }
             {
-                UniqueLock dst_guard(m_laundry.m_lock);
+                Sync::UniqueLock dst_guard(m_laundry.m_lock);
                 m_laundry.EnqueueUnlocked(page);
             }
         }
@@ -308,7 +308,7 @@ namespace FoundationKitMemory {
                 page->pfn.value);
             {
                 PageQueue& src = QueueForState(page->State());
-                UniqueLock src_guard(src.m_lock);
+                Sync::UniqueLock src_guard(src.m_lock);
                 src.RemoveUnlocked(page);
                 page->TransitionTo(PageState::Free);
                 page->ClearFlag(PageFlags::Dirty);
@@ -317,7 +317,7 @@ namespace FoundationKitMemory {
                 page->ClearOwner();
             }
             {
-                UniqueLock dst_guard(m_free.m_lock);
+                Sync::UniqueLock dst_guard(m_free.m_lock);
                 m_free.EnqueueUnlocked(page);
             }
         }
@@ -362,7 +362,7 @@ namespace FoundationKitMemory {
             while (found < limit && scanned < queue_size) {
                 PageDescriptor* page;
                 {
-                    UniqueLock guard(m_inactive.m_lock);
+                    Sync::UniqueLock guard(m_inactive.m_lock);
                     page = m_inactive.DequeueUnlocked();
                 }
                 if (!page) break;
@@ -372,14 +372,14 @@ namespace FoundationKitMemory {
                     // Locked pages cannot be evicted. Put back at tail.
                     // TransitionTo() would be a no-op (Inactive→Inactive), so
                     // we skip it — the state is already Inactive.
-                    UniqueLock guard(m_inactive.m_lock);
+                    Sync::UniqueLock guard(m_inactive.m_lock);
                     m_inactive.EnqueueUnlocked(page);
                     continue;
                 }
 
                 if (page->TestFlag(PageFlags::Referenced)) {
                     page->ClearFlag(PageFlags::Referenced);
-                    UniqueLock guard(m_inactive.m_lock);
+                    Sync::UniqueLock guard(m_inactive.m_lock);
                     m_inactive.EnqueueUnlocked(page);
                     continue;
                 }
@@ -391,7 +391,7 @@ namespace FoundationKitMemory {
                         page->SetFlag(PageFlags::Writeback);
                     }
                     {
-                        UniqueLock guard(m_laundry.m_lock);
+                        Sync::UniqueLock guard(m_laundry.m_lock);
                         m_laundry.EnqueueUnlocked(page);
                     }
                     continue;
@@ -423,7 +423,7 @@ namespace FoundationKitMemory {
             while (demoted < target && scanned < queue_size) {
                 PageDescriptor* page;
                 {
-                    UniqueLock guard(m_active.m_lock);
+                    Sync::UniqueLock guard(m_active.m_lock);
                     page = m_active.DequeueUnlocked();
                 }
                 if (!page) break;
@@ -431,14 +431,14 @@ namespace FoundationKitMemory {
 
                 if (page->TestFlag(PageFlags::Referenced)) {
                     page->ClearFlag(PageFlags::Referenced);
-                    UniqueLock guard(m_active.m_lock);
+                    Sync::UniqueLock guard(m_active.m_lock);
                     m_active.EnqueueUnlocked(page);
                     continue;
                 }
 
                 page->TransitionTo(PageState::Inactive);
                 {
-                    UniqueLock guard(m_inactive.m_lock);
+                    Sync::UniqueLock guard(m_inactive.m_lock);
                     m_inactive.EnqueueUnlocked(page);
                 }
                 ++demoted;

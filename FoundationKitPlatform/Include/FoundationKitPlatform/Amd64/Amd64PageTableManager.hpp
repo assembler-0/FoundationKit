@@ -165,7 +165,7 @@ namespace FoundationKitPlatform::Amd64 {
             // Gather the L2 (PDE) entry PA
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > 2; --level) {
-                const auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
+                auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
                 table_pa = Paging::EntryPhysAddr(table[Paging::PageTableIndex(va.value, level)]);
             }
 
@@ -220,11 +220,11 @@ namespace FoundationKitPlatform::Amd64 {
 
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > walk.level; --level) {
-                const auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
+                auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
                 table_pa = Paging::EntryPhysAddr(table[Paging::PageTableIndex(va.value, level)]);
             }
 
-            const auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
+            auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
             const u32 idx = Paging::PageTableIndex(va.value, walk.level);
             const u64 phys = Paging::EntryPhysAddr(table[idx]);
 
@@ -270,7 +270,7 @@ namespace FoundationKitPlatform::Amd64 {
 
             u64 table_pa = m_root_pa.value;
             for (u32 level = static_cast<u32>(m_mode); level > target_level; --level) {
-                const auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
+                auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
                 const u32 idx = Paging::PageTableIndex(va.value, level);
                 u64 entry = table[idx];
 
@@ -292,8 +292,8 @@ namespace FoundationKitPlatform::Amd64 {
                 table_pa = Paging::EntryPhysAddr(entry);
             }
 
-            const auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
-            const idx = Paging::PageTableIndex(va.value, target_level);
+            auto* table = reinterpret_cast<u64*>(m_acc.ToVirtual(PhysicalAddress{table_pa}));
+            const u32 idx = Paging::PageTableIndex(va.value, target_level);
             if (Paging::EntryHasFlag(table[idx], Paging::PageEntryFlags::Present)) return false;
 
             Paging::PageEntryFlagSet amd_flags = ToAmd64Flags(flags);

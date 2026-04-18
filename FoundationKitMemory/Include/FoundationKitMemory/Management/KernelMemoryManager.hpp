@@ -425,7 +425,7 @@ namespace FoundationKitMemory {
                 page->ClearFlag(PageFlags::Referenced);
                 page->TransitionTo(PageState::Free);
                 {
-                    UniqueLock guard(m_queues.FreeQueue().m_lock);
+                    Sync::UniqueLock guard(m_queues.FreeQueue().m_lock);
                     m_queues.FreeQueue().EnqueueUnlocked(page);
                 }
 
