@@ -279,6 +279,8 @@ namespace FoundationKitCxxStl::Base::CompilerBuiltins {
     /// @param expected Expected value (updated if swap fails)
     /// @param desired Desired value
     /// @param weak Allow spurious failures (for weak CAS on ARM)
+    /// @param success
+    /// @param failure
     /// @return true if swap succeeded, false if failed
     template <typename T>
     inline bool AtomicCompareExchange(

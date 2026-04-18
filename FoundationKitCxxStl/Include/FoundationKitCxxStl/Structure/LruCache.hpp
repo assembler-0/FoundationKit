@@ -3,7 +3,6 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Base/Hash.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
@@ -93,7 +92,7 @@ namespace FoundationKitCxxStl::Structure {
 
         // Sentinel index: points to the virtual head of the LRU list.
         // Stored as a u32 in the sentinel node itself; capacity is the value.
-        static constexpr u32 kNoSlot = ~u32(0);
+        static constexpr u32 kNoSlot = ~static_cast<u32>(0);
 
         struct Slot {
             Key   key;

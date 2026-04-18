@@ -69,7 +69,7 @@ namespace FoundationKitMemory {
         /// @return true if ptr is in [Base(), End())
         [[nodiscard]] constexpr bool Contains(const void* ptr) const noexcept {
             Verify();
-            const byte* p = static_cast<const byte*>(ptr);
+            const auto* p = static_cast<const byte*>(ptr);
             return p >= m_base && p < m_base + m_size;
         }
 
@@ -265,11 +265,11 @@ namespace FoundationKitCxxStl {
                 return;
             }
             sb.Append('[');
-            Formatter<FoundationKitMemory::byte*>().Format(sb, value.Base(), spec);
+            Formatter<byte*>().Format(sb, value.Base(), spec);
             sb.Append('-');
-            Formatter<FoundationKitMemory::byte*>().Format(sb, value.End(), spec);
+            Formatter<byte*>().Format(sb, value.End(), spec);
             sb.Append(" (", 2);
-            Formatter<FoundationKitMemory::usize>().Format(sb, value.Size(), spec);
+            Formatter<usize>().Format(sb, value.Size(), spec);
             sb.Append(")]", 2);
         }
     };

@@ -12,7 +12,6 @@
 #include <FoundationKitCxxAbi/Core/Abi.hpp>
 #include <FoundationKitCxxAbi/Demangle/Demangler.hpp>
 #include <FoundationKitCxxAbi/Init/GlobalInit.hpp>
-#include <FoundationKitCxxStl/Base/CompilerBuiltins.hpp>
 #include <FoundationKitCxxStl/Base/Span.hpp>
 #include <FoundationKitCxxStl/Base/StringView.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>

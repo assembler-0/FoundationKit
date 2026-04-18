@@ -2,7 +2,6 @@
 
 #include <FoundationKitCxxStl/Base/String.hpp>
 #include <FoundationKitCxxStl/Base/StringView.hpp>
-#include <FoundationKitCxxStl/Base/NumericLimits.hpp>
 #include <FoundationKitCxxStl/Base/Format.hpp>
 
 namespace FoundationKitCxxStl {

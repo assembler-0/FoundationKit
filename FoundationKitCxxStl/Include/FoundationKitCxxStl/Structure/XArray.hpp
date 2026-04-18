@@ -213,7 +213,7 @@ namespace FoundationKitCxxStl::Structure {
             // 64^height - 1, clamped to usize max to avoid overflow.
             usize max = 1;
             for (usize i = 0; i < height; ++i) {
-                if (max > (~usize(0)) / kFanout) return ~usize(0); // saturate
+                if (max > (~static_cast<usize>(0)) / kFanout) return ~static_cast<usize>(0); // saturate
                 max *= kFanout;
             }
             return max - 1;

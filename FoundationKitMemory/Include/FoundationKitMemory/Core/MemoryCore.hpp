@@ -228,7 +228,6 @@ namespace FoundationKitMemory {
     struct AnyAllocatorCreator {
         static AllocationResult Allocate(void* ctx, usize size, usize align) noexcept {
             FK_BUG_ON(size == 0, "AnyAllocatorCreator::Allocate: zero size requested");
-            const Alignment a{align};
             auto res = static_cast<Alloc*>(ctx)->Allocate(size, align);
             FK_BUG_ON(res.ptr != nullptr && (reinterpret_cast<uptr>(res.ptr) % align) != 0,
                 "AnyAllocatorCreator::Allocate: underlying allocator returned unaligned pointer");

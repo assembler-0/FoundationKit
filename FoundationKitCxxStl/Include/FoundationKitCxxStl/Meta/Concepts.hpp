@@ -167,7 +167,7 @@ namespace FoundationKitCxxStl {
     concept Relation = Predicate<F, T, T>;
 
     template <typename T>
-    T&& DeclVal() noexcept;
+    T&& DeclVal() noexcept; // TODO
 
     template <typename I>
     concept Iterator = requires(I it) {

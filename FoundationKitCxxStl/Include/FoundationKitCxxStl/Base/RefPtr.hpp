@@ -1,7 +1,6 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {

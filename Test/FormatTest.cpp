@@ -1,4 +1,4 @@
-#include <FoundationKitCxxStl/Base/Logger.hpp>
+
 #include <FoundationKitCxxStl/Base/StringBuilder.hpp>
 #include <TestFramework.hpp>
 

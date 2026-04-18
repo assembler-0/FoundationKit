@@ -1,7 +1,6 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
-#include <FoundationKitCxxStl/Base/Utility.hpp>
 #include <FoundationKitCxxStl/Structure/IntrusiveDoublyLinkedList.hpp>
 #include <FoundationKitCxxStl/Sync/Mutex.hpp>
 #include <FoundationKitCxxStl/Sync/ConditionVariable.hpp>

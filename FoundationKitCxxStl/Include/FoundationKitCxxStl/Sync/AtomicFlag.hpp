@@ -81,7 +81,7 @@ namespace FoundationKitCxxStl::Sync {
             // triggers -Wdeprecated-volatile on every translation unit that
             // includes this header.
             return CompilerBuiltins::AtomicLoad(
-                const_cast<const bool*>(static_cast<const volatile bool*>(&m_flag)),
+                const_cast<const bool*>(&m_flag),
                 static_cast<int>(order));
         }
 

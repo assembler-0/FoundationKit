@@ -36,27 +36,26 @@ namespace FoundationKitMemory {
         // ----------------------------------------------------------------
         // Internal slot layout
         // ----------------------------------------------------------------
-
         /// @brief Header prepended to every slot.
-        /// @desc  When the slot is live, `live_next` chains all live objects
-        ///        (used by ForEach). When the slot is on the free-list,
-        ///        `free_next` chains free slots. The two pointers share the
-        ///        same storage via a union — a slot is either live or free,
-        ///        never both.
         struct SlotHeader {
-            union {
-                SlotHeader* live_next; ///< Next live slot (valid when allocated).
-                SlotHeader* free_next; ///< Next free slot (valid when on free-list).
+            struct LivePointers {
+                SlotHeader* next; ///< Next live slot.
+                SlotHeader* prev; ///< Previous live slot (enables O(1) Deallocate).
             };
+
+            union {
+                LivePointers live;      ///< Live-list pointers.
+                SlotHeader*  free_next; ///< Next free slot (valid when on free-list).
+            } u;
         };
 
         static constexpr usize kSlotAlign  = alignof(T) > alignof(SlotHeader)
                                              ? alignof(T) : alignof(SlotHeader);
         static constexpr usize kHeaderSize = sizeof(SlotHeader);
         // Pad header so that the T payload is aligned to kSlotAlign.
-        static constexpr usize kHeaderPad  = (kHeaderSize % kSlotAlign == 0)
+        static constexpr usize kHeaderPad  = kHeaderSize % kSlotAlign == 0
                                              ? 0
-                                             : (kSlotAlign - kHeaderSize % kSlotAlign);
+                                             : kSlotAlign - kHeaderSize % kSlotAlign;
         static constexpr usize kSlotSize   = kHeaderSize + kHeaderPad + sizeof(T);
 
         // ----------------------------------------------------------------
@@ -88,16 +87,16 @@ namespace FoundationKitMemory {
         /// @param args   Arguments forwarded to T's constructor.
         template <typename... Args>
         [[nodiscard]] Expected<T*, MemoryError>
-        Allocate(MemoryObjectFlags flags, Args&&... args) noexcept {
+        Allocate(const MemoryObjectFlags flags, Args&&... args) noexcept {
             void* raw = nullptr;
 
             if (m_free_head) {
                 // Recycle a previously freed slot — O(1), no allocator call.
                 SlotHeader* slot = m_free_head;
-                m_free_head      = slot->free_next;
+                m_free_head      = slot->u.free_next;
                 raw              = slot;
             } else {
-                AllocationResult res = m_alloc.Allocate(kSlotSize, kSlotAlign);
+                const AllocationResult res = m_alloc.Allocate(kSlotSize, kSlotAlign);
                 if (!res) return Unexpected(MemoryError::OutOfMemory);
                 raw = res.ptr;
             }
@@ -105,7 +104,7 @@ namespace FoundationKitMemory {
             auto* hdr = static_cast<SlotHeader*>(raw);
 
             T* payload = reinterpret_cast<T*>(
-                reinterpret_cast<byte*>(raw) + kHeaderSize + kHeaderPad);
+                static_cast<byte*>(raw) + kHeaderSize + kHeaderPad);
 
             if (HasFlag(flags, MemoryObjectFlags::Zeroed)) {
                 MemoryZero(payload, sizeof(T));
@@ -115,7 +114,11 @@ namespace FoundationKitMemory {
                 payload, FoundationKitCxxStl::Forward<Args>(args)...);
 
             // Link into live-list (prepend — O(1)).
-            hdr->live_next = m_live_head;
+            hdr->u.live.next = m_live_head;
+            hdr->u.live.prev = nullptr;
+            if (m_live_head) {
+                m_live_head->u.live.prev = hdr;
+            }
             m_live_head    = hdr;
             ++m_count;
 
@@ -145,24 +148,24 @@ namespace FoundationKitMemory {
             auto* hdr = reinterpret_cast<SlotHeader*>(
                 reinterpret_cast<byte*>(ptr) - kHeaderPad - kHeaderSize);
 
-            // Unlink from live-list — O(n) but unavoidable without a back-pointer.
-            SlotHeader** curr = &m_live_head;
-            while (*curr && *curr != hdr) {
-                curr = &(*curr)->live_next;
+            // Unlink from live-list — O(1).
+            if (hdr->u.live.prev) {
+                hdr->u.live.prev->u.live.next = hdr->u.live.next;
+            } else {
+                m_live_head = hdr->u.live.next;
             }
-            FK_BUG_ON(*curr == nullptr,
-                "ObjectPool::Deallocate: pointer {} is not owned by this pool "
-                "(not found in live-list — possible corruption or wrong pool)",
-                static_cast<void*>(ptr));
 
-            *curr = hdr->live_next;
+            if (hdr->u.live.next) {
+                hdr->u.live.next->u.live.prev = hdr->u.live.prev;
+            }
+
             --m_count;
 
             ptr->~T();
 
             // Push onto free-list — O(1).
-            hdr->free_next = m_free_head;
-            m_free_head    = hdr;
+            hdr->u.free_next = m_free_head;
+            m_free_head      = hdr;
         }
 
         // ----------------------------------------------------------------
@@ -180,7 +183,7 @@ namespace FoundationKitMemory {
             while (hdr) {
                 // Capture next before func() — func must not deallocate, but
                 // we read next first as a defensive measure.
-                SlotHeader* next = hdr->live_next;
+                SlotHeader* next = hdr->u.live.next;
                 T* obj = reinterpret_cast<T*>(
                     reinterpret_cast<byte*>(hdr) + kHeaderSize + kHeaderPad);
                 func(obj);

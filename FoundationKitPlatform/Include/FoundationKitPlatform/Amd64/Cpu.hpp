@@ -173,9 +173,9 @@ namespace FoundationKitPlatform::Amd64 {
         CpuVendor v{};
         const auto r = Cpuid(0x0);
         // EBX:EDX:ECX layout per Intel/AMD spec.
-        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 0, &r.ebx, 4);
-        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 4, &r.edx, 4);
-        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 8, &r.ecx, 4);
+        Base::CompilerBuiltins::MemCpy(v.string + 0, &r.ebx, 4);
+        Base::CompilerBuiltins::MemCpy(v.string + 4, &r.edx, 4);
+        Base::CompilerBuiltins::MemCpy(v.string + 8, &r.ecx, 4);
         v.string[12] = '\0';
         return v;
     }
@@ -217,9 +217,9 @@ namespace FoundationKitPlatform::Amd64 {
         if (!IsHypervisor())
             return v;
         const auto r = Cpuid(0x40000000u);
-        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 0, &r.ebx, 4);
-        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 4, &r.ecx, 4);
-        FoundationKitCxxStl::Base::CompilerBuiltins::MemCpy(v.string + 8, &r.edx, 4);
+        Base::CompilerBuiltins::MemCpy(v.string + 0, &r.ebx, 4);
+        Base::CompilerBuiltins::MemCpy(v.string + 4, &r.ecx, 4);
+        Base::CompilerBuiltins::MemCpy(v.string + 8, &r.edx, 4);
         v.string[12] = '\0';
         return v;
     }

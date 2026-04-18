@@ -89,7 +89,7 @@ namespace FoundationKitMemory {
     /// @brief Index into the physical page array. Not an address.
     struct Pfn {
         usize value = 0;
-        static constexpr usize kInvalid = ~usize(0);
+        static constexpr usize kInvalid = ~static_cast<usize>(0);
         [[nodiscard]] constexpr bool IsValid() const noexcept { return value != kInvalid; }
     };
 
@@ -101,7 +101,7 @@ namespace FoundationKitMemory {
     static constexpr usize kPageShift = FK_PAGE_SHIFT;
 
     /// @brief Base page size in bytes. Derived from kPageShift — never a literal.
-    static constexpr usize kPageSize  = usize(1) << kPageShift;
+    static constexpr usize kPageSize  = static_cast<usize>(1) << kPageShift;
 
     /// @brief Bit-mask for the byte-offset within a page.
     static constexpr usize kPageMask  = kPageSize - 1;
@@ -118,8 +118,8 @@ namespace FoundationKitMemory {
 
     // Maximum physical address value representable with FK_PHYS_ADDR_BITS.
     static constexpr uptr kMaxPhysAddr =
-        (FK_PHYS_ADDR_BITS >= 64) ? ~uptr(0)
-                                   : ((uptr(1) << FK_PHYS_ADDR_BITS) - 1);
+        (FK_PHYS_ADDR_BITS >= 64) ? ~static_cast<uptr>(0)
+                                   : ((static_cast<uptr>(1) << FK_PHYS_ADDR_BITS) - 1);
 
     /// @brief Assert that a physical address is within the platform maximum.
     ///        Call from any allocation / mapping path that receives raw PA values.

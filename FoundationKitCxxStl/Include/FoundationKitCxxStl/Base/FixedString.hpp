@@ -3,7 +3,6 @@
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/StringView.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
-#include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitCxxStl/Base/Format.hpp>
 #include <FoundationKitMemory/Core/MemoryOperations.hpp>
 

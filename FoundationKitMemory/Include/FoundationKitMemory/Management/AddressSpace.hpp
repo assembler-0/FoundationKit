@@ -6,7 +6,6 @@
 #include <FoundationKitMemory/Management/VmObject.hpp>
 #include <FoundationKitMemory/Management/VmPager.hpp>
 #include <FoundationKitMemory/Management/VmFault.hpp>
-#include <FoundationKitMemory/Management/PageDescriptorArray.hpp>
 #include <FoundationKitMemory/Management/PageQueue.hpp>
 #include <FoundationKitMemory/Allocators/ObjectPool.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>

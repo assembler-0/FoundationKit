@@ -4,7 +4,6 @@
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
 namespace FoundationKitCxxStl {
 

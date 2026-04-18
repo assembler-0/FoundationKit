@@ -13,9 +13,7 @@
 //     PROVIDE_HIDDEN(__init_array_end   = .);
 // ============================================================================
 
-#include <FoundationKitCxxAbi/Core/Config.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
-#include <FoundationKitCxxStl/Base/Logger.hpp>
 
 namespace FoundationKitCxxAbi::Init {
     using namespace FoundationKitCxxStl;

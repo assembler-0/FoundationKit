@@ -2,12 +2,9 @@
 
 #include <FoundationKitMemory/Management/VmmConcepts.hpp>
 #include <FoundationKitMemory/Management/PageDescriptor.hpp>
-#include <FoundationKitMemory/Management/PageDescriptorArray.hpp>
 #include <FoundationKitMemory/Management/PageQueue.hpp>
-#include <FoundationKitMemory/Management/VmPager.hpp>
 #include <FoundationKitMemory/Management/VmObject.hpp>
 #include <FoundationKitMemory/Management/VmaDescriptor.hpp>
-#include <FoundationKitMemory/Core/MemoryOperations.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Expected.hpp>
 

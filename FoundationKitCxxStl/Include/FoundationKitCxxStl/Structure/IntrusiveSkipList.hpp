@@ -2,8 +2,6 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
-#include <FoundationKitCxxStl/Base/Utility.hpp>
-#include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
 namespace FoundationKitCxxStl::Structure {
 

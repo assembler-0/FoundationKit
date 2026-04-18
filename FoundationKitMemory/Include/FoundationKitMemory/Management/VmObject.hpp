@@ -1,12 +1,10 @@
 #pragma once
 
 #include <FoundationKitMemory/Core/MemoryObject.hpp>
-#include <FoundationKitMemory/Core/MemoryCore.hpp>
 #include <FoundationKitMemory/Ptr/SharedPtr.hpp>
 #include <FoundationKitMemory/Management/AddressTypes.hpp>
 #include <FoundationKitCxxStl/Structure/IntrusiveRedBlackTree.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
-#include <FoundationKitCxxStl/Base/Expected.hpp>
 #include <FoundationKitCxxStl/Base/Optional.hpp>
 #include <FoundationKitCxxStl/Sync/SharedSpinLock.hpp>
 #include <FoundationKitCxxStl/Sync/SharedLock.hpp>
@@ -179,7 +177,7 @@ namespace FoundationKitMemory {
         /// @desc  O(chain_depth). Call from diagnostic paths only.
         [[nodiscard]] usize ShadowDepth() const noexcept {
             usize depth = 0;
-            const VmObject* current = this;
+            const auto* current = this;
             while (current) {
                 Sync::SharedLock guard(current->m_lock);
                 current = current->m_shadow.Get();
@@ -228,10 +226,10 @@ namespace FoundationKitMemory {
                 "VmObject::Collapse: this == parent — object cannot shadow itself (addr={:#x})",
                 reinterpret_cast<uptr>(this));
 
-            Sync::UniqueLock<Sync::SharedSpinLock> first_guard(first->m_lock);
-            Sync::UniqueLock<Sync::SharedSpinLock> second_guard(second->m_lock);
+            UniqueLock first_guard(first->m_lock);
+            UniqueLock second_guard(second->m_lock);
 
-            const usize rc = m_ref_count.Load(Sync::MemoryOrder::Acquire);
+            const usize rc = m_ref_count.Load(MemoryOrder::Acquire);
             if (rc != 1 || !m_shadow) return false;
 
             VmPage* p = parent->m_pages.First();
@@ -275,7 +273,7 @@ namespace FoundationKitMemory {
         /// @desc  Traverses the shadow chain recursively. Returns the closest PFN
         ///        and the exact physical byte offset of the request.
         [[nodiscard]] Optional<PhysicalAddress> Lookup(u64 offset) const noexcept {
-            const VmObject* current = this;
+            const auto* current = this;
             usize depth = 0;
 
             while (current) {

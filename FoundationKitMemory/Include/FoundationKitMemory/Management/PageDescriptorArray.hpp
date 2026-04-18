@@ -77,8 +77,8 @@ namespace FoundationKitMemory {
                 PageDescriptor* desc = &m_descriptors[i];
                 FoundationKitCxxStl::ConstructAt<PageDescriptor>(desc);
                 desc->pfn   = Pfn{m_base_pfn.value + i};
-                desc->state.Store(static_cast<u8>(PageState::Free), Sync::MemoryOrder::Release);
-                desc->flags.Store(0, Sync::MemoryOrder::Release);
+                desc->state.Store(static_cast<u8>(PageState::Free), MemoryOrder::Release);
+                desc->flags.Store(0, MemoryOrder::Release);
                 desc->order = 0;
                 desc->SetOwner(nullptr, 0);
             }

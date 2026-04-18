@@ -2,7 +2,6 @@
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
-#include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
 
 namespace FoundationKitCxxStl::Structure {
@@ -60,7 +59,7 @@ namespace FoundationKitCxxStl::Structure {
 
     /// @brief Intrusive heap node. Embed one in each element type T.
     struct HeapNode {
-        static constexpr usize kInvalidIndex = ~usize(0);
+        static constexpr usize kInvalidIndex = ~static_cast<usize>(0);
         usize index = kInvalidIndex;
 
         [[nodiscard]] bool InHeap() const noexcept { return index != kInvalidIndex; }
@@ -231,7 +230,7 @@ namespace FoundationKitCxxStl::Structure {
         /// @brief Returns true if `entry` is currently in this heap. O(1).
         [[nodiscard]] bool Contains(const T* entry) const noexcept {
             if (!entry) return false;
-            const HeapNode* n = reinterpret_cast<const HeapNode*>(
+            const auto* n = reinterpret_cast<const HeapNode*>(
                 reinterpret_cast<uptr>(entry) + NodeOffset);
             return n->InHeap() && n->index < m_size && m_arr[n->index] == entry;
         }
@@ -370,7 +369,7 @@ namespace FoundationKitCxxStl::Structure {
 
         [[nodiscard]] bool Contains(const T* entry) const noexcept {
             if (!entry) return false;
-            const HeapNode* n = reinterpret_cast<const HeapNode*>(
+            const auto* n = reinterpret_cast<const HeapNode*>(
                 reinterpret_cast<uptr>(entry) + NodeOffset);
             return n->InHeap() && n->index < m_size && m_arr[n->index] == entry;
         }

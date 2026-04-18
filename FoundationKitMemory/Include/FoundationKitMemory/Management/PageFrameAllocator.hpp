@@ -213,7 +213,7 @@ namespace FoundationKitMemory {
         }
 
     private:
-        static constexpr usize kNoZone = ~usize(0);
+        static constexpr usize kNoZone = ~static_cast<usize>(0);
 
         struct ZoneEntry {
             PhysicalAddress base      = {};

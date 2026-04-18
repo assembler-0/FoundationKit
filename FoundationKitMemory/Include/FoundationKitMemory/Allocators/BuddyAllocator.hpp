@@ -3,7 +3,6 @@
 #include <FoundationKitMemory/Core/MemoryCore.hpp>
 #include <FoundationKitCxxStl/Base/Bit.hpp>
 #include <FoundationKitCxxStl/Structure/BitSet.hpp>
-#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitMemory {
 
@@ -66,12 +65,18 @@ namespace FoundationKitMemory {
                 return;
             }
             m_start = static_cast<byte*>(start);
-            m_size  = (size > MaxBlockSize) ? MaxBlockSize : size;
+            m_size  = size;
+            FK_BUG_ON(size > MaxBlockSize,
+                "BuddyAllocator::Initialize: buffer size ({}) exceeds MaxBlockSize ({}) for order {}. "
+                "Increase MaxOrder to support larger zones.",
+                size, MaxBlockSize, MaxOrder);
 
             // We start with a clean bitmap (all 0 = all free).
             // This is critical because the buddy algorithm logic expects sub-blocks of
             // free blocks to be marked as free.
             m_free_bitmap.Reset();
+            m_free_bytes  = 0;
+            m_free_blocks = 0;
 
             for (usize i = 0; i <= MaxOrder; ++i) m_free_lists[i] = nullptr;
 
@@ -83,17 +88,18 @@ namespace FoundationKitMemory {
                 usize order = 0;
                 while (order < MaxOrder) {
                     const usize next_size = MinBlockSize << (order + 1);
-                    const usize offset    = static_cast<usize>(current - m_start);
 
-                    if (next_size > remaining || (offset % next_size) != 0) {
+                    if (const auto offset = static_cast<usize>(current - m_start);
+                        next_size > remaining || (offset % next_size) != 0) {
                         break;
                     }
                     ++order;
                 }
 
-                PushFree(order, current);
-
                 const usize block_size = MinBlockSize << order;
+                PushFree(order, current);
+                m_free_bytes  += block_size;
+                m_free_blocks += 1;
                 current   += block_size;
                 remaining -= block_size;
             }
@@ -108,9 +114,9 @@ namespace FoundationKitMemory {
                     usize order = 0;
                     while (order < MaxOrder) {
                         const usize next_size = MinBlockSize << (order + 1);
-                        const usize offset    = static_cast<usize>(phantom_current - m_start);
 
-                        if (next_size > phantom_remaining || (offset % next_size) != 0) {
+                        if (const auto offset = static_cast<usize>(phantom_current - m_start);
+                            next_size > phantom_remaining || (offset % next_size) != 0) {
                             break;
                         }
                         ++order;
@@ -155,13 +161,17 @@ namespace FoundationKitMemory {
 
             // Pop the free block from found_order.
             byte* block = PopFree(found_order);
+            m_free_bytes  -= (MinBlockSize << found_order);
+            m_free_blocks -= 1;
 
             // Split down from found_order to the requested order.
             while (found_order > order) {
                 --found_order;
-                // The buddy of `block` at `found_order` is the upper half.
-                byte* buddy = block + (MinBlockSize << found_order);
+                const usize size = MinBlockSize << found_order;
+                byte* buddy = block + size;
                 PushFree(found_order, buddy);
+                m_free_bytes  += size;
+                m_free_blocks += 1;
             }
 
             // Mark allocated in bitmap.
@@ -201,7 +211,7 @@ namespace FoundationKitMemory {
                 "BuddyAllocator: Double-free or invalid deallocation at order {}", order);
             m_free_bitmap.Reset(node);
 
-            byte* block = static_cast<byte*>(ptr);
+            auto* block = static_cast<byte*>(ptr);
 
             // Iteratively merge with buddy if buddy is free.
             while (order < MaxOrder) {
@@ -210,7 +220,7 @@ namespace FoundationKitMemory {
                 // Buddy address: XOR the block address with its own size.
                 // This works because blocks at order `k` are aligned to `block_bytes`,
                 // so flipping the bit at position log2(block_bytes) gives the buddy.
-                const usize block_offset = static_cast<usize>(block - m_start);
+                const auto block_offset = static_cast<usize>(block - m_start);
                 const usize buddy_offset = block_offset ^ block_bytes;
                 byte* buddy = m_start + buddy_offset;
 
@@ -229,6 +239,8 @@ namespace FoundationKitMemory {
 
                 // Remove buddy from the free list at this order.
                 RemoveFree(order, buddy);
+                m_free_bytes  -= block_bytes;
+                m_free_blocks -= 1;
 
                 // Merge: the canonical block is always at the lower address.
                 if (buddy < block) block = buddy;
@@ -237,6 +249,8 @@ namespace FoundationKitMemory {
             }
 
             PushFree(order, block);
+            m_free_bytes  += (MinBlockSize << order);
+            m_free_blocks += 1;
         }
 
         [[nodiscard]] bool Owns(const void* ptr) const noexcept {
@@ -270,17 +284,9 @@ namespace FoundationKitMemory {
         /// @desc O(MaxOrder * n_free). Call only from diagnostic paths.
         [[nodiscard]] FreeStats GetFreeStats() const noexcept {
             FreeStats s;
-            for (usize order = 0; order <= MaxOrder; ++order) {
-                const usize block_bytes = MinBlockSize << order;
-                const FreeNode* node = m_free_lists[order];
-                while (node) {
-                    s.free_bytes += block_bytes;
-                    ++s.free_block_count;
-                    node = node->next;
-                }
-                if (m_free_lists[order] && block_bytes > s.largest_free)
-                    s.largest_free = block_bytes;
-            }
+            s.free_bytes       = m_free_bytes;
+            s.free_block_count = m_free_blocks;
+            s.largest_free     = LargestFreeBlockSize();
             return s;
         }
 
@@ -350,6 +356,8 @@ namespace FoundationKitMemory {
         // ----------------------------------------------------------------
         byte*     m_start                 = nullptr;
         usize     m_size                  = 0;
+        usize     m_free_bytes            = 0;
+        usize     m_free_blocks           = 0;
         FreeNode* m_free_lists[MaxOrder + 1] = {};
 
         /// @brief Bitmap: bit set = block is fully allocated (leaf allocation or

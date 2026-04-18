@@ -137,6 +137,7 @@ namespace FoundationKitCxxAbi::Demangle {
     /// @brief Demangle an Itanium-mangled name into the supplied buffer.
     /// @param mangled  Null-terminated mangled name (must start with "_Z").
     /// @param out      Caller-supplied mutable buffer.
+    /// @param status   Demangle status
     /// @return Number of characters written (excluding null terminator), or
     ///         0 on failure (check status for reason).
     usize Demangle(StringView mangled, Span<char> out,

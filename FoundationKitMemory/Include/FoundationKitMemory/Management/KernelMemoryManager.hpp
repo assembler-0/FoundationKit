@@ -1,17 +1,14 @@
 #pragma once
 
-#include <FoundationKitMemory/Management/VmmConcepts.hpp>
-#include <FoundationKitMemory/Management/PageFrameAllocator.hpp>
-#include <FoundationKitMemory/Management/VirtualAddressSpace.hpp>
+#include <FoundationKitMemory/Management/AddressSpace.hpp>
 #include <FoundationKitMemory/Management/MemoryPressureManager.hpp>
 #include <FoundationKitMemory/Management/PageDescriptor.hpp>
 #include <FoundationKitMemory/Management/PageDescriptorArray.hpp>
+#include <FoundationKitMemory/Management/PageFrameAllocator.hpp>
 #include <FoundationKitMemory/Management/PageQueue.hpp>
-#include <FoundationKitMemory/Management/VmPager.hpp>
 #include <FoundationKitMemory/Management/VmFault.hpp>
-#include <FoundationKitMemory/Management/AddressSpace.hpp>
-#include <FoundationKitMemory/Allocators/ObjectPool.hpp>
 #include <FoundationKitMemory/Management/VmObject.hpp>
+#include <FoundationKitMemory/Management/VmmConcepts.hpp>
 
 namespace FoundationKitMemory {
 
@@ -68,8 +65,11 @@ namespace FoundationKitMemory {
             , m_kernel_as(ptm, pfa, vma_alloc, pd_array, m_queues, va_base, va_top)
         {}
 
-        KernelMemoryManager(const KernelMemoryManager&)            = delete;
-        KernelMemoryManager& operator=(const KernelMemoryManager&) = delete;
+        KernelMemoryManager(const KernelMemoryManager &) = delete;
+        KernelMemoryManager &operator=(const KernelMemoryManager &) = delete;
+
+        [[nodiscard]] PageQueueSet &GetQueues() noexcept { return m_queues; }
+        [[nodiscard]] MemoryPressureManager<PressureSlots> &GetPressureManager() noexcept { return m_pressure; }
 
         // ----------------------------------------------------------------
         // Page-Level Allocation (PageDescriptor-aware)
@@ -80,24 +80,24 @@ namespace FoundationKitMemory {
         ///
         /// @param zone  Physical memory zone to allocate from.
         /// @return Folio view of the allocated page.
-        [[nodiscard]] Expected<Folio, MemoryError>
-        AllocatePage(RegionType zone = RegionType::Generic) noexcept {
+        [[nodiscard]] Expected<Folio, MemoryError> AllocatePage(RegionType zone = RegionType::Generic) noexcept {
             if (!m_pressure.CheckAndReclaim(m_pfa.FreePages(), 1))
                 return Unexpected(MemoryError::OutOfMemory);
 
             auto pfn_result = m_pfa.AllocatePages(1, zone);
-            if (!pfn_result) return Unexpected(pfn_result.Error());
+            if (!pfn_result)
+                return Unexpected(pfn_result.Error());
 
             const Pfn pfn = pfn_result.Value();
 
             // Initialise PageDescriptor.
             if (m_pd_array.Contains(pfn)) {
-                PageDescriptor& desc = m_pd_array.Get(pfn);
+                PageDescriptor &desc = m_pd_array.Get(pfn);
 
                 FK_BUG_ON(desc.State() != PageState::Free,
-                    "KernelMemoryManager::AllocatePage: PFA returned PFN {} "
-                    "but descriptor is not Free (state={})",
-                    pfn.value, static_cast<u8>(desc.State()));
+                          "KernelMemoryManager::AllocatePage: PFA returned PFN {} "
+                          "but descriptor is not Free (state={})",
+                          pfn.value, static_cast<u8>(desc.State()));
 
                 m_queues.Activate(&desc);
             }
@@ -110,15 +110,16 @@ namespace FoundationKitMemory {
         /// @param order  Compound order (0=1 page, 1=2 pages, 9=512 pages=2MB).
         /// @param zone   Physical memory zone.
         /// @return Folio view of the allocated compound page.
-        [[nodiscard]] Expected<Folio, MemoryError>
-        AllocateFolio(u8 order, RegionType zone = RegionType::Generic) noexcept {
+        [[nodiscard]] Expected<Folio, MemoryError> AllocateFolio(u8 order,
+                                                                 RegionType zone = RegionType::Generic) noexcept {
             const usize page_count = 1ULL << order;
 
             if (!m_pressure.CheckAndReclaim(m_pfa.FreePages(), page_count))
                 return Unexpected(MemoryError::OutOfMemory);
 
             auto pfn_result = m_pfa.AllocateContiguous(page_count, zone);
-            if (!pfn_result) return Unexpected(pfn_result.Error());
+            if (!pfn_result)
+                return Unexpected(pfn_result.Error());
 
             const Pfn base_pfn = pfn_result.Value();
 
@@ -127,7 +128,7 @@ namespace FoundationKitMemory {
                 m_pd_array.InitializeFolio(base_pfn, order);
 
                 // Only the head page goes into the queue.
-                PageDescriptor& head = m_pd_array.Get(base_pfn);
+                PageDescriptor &head = m_pd_array.Get(base_pfn);
                 m_queues.Activate(&head);
             }
 
@@ -136,10 +137,9 @@ namespace FoundationKitMemory {
 
         /// @brief Free a Folio (single or compound).
         void FreeFolio(Folio folio) noexcept {
-            FK_BUG_ON(!folio.IsValid(),
-                "KernelMemoryManager::FreeFolio: invalid folio");
+            FK_BUG_ON(!folio.IsValid(), "KernelMemoryManager::FreeFolio: invalid folio");
 
-            PageDescriptor* head = folio.head;
+            PageDescriptor *head = folio.head;
             const usize page_count = folio.PageCount();
             const Pfn pfn = folio.HeadPfn();
 
@@ -148,7 +148,7 @@ namespace FoundationKitMemory {
 
             // Clear compound flags on tail pages.
             for (usize i = 1; i < page_count; ++i) {
-                PageDescriptor& tail = m_pd_array.Get(pfn + i);
+                PageDescriptor &tail = m_pd_array.Get(pfn + i);
                 tail.state.Store(static_cast<u8>(PageState::Free), Sync::MemoryOrder::Release);
                 tail.ClearFlag(PageFlags::Compound);
                 tail.ClearFlag(PageFlags::Head);
@@ -179,14 +179,14 @@ namespace FoundationKitMemory {
 
         [[nodiscard]] Expected<PhysicalAddress, MemoryError>
         AllocatePhysical(usize pages, RegionType zone = RegionType::Generic) noexcept {
-            FK_BUG_ON(pages == 0,
-                "KernelMemoryManager::AllocatePhysical: zero-page allocation");
+            FK_BUG_ON(pages == 0, "KernelMemoryManager::AllocatePhysical: zero-page allocation");
 
             if (!m_pressure.CheckAndReclaim(m_pfa.FreePages(), pages))
                 return Unexpected(MemoryError::OutOfMemory);
 
             auto result = m_pfa.AllocatePages(pages, zone);
-            if (!result) return Unexpected(result.Error());
+            if (!result)
+                return Unexpected(result.Error());
 
             const Pfn pfn = result.Value();
 
@@ -201,16 +201,16 @@ namespace FoundationKitMemory {
             return PfnToPhysical(pfn);
         }
 
-        [[nodiscard]] Expected<PhysicalAddress, MemoryError>
-        AllocatePhysicalContiguous(usize pages, RegionType zone) noexcept {
-            FK_BUG_ON(pages == 0,
-                "KernelMemoryManager::AllocatePhysicalContiguous: zero-page allocation");
+        [[nodiscard]] Expected<PhysicalAddress, MemoryError> AllocatePhysicalContiguous(usize pages,
+                                                                                        RegionType zone) noexcept {
+            FK_BUG_ON(pages == 0, "KernelMemoryManager::AllocatePhysicalContiguous: zero-page allocation");
 
             if (!m_pressure.CheckAndReclaim(m_pfa.FreePages(), pages))
                 return Unexpected(MemoryError::OutOfMemory);
 
             auto result = m_pfa.AllocateContiguous(pages, zone);
-            if (!result) return Unexpected(result.Error());
+            if (!result)
+                return Unexpected(result.Error());
 
             const Pfn pfn = result.Value();
             for (usize i = 0; i < pages; ++i) {
@@ -224,10 +224,8 @@ namespace FoundationKitMemory {
         }
 
         void FreePhysical(PhysicalAddress pa, usize pages) noexcept {
-            FK_BUG_ON(pa.IsNull(),
-                "KernelMemoryManager::FreePhysical: null physical address");
-            FK_BUG_ON(pages == 0,
-                "KernelMemoryManager::FreePhysical: zero-page free");
+            FK_BUG_ON(pa.IsNull(), "KernelMemoryManager::FreePhysical: null physical address");
+            FK_BUG_ON(pages == 0, "KernelMemoryManager::FreePhysical: zero-page free");
 
             const Pfn pfn = PhysicalToPfn(pa);
             for (usize i = 0; i < pages; ++i) {
@@ -244,12 +242,9 @@ namespace FoundationKitMemory {
         // Kernel address space operations (backward-compatible)
         // ----------------------------------------------------------------
 
-        /// @brief Allocate kernel virtual memory (eagerly wires pages, no split-brain).
         [[nodiscard]] Expected<VirtualAddress, MemoryError>
-        AllocateKernel(usize pages, RegionFlags flags,
-                       RegionType zone = RegionType::Generic) noexcept {
-            FK_BUG_ON(pages == 0,
-                "KernelMemoryManager::AllocateKernel: zero-page allocation");
+        AllocateKernel(usize pages, RegionFlags flags, RegionType zone = RegionType::Generic) noexcept {
+            FK_BUG_ON(pages == 0, "KernelMemoryManager::AllocateKernel: zero-page allocation");
 
             if (!m_pressure.CheckAndReclaim(m_pfa.FreePages(), pages))
                 return Unexpected(MemoryError::OutOfMemory);
@@ -257,14 +252,16 @@ namespace FoundationKitMemory {
             const usize byte_size = pages * kPageSize;
 
             // Try to align naturally if possible up to 1G.
-            const usize alignment = (byte_size >= kPageSize1G) ? kPageSize1G :
-                                    (byte_size >= kPageSize2M) ? kPageSize2M : kPageSize;
+            const usize alignment = (byte_size >= kPageSize1G)   ? kPageSize1G
+                                    : (byte_size >= kPageSize2M) ? kPageSize2M
+                                                                 : kPageSize;
 
             auto pfn_result = m_pfa.AllocatePages(pages, zone, alignment);
             if (!pfn_result && alignment > kPageSize) {
                 pfn_result = m_pfa.AllocatePages(pages, zone, kPageSize);
             }
-            if (!pfn_result) return Unexpected(pfn_result.Error());
+            if (!pfn_result)
+                return Unexpected(pfn_result.Error());
 
             const Pfn pfn = pfn_result.Value();
             const PhysicalAddress pa = PfnToPhysical(pfn);
@@ -273,24 +270,22 @@ namespace FoundationKitMemory {
             for (usize i = 0; i < pages; ++i) {
                 Pfn p = pfn + i;
                 if (m_pd_array.Contains(p)) {
-                    PageDescriptor& desc = m_pd_array.Get(p);
+                    PageDescriptor &desc = m_pd_array.Get(p);
                     m_queues.Activate(&desc);
                     // Wire: kernel stacks, DMA buffers, slab pages are pinned.
                     m_queues.Wire(&desc);
                 }
             }
-            
-            auto va_result = m_kernel_as.MapAnonymous(
-                VirtualAddress{}, byte_size,
-                VmaProt::ReadWrite,
-                VmaFlags::Private);
+
+            auto va_result = m_kernel_as.MapAnonymous(VirtualAddress{}, byte_size, VmaProt::ReadWrite,
+                                                      VmaFlags::Private | VmaFlags::Anonymous);
 
             if (!va_result) {
                 // Un-wire and free descriptors.
                 for (usize i = 0; i < pages; ++i) {
                     Pfn p = pfn + i;
                     if (m_pd_array.Contains(p)) {
-                        PageDescriptor& desc = m_pd_array.Get(p);
+                        PageDescriptor &desc = m_pd_array.Get(p);
                         m_queues.Unwire(&desc);
                         m_queues.Free(&desc);
                     }
@@ -307,7 +302,7 @@ namespace FoundationKitMemory {
                 for (usize i = 0; i < pages; ++i) {
                     Pfn p = pfn + i;
                     if (m_pd_array.Contains(p)) {
-                        PageDescriptor& desc = m_pd_array.Get(p);
+                        PageDescriptor &desc = m_pd_array.Get(p);
                         m_queues.Unwire(&desc);
                         m_queues.Free(&desc);
                     }
@@ -321,13 +316,11 @@ namespace FoundationKitMemory {
         }
 
         void FreeKernel(VirtualAddress va, usize pages) noexcept {
-            VmaDescriptor* vma = m_kernel_as.FindVma(va);
-            FK_BUG_ON(vma == nullptr,
-                "KernelMemoryManager::FreeKernel: no VMA found at {:#x}", va.value);
+            VmaDescriptor *vma = m_kernel_as.FindVma(va);
+            FK_BUG_ON(vma == nullptr, "KernelMemoryManager::FreeKernel: no VMA found at {:#x}", va.value);
 
             auto pa_opt = m_ptm.Translate(va);
-            FK_BUG_ON(!pa_opt.HasValue(),
-                "KernelMemoryManager::FreeKernel: Translate({:#x}) failed", va.value);
+            FK_BUG_ON(!pa_opt.HasValue(), "KernelMemoryManager::FreeKernel: Translate({:#x}) failed", va.value);
 
             const Pfn pfn = PhysicalToPfn(pa_opt.Value());
 
@@ -349,8 +342,8 @@ namespace FoundationKitMemory {
         // Page fault handling (kernel address space)
         // ----------------------------------------------------------------
 
-        [[nodiscard]] Expected<FaultResult, MemoryError>
-        HandlePageFault(VirtualAddress va, PageFaultFlags fault_flags) noexcept {
+        [[nodiscard]] Expected<FaultResult, MemoryError> HandlePageFault(VirtualAddress va,
+                                                                         PageFaultFlags fault_flags) noexcept {
             return m_kernel_as.HandleFault(va, fault_flags);
         }
 
@@ -358,15 +351,6 @@ namespace FoundationKitMemory {
         // Reclaim coordination
         // ----------------------------------------------------------------
 
-        /// @brief Scan for reclaimable pages and free them.
-        ///
-        /// @param target_pages  Number of pages to try to reclaim.
-        /// @return Actual number of pages reclaimed.
-        ///
-        /// @desc  Drives the PageQueueSet scanner:
-        ///        1. First demote cold Active pages to Inactive.
-        ///        2. Then scan Inactive for clean eviction candidates.
-        ///        3. Transition candidates to Free.
         /// @brief Scan for reclaimable pages and free them.
         ///
         /// @param target_pages  Number of pages to try to reclaim.
@@ -386,28 +370,27 @@ namespace FoundationKitMemory {
         [[nodiscard]] usize ScanForReclaim(usize target_pages) noexcept {
             // Phase 1: Demote cold active pages.
             const usize demote_target = target_pages * 2;
-            m_queues.ScanActive(demote_target);
+            [[maybe_unused]] auto page_demoted = m_queues.ScanActive(demote_target);
 
             // Phase 2: Find eviction candidates in inactive queue.
             static constexpr usize kMaxCandidates = 64;
-            PageDescriptor* candidates[kMaxCandidates] = {};
-            const usize found = m_queues.ScanInactive(
-                target_pages, candidates, kMaxCandidates);
+            PageDescriptor *candidates[kMaxCandidates] = {};
+            const usize found = m_queues.ScanInactive(target_pages, candidates, kMaxCandidates);
 
             // Phase 3: Evict candidates.
             usize reclaimed = 0;
             for (usize i = 0; i < found; ++i) {
-                PageDescriptor* page = candidates[i];
-                FK_BUG_ON(page == nullptr,
-                    "KernelMemoryManager::ScanForReclaim: null candidate at index {}", i);
-                VmObject* owner = page->Owner();
+                PageDescriptor *page = candidates[i];
+                FK_BUG_ON(page == nullptr, "KernelMemoryManager::ScanForReclaim: null candidate at index {}", i);
+                VmObject *owner = page->Owner();
                 if (owner != nullptr) {
                     const u64 owner_off = page->OwnerOffset();
 
-                    m_kernel_as.GetVas().ForEach([&](VmaDescriptor* vma) noexcept {
-                        if (!vma || !vma->backing || vma->backing.Get() != owner) return;
-                        if (owner_off < vma->backing_offset ||
-                            owner_off >= vma->backing_offset + vma->size) return;
+                    m_kernel_as.GetVas().ForEach([&](VmaDescriptor *vma) noexcept {
+                        if (!vma || !vma->backing || vma->backing.Get() != owner)
+                            return;
+                        if (owner_off < vma->backing_offset || owner_off >= vma->backing_offset + vma->size)
+                            return;
 
                         // Compute the VA corresponding to this backing offset.
                         const usize vma_offset = owner_off - vma->backing_offset;
@@ -423,11 +406,9 @@ namespace FoundationKitMemory {
 
                     // Unlink from the owning VmObject's page tree.
                     // Find the VmPage node and remove it.
-                    owner->ForEachPage([&](const VmPage& vp) noexcept {
+                    owner->ForEachPage([&](const VmPage &vp) noexcept {
                         if (vp.pfn == page->pfn) {
-                            // RemoveBlock requires a non-const VmPage* — use a cast.
-                            // We found the node by address, pointer identity is guaranteed.
-                            owner->RemoveBlock(const_cast<VmPage*>(&vp));
+                            owner->RemoveBlock(const_cast<VmPage *>(&vp));
                         }
                     });
 
@@ -435,17 +416,16 @@ namespace FoundationKitMemory {
                 }
 
                 FK_BUG_ON(!page->IsUnmapped(),
-                    "KernelMemoryManager::ScanForReclaim: page pfn={} still has {} active PTEs "
-                    "after unmap attempt — reverse-map is incomplete or has a bug. "
-                    "Freeing a mapped page would be a physical frame UAF.",
-                    page->pfn.value,
-                    page->map_count.Load(Sync::MemoryOrder::Relaxed));
+                          "KernelMemoryManager::ScanForReclaim: page pfn={} still has {} active PTEs "
+                          "after unmap attempt — reverse-map is incomplete or has a bug. "
+                          "Freeing a mapped page would be a physical frame UAF.",
+                          page->pfn.value, page->map_count.Load(Sync::MemoryOrder::Relaxed));
 
                 page->ClearFlag(PageFlags::Dirty);
                 page->ClearFlag(PageFlags::Referenced);
                 page->TransitionTo(PageState::Free);
                 {
-                    Sync::UniqueLock<Sync::SpinLock> guard(m_queues.FreeQueue().m_lock);
+                    UniqueLock guard(m_queues.FreeQueue().m_lock);
                     m_queues.FreeQueue().EnqueueUnlocked(page);
                 }
 
@@ -461,9 +441,7 @@ namespace FoundationKitMemory {
         // Kernel AddressSpace access
         // ----------------------------------------------------------------
 
-        [[nodiscard]] KernelAddressSpace& GetKernelAddressSpace() noexcept {
-            return m_kernel_as;
-        }
+        [[nodiscard]] KernelAddressSpace &GetKernelAddressSpace() noexcept { return m_kernel_as; }
 
         // ----------------------------------------------------------------
         // Pressure / OOM configuration
@@ -473,16 +451,16 @@ namespace FoundationKitMemory {
             m_pressure.SetWatermarks(min_pages, low_pages, high_pages);
         }
 
-        void SetOomPolicy(void (*policy)(usize, void*) noexcept, void* ctx) noexcept {
+        void SetOomPolicy(void (*policy)(usize, void *) noexcept, void *ctx) noexcept {
             m_pressure.SetOomPolicy(policy, ctx);
         }
 
-        void RegisterReclaimParticipant(ReclaimFn fn, void* ctx, u8 priority) noexcept {
+        void RegisterReclaimParticipant(ReclaimFn fn, void *ctx, u8 priority) noexcept {
             m_pressure.RegisterParticipant(fn, ctx, priority);
         }
 
-        template <IReclaimableAllocator Alloc>
-        void RegisterReclaimParticipant(Alloc& alloc, u8 priority) noexcept {
+        template<IReclaimableAllocator Alloc>
+        void RegisterReclaimParticipant(Alloc &alloc, u8 priority) noexcept {
             m_pressure.RegisterParticipant(alloc, priority);
         }
 
@@ -491,32 +469,28 @@ namespace FoundationKitMemory {
         // ----------------------------------------------------------------
 
         [[nodiscard]] usize TotalPhysicalPages() const noexcept { return m_pfa.TotalPages(); }
-        [[nodiscard]] usize FreePhysicalPages()  const noexcept { return m_pfa.FreePages();  }
+        [[nodiscard]] usize FreePhysicalPages() const noexcept { return m_pfa.FreePages(); }
 
-        [[nodiscard]] usize FreeQueuePages()     const noexcept { return m_queues.FreeCount(); }
-        [[nodiscard]] usize ActivePages()        const noexcept { return m_queues.ActiveCount(); }
-        [[nodiscard]] usize InactivePages()      const noexcept { return m_queues.InactiveCount(); }
-        [[nodiscard]] usize WiredPages()         const noexcept { return m_queues.WiredCount(); }
-        [[nodiscard]] usize LaundryPages()       const noexcept { return m_queues.LaundryCount(); }
+        [[nodiscard]] usize FreeQueuePages() const noexcept { return m_queues.FreeCount(); }
+        [[nodiscard]] usize ActivePages() const noexcept { return m_queues.ActiveCount(); }
+        [[nodiscard]] usize InactivePages() const noexcept { return m_queues.InactiveCount(); }
+        [[nodiscard]] usize WiredPages() const noexcept { return m_queues.WiredCount(); }
+        [[nodiscard]] usize LaundryPages() const noexcept { return m_queues.LaundryCount(); }
 
-        [[nodiscard]] usize MappedVirtualBytes() const noexcept {
-            return m_kernel_as.VirtualSize();
-        }
-        [[nodiscard]] usize VmaCount() const noexcept {
-            return m_kernel_as.VmaCount();
-        }
+        [[nodiscard]] usize MappedVirtualBytes() const noexcept { return m_kernel_as.VirtualSize(); }
+        [[nodiscard]] usize VmaCount() const noexcept { return m_kernel_as.VmaCount(); }
 
-        [[nodiscard]] PageQueueSet& Queues() noexcept { return m_queues; }
-        [[nodiscard]] PdArray&      PageDescriptors() noexcept { return m_pd_array; }
+        [[nodiscard]] PageQueueSet &Queues() noexcept { return m_queues; }
+        [[nodiscard]] PdArray &PageDescriptors() noexcept { return m_pd_array; }
 
     private:
-        PageFrameAlloc&                        m_pfa;
-        PageTableMgr&                          m_ptm;
-        VmaPoolAlloc&                          m_vma_alloc;
-        PdArray&                               m_pd_array;
-        PageQueueSet                           m_queues;
-        MemoryPressureManager<PressureSlots>   m_pressure;
-        KernelAddressSpace                     m_kernel_as;
+        PageFrameAlloc &m_pfa;
+        PageTableMgr &m_ptm;
+        VmaPoolAlloc &m_vma_alloc;
+        PdArray &m_pd_array;
+        PageQueueSet m_queues;
+        MemoryPressureManager<PressureSlots> m_pressure;
+        KernelAddressSpace m_kernel_as;
     };
 
 } // namespace FoundationKitMemory

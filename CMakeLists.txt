@@ -46,7 +46,7 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/RefCountedTests.cpp
     )
 
-    target_link_libraries(FoundationKitTester PRIVATE FoundationKitMemory FoundationKitCxxAbi FoundationKitPlatform)
+    target_link_libraries(FoundationKitTester PRIVATE FoundationKitCxxAbi FoundationKitPlatform)
     target_include_directories(FoundationKitTester PRIVATE Test)
     target_compile_options(FoundationKitTester PRIVATE -ffreestanding -nostdlib -fno-stack-protector)
 endif()

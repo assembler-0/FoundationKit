@@ -115,17 +115,17 @@ namespace FoundationKitPlatform::Amd64::Paging {
     using PageEntryFlagSet = Flags<PageEntryFlags>;
 
     /// @brief Returns true if the given flag is set in an entry.
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool EntryHasFlag(u64 entry, PageEntryFlags flag) noexcept {
-        return PageEntryFlagSet(static_cast<u64>(entry)).Has(flag);
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE bool EntryHasFlag(const u64 entry, const PageEntryFlags flag) noexcept {
+        return PageEntryFlagSet(entry).Has(flag);
     }
 
     /// @brief Sets one or more flags in an entry value (non-mutating).
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntrySetFlags(u64 entry, PageEntryFlagSet flags) noexcept {
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntrySetFlags(const u64 entry, const PageEntryFlagSet flags) noexcept {
         return entry | flags.Raw();
     }
 
     /// @brief Clears one or more flags in an entry value (non-mutating).
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntryClearFlags(u64 entry, PageEntryFlagSet flags) noexcept {
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 EntryClearFlags(const u64 entry, const PageEntryFlagSet flags) noexcept {
         return entry & ~flags.Raw();
     }
 
@@ -199,11 +199,11 @@ namespace FoundationKitPlatform::Amd64::Paging {
     /// @brief Default PAT slot assignments matching the hardware reset value.
     /// Use these when the kernel has not reprogrammed the PAT MSR.
     namespace DefaultPatSlot {
-        static constexpr PatSlot Wb     = PatSlot::Slot0;
-        static constexpr PatSlot Wt     = PatSlot::Slot1;
-        static constexpr PatSlot UcMinus= PatSlot::Slot2;
-        static constexpr PatSlot Uc     = PatSlot::Slot3;
-        static constexpr PatSlot Wc     = PatSlot::Slot1; ///< Requires PAT MSR reprogramming
+        static constexpr auto Wb     = PatSlot::Slot0;
+        static constexpr auto Wt     = PatSlot::Slot1;
+        static constexpr auto UcMinus= PatSlot::Slot2;
+        static constexpr auto Uc     = PatSlot::Slot3;
+        static constexpr auto Wc     = PatSlot::Slot1; ///< Requires PAT MSR reprogramming
     }
 
     /// @brief Encodes a PAT slot index into the correct flag bits for a 4K leaf entry.

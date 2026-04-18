@@ -1,7 +1,6 @@
 #pragma once
 
 #include <FoundationKitCxxStl/Base/Types.hpp>
-#include <FoundationKitCxxStl/Base/Safety.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 #include <FoundationKitCxxStl/Structure/RingBuffer.hpp>

@@ -2,7 +2,6 @@
 
 
 #include <FoundationKitMemory/Core/MemoryCore.hpp>
-#include <FoundationKitMemory/Core/MemorySafety.hpp>
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 
 namespace FoundationKitMemory {

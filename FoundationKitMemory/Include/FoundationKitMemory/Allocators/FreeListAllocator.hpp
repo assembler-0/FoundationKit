@@ -220,6 +220,7 @@ namespace FoundationKitMemory {
             m_free_list       = reinterpret_cast<FreeListNode*>(m_start);
             m_free_list->size = size;
             m_free_list->next = nullptr;
+            m_free_bytes      = size;
         }
 
         // ----------------------------------------------------------------
@@ -278,7 +279,7 @@ namespace FoundationKitMemory {
 
             // Split the block if the residual can hold another FreeListNode.
             if (chosen->size >= total + sizeof(FreeListNode)) {
-                FreeListNode* next_node = reinterpret_cast<FreeListNode*>(chosen_ptr + total);
+                auto* next_node = reinterpret_cast<FreeListNode*>(chosen_ptr + total);
                 next_node->size = chosen->size - total;
                 next_node->next = chosen->next;
 
@@ -295,6 +296,8 @@ namespace FoundationKitMemory {
             header->magic   = HeaderMagic;
             header->padding = padding;
             header->size    = total;
+
+            m_free_bytes -= total;
 
             return AllocationResult::Success(reinterpret_cast<void*>(payload_ptr), size);
         }
@@ -335,6 +338,8 @@ namespace FoundationKitMemory {
                 current->next  = new_node;
             }
 
+            m_free_bytes += block_size;
+
             Coalesce();
         }
 
@@ -358,13 +363,7 @@ namespace FoundationKitMemory {
         }
 
         [[nodiscard]] usize UsedMemory() const noexcept {
-            usize free_bytes = 0;
-            const FreeListNode* current = m_free_list;
-            while (current) {
-                free_bytes += current->size;
-                current     = current->next;
-            }
-            return m_size - free_bytes;
+            return m_size - m_free_bytes;
         }
 
         [[nodiscard]] usize TotalSize()    const noexcept { return m_size; }
@@ -380,9 +379,10 @@ namespace FoundationKitMemory {
             }
         }
 
-        byte*         m_start     = nullptr;
-        usize         m_size      = 0;
-        FreeListNode* m_free_list = nullptr;
+        byte*         m_start      = nullptr;
+        usize         m_size       = 0;
+        usize         m_free_bytes = 0;
+        FreeListNode* m_free_list  = nullptr;
         [[no_unique_address]] Policy m_policy{};
     };
 
@@ -392,13 +392,13 @@ namespace FoundationKitMemory {
 
     /// @brief Default alias: preserves the existing `FreeListAllocator` name.
     /// @note  Use `PolicyFreeListAllocator<BestFitPolicy>` explicitly for better behaviour.
-    using FreeListAllocator = PolicyFreeListAllocator<FirstFitPolicy>;
+    using FreeListAllocator = PolicyFreeListAllocator<>;
 
     // ============================================================================
     // Static Assertions
     // ============================================================================
 
-    static_assert(IAllocator<PolicyFreeListAllocator<FirstFitPolicy>>);
+    static_assert(IAllocator<PolicyFreeListAllocator<>>);
     static_assert(IAllocator<PolicyFreeListAllocator<BestFitPolicy>>);
     static_assert(IAllocator<PolicyFreeListAllocator<WorstFitPolicy>>);
     static_assert(IAllocator<PolicyFreeListAllocator<NextFitPolicy>>);

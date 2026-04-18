@@ -118,7 +118,7 @@ namespace FoundationKitMemory {
             // free-list would think they own the same memory.
             PolicyFreeListAllocator<BestFitPolicy> slab_fallback;
             m_slab.Initialize(base, slab_bytes,
-                              FoundationKitCxxStl::Move(slab_fallback), classes);
+                              Move(slab_fallback), classes);
 
             // Buddy tier: starts immediately after the slab budget.
             // BuddyAllocator's XOR-buddy arithmetic is relative to m_start,
@@ -267,7 +267,7 @@ namespace FoundationKitMemory {
                 "KernelHeap::Create: large_buf is null or large_size is zero");
             const SlabSizeClass* cls = classes ? classes : DefaultSlabClasses;
             PolicyFreeListAllocator<BestFitPolicy> large(large_buf, large_size);
-            heap.Initialize(region, slab_ratio, FoundationKitCxxStl::Move(large), cls);
+            heap.Initialize(region, slab_ratio, Move(large), cls);
         }
 
     private:

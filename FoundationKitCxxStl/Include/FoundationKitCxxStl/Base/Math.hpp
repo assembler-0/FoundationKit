@@ -35,6 +35,7 @@ namespace FoundationKitCxxStl {
     // -------------------------------------------------------------------------
 
     /// @brief Round `value` up to the nearest multiple of `align`.
+    /// @param value Value to align
     /// @param align Must be a power of two and non-zero.
     template <Unsigned T>
     [[nodiscard]] constexpr T AlignUp(T value, T align) noexcept {

@@ -1,9 +1,11 @@
 #pragma once
 
-#include <FoundationKitMemory/Allocators/PoolAllocator.hpp>
 #include <FoundationKitCxxStl/Base/Array.hpp>
+#include <FoundationKitMemory/Core/MemoryCore.hpp>
 
 namespace FoundationKitMemory {
+
+    using namespace FoundationKitCxxStl;
 
     // ============================================================================
     // SlabConfig — Compile-time size-class descriptor

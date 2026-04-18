@@ -113,7 +113,7 @@ namespace FoundationKitCxxAbi::Init {
             return;
         }
 
-        const usize count = static_cast<usize>(
+        const auto count = static_cast<usize>(
             __init_array_end - __init_array_start);
 
         FK_LOG_INFO("RunGlobalConstructors: running {} global constructors.", count);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Meta/Concepts.hpp>
 
 namespace FoundationKitCxxStl {

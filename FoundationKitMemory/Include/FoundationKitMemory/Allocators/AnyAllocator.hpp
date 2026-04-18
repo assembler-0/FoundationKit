@@ -1,6 +1,5 @@
 #pragma once
 
-#include <FoundationKitMemory/Core/MemoryOperations.hpp>
 #include <FoundationKitMemory/Heap/GlobalAllocator.hpp>
 
 namespace FoundationKitMemory {
