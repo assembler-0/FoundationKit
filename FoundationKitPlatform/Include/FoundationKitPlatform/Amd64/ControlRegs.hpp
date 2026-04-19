@@ -12,6 +12,10 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
 
     using namespace FoundationKitCxxStl;
 
+    // =========================================================================
+    // CR0
+    // =========================================================================
+
     /// @brief Bit flags for CR0.
     enum class Cr0Flags : u64 {
         Pe   = 1ull << 0,   ///< Protection Enable
@@ -34,10 +38,18 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
     }
 
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteCr0(u64 val) noexcept {
+        // Intel SDM Vol 3A, 4.1.1: CR0.PG = 1 requires CR0.PE = 1.
         FK_BUG_ON(
-            !(val & static_cast<u64>(Cr0Flags::Pe)) && (val & static_cast<u64>(Cr0Flags::Pg)),
-            "CR0: cannot clear PE while PG is set — would cause #GP"
+            (val & static_cast<u64>(Cr0Flags::Pg)) && !(val & static_cast<u64>(Cr0Flags::Pe)),
+            "CR0: Paging (PG) cannot be enabled without Protection (PE)"
         );
+
+        // Intel SDM: CR0.NW=1 and CR0.CD=0 is an invalid configuration (results in #GP).
+        FK_BUG_ON(
+            (val & static_cast<u64>(Cr0Flags::Nw)) && !(val & static_cast<u64>(Cr0Flags::Cd)),
+            "CR0: NW cannot be set if CD is clear — invalid cache configuration"
+        );
+
         __asm__ volatile("mov %0, %%cr0" :: "r"(val) : "memory");
     }
 
@@ -51,7 +63,6 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
 
     // -------------------------------------------------------------------------
     // Typed Bitfield accessors for CR0 fields
-    // Use these instead of raw mask arithmetic to prevent wrong-shift bugs.
     // -------------------------------------------------------------------------
     using Cr0Pe   = Bitfield<u64,  0, 1>;  ///< Protection Enable
     using Cr0Mp   = Bitfield<u64,  1, 1>;  ///< Monitor Coprocessor
@@ -62,11 +73,19 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
     using Cr0Am   = Bitfield<u64, 18, 1>;  ///< Alignment Mask
     using Cr0Pg   = Bitfield<u64, 31, 1>;  ///< Paging Enable
 
+    // =========================================================================
+    // CR2
+    // =========================================================================
+
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadCr2() noexcept {
         u64 val;
         __asm__ volatile("mov %%cr2, %0" : "=r"(val));
         return val;
     }
+
+    // =========================================================================
+    // CR3
+    // =========================================================================
 
     /// @brief Bit flags for CR3 (non-PCID mode).
     enum class Cr3Flags : u64 {
@@ -74,25 +93,79 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
         Pcd  = 1ull << 4,   ///< Page-level Cache Disable
     };
 
+    // Forward declaration of CR4 read for CR3 checks.
+    [[nodiscard]] u64 ReadCr4() noexcept;
+
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadCr3() noexcept {
         u64 val;
         __asm__ volatile("mov %%cr3, %0" : "=r"(val));
         return val;
     }
 
-    /// @brief Writes CR3, flushing the TLB (unless PCID is in use and bit 63 is set).
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteCr3(u64 val) noexcept {
-        // The physical base must be 4K-aligned (bits [11:0] are flags, not address).
-        // A non-aligned base is a kernel bug that will cause immediate page-fault storms.
+        // The physical base must be 4K-aligned. 
         FK_BUG_ON((val & 0xFFFull) != 0 && (val & (1ull << 63)) == 0,
-            "WriteCr3: physical base is not 4K-aligned (val: {:x}) — bits [11:0] must be zero or PCID must be in use", val);
+            "WriteCr3: physical base is not 4K-aligned (val: {:x})", val);
+
+        // Reserved bits check: if PCID is not enabled, bits 11:0 (except 3,4) must be 0.
+        // Also bits 62:52 are reserved if PCIDE=0.
+        const u64 cr4 = ReadCr4();
+        if (!(cr4 & (1ull << 17))) { // Cr4Flags::Pcide = bit 17
+            FK_BUG_ON(val & 0xFF00000000000FF6ull, 
+                "WriteCr3: Reserved bits set while PCID is disabled");
+        }
+
         __asm__ volatile("mov %0, %%cr3" :: "r"(val) : "memory");
     }
 
-    /// @brief Returns the physical base address stored in CR3 (strips flag bits).
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 Cr3PhysBase() noexcept {
-        // Bits [11:0] are flags; bits [63:52] are reserved/PCID.
         return ReadCr3() & 0x000FFFFFFFFFF000ull;
+    }
+
+    // =========================================================================
+    // MSR & EFER
+    // =========================================================================
+
+    static constexpr u32 kMsrEfer   = 0xC0000080u;
+    static constexpr u32 kMsrStar   = 0xC0000081u;
+    static constexpr u32 kMsrLstar  = 0xC0000082u;
+    static constexpr u32 kMsrSfmask = 0xC0000084u;
+
+    /// @brief Bit flags for the EFER MSR.
+    enum class EferFlags : u64 {
+        Sce  = 1ull << 0,   ///< SYSCALL Enable
+        Lme  = 1ull << 8,   ///< Long Mode Enable
+        Lma  = 1ull << 10,  ///< Long Mode Active (read-only, set by hardware)
+        Nxe  = 1ull << 11,  ///< No-Execute Enable
+        Svme = 1ull << 12,  ///< SVM Enable (AMD)
+        Lmsle= 1ull << 13,  ///< Long Mode Segment Limit Enable (AMD)
+        Ffxsr= 1ull << 14,  ///< Fast FXSAVE/FXRSTOR (AMD)
+        Tce  = 1ull << 15,  ///< Translation Cache Extension (AMD)
+    };
+
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadMsr(u32 msr) noexcept {
+        u32 lo, hi;
+        __asm__ volatile("rdmsr" : "=a"(lo), "=d"(hi) : "c"(msr));
+        return (static_cast<u64>(hi) << 32) | lo;
+    }
+
+    FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteMsr(u32 msr, u64 val) noexcept {
+        const u32 lo = static_cast<u32>(val);
+        const u32 hi = static_cast<u32>(val >> 32);
+        __asm__ volatile("wrmsr" :: "a"(lo), "d"(hi), "c"(msr) : "memory");
+    }
+
+    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadEfer() noexcept {
+        return ReadMsr(kMsrEfer);
+    }
+
+    FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteEfer(u64 val) noexcept {
+        const u64 current = ReadEfer();
+        FK_BUG_ON((val ^ current) & static_cast<u64>(EferFlags::Lma),
+            "WriteEfer: LMA (bit 10) is read-only");
+        FK_BUG_ON(!(val & static_cast<u64>(EferFlags::Lme)) && (ReadCr0() & static_cast<u64>(Cr0Flags::Pg)),
+            "WriteEfer: cannot clear LME while paging is enabled");
+        WriteMsr(kMsrEfer, val);
     }
 
     // =========================================================================
@@ -134,15 +207,26 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
     }
 
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteCr4(u64 val) noexcept {
-        // CR4.PCIDE (bit 17) requires CR4.PAE (bit 5) to be set simultaneously.
-        // Enabling PCID without PAE causes #GP.
-        FK_BUG_ON(
-            (val & static_cast<u64>(Cr4Flags::Pcide)) && !(val & static_cast<u64>(Cr4Flags::Pae)),
-            "WriteCr4: PCIDE requires PAE to be set simultaneously"
-        );
-        // CR4.CET (bit 23) requires CR0.WP to be set; checked at the CR0 level.
-        // CR4.LA57 (5-level paging) cannot be toggled after long mode is active;
-        // we can only warn, not enforce, since we don't know the boot state here.
+        const u64 current = ReadCr4();
+
+        // LA57 toggle check (requires CR0.PG=0 and EFER.LMA=0).
+        if ((val ^ current) & static_cast<u64>(Cr4Flags::La57)) {
+            FK_BUG_ON(ReadCr0() & static_cast<u64>(Cr0Flags::Pg),
+                "WriteCr4: cannot toggle LA57 while paging is enabled");
+            FK_BUG_ON(ReadEfer() & static_cast<u64>(EferFlags::Lma),
+                "WriteCr4: cannot toggle LA57 while in 64-bit mode");
+        }
+
+        // CR4.PCIDE requires CR4.PAE.
+        FK_BUG_ON((val & static_cast<u64>(Cr4Flags::Pcide)) && !(val & static_cast<u64>(Cr4Flags::Pae)),
+            "WriteCr4: PCIDE requires PAE");
+
+        // CR4.CET requires CR0.WP.
+        if (val & static_cast<u64>(Cr4Flags::Cet)) {
+            FK_BUG_ON(!(ReadCr0() & static_cast<u64>(Cr0Flags::Wp)),
+                "WriteCr4: CET requires CR0.WP to be set");
+        }
+
         __asm__ volatile("mov %0, %%cr4" :: "r"(val) : "memory");
     }
 
@@ -167,6 +251,10 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
     using Cr4Smep   = Bitfield<u64, 20, 1>;  ///< Supervisor Mode Execution Prevention
     using Cr4Smap   = Bitfield<u64, 21, 1>;  ///< Supervisor Mode Access Prevention
 
+    // =========================================================================
+    // XCR0
+    // =========================================================================
+
     /// @brief Component bits for XCR0 (XSAVE state components).
     enum class Xcr0Flags : u64 {
         X87     = 1ull << 0,   ///< x87 FPU state
@@ -174,91 +262,41 @@ namespace FoundationKitPlatform::Amd64::ControlRegs {
         Avx     = 1ull << 2,   ///< AVX (YMM) upper halves
         Bndreg  = 1ull << 3,   ///< MPX bound registers
         Bndcsr  = 1ull << 4,   ///< MPX bound config/status
-        Opmask  = 1ull << 5,   ///< AVX-512 opmask registers
-        ZmmHi256= 1ull << 6,   ///< AVX-512 ZMM upper 256 bits (zmm0–zmm15)
+        Opmask  = 1ull << 5,   ///< AVX-512 opmask
+        ZmmHi256= 1ull << 6,   ///< AVX-512 ZMM upper 256 bits
         Hi16Zmm = 1ull << 7,   ///< AVX-512 ZMM16–ZMM31
-        Pkru    = 1ull << 9,   ///< Protection Key Rights register
+        Pkru    = 1ull << 9,   ///< Protection Key Rights
     };
 
-    /// @brief Reads XCR0 via XGETBV.
-    /// Caller must ensure CR4.OSXSAVE is set before calling; otherwise #UD.
     [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadXcr0() noexcept {
         u32 lo, hi;
-        // XGETBV with ECX=0 reads XCR0. The result is EDX:EAX.
         __asm__ volatile("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0u));
         return (static_cast<u64>(hi) << 32) | lo;
     }
 
-    /// @brief Writes XCR0 via XSETBV.
-    /// Caller must be in ring 0 and have CR4.OSXSAVE set.
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteXcr0(u64 val) noexcept {
-        FK_BUG_ON(
-            !(val & static_cast<u64>(Xcr0Flags::X87)),
-            "XCR0: X87 bit must always be set — hardware requirement"
-        );
-        FK_BUG_ON(
-            (val & static_cast<u64>(Xcr0Flags::Avx)) && !(val & static_cast<u64>(Xcr0Flags::Sse)),
-            "XCR0: AVX requires SSE bit to also be set"
-        );
+        // Intel SDM hierarchy checks:
+        FK_BUG_ON(!(val & static_cast<u64>(Xcr0Flags::X87)),
+            "XCR0: X87 bit must always be set");
+        
+        // AVX requires SSE.
+        if (val & static_cast<u64>(Xcr0Flags::Avx)) {
+            FK_BUG_ON(!(val & static_cast<u64>(Xcr0Flags::Sse)),
+                "XCR0: AVX requires SSE to be enabled");
+        }
+
+        // AVX-512 requires AVX.
+        constexpr u64 avx512_mask = static_cast<u64>(Xcr0Flags::Opmask) | 
+                                    static_cast<u64>(Xcr0Flags::ZmmHi256) | 
+                                    static_cast<u64>(Xcr0Flags::Hi16Zmm);
+        if (val & avx512_mask) {
+            FK_BUG_ON(!(val & static_cast<u64>(Xcr0Flags::Avx)),
+                "XCR0: AVX-512 components require AVX to be enabled");
+        }
+
         const u32 lo = static_cast<u32>(val);
         const u32 hi = static_cast<u32>(val >> 32);
         __asm__ volatile("xsetbv" :: "a"(lo), "d"(hi), "c"(0u) : "memory");
-    }
-
-    static constexpr u32 kMsrEfer = 0xC0000080u;
-    static constexpr u32 kMsrStar   = 0xC0000081u;
-    static constexpr u32 kMsrLstar  = 0xC0000082u;
-    static constexpr u32 kMsrSfmask = 0xC0000084u;
-
-
-    /// @brief Bit flags for the EFER MSR.
-    enum class EferFlags : u64 {
-        Sce  = 1ull << 0,   ///< SYSCALL Enable
-        Lme  = 1ull << 8,   ///< Long Mode Enable
-        Lma  = 1ull << 10,  ///< Long Mode Active (read-only, set by hardware)
-        Nxe  = 1ull << 11,  ///< No-Execute Enable
-        Svme = 1ull << 12,  ///< SVM Enable (AMD)
-        Lmsle= 1ull << 13,  ///< Long Mode Segment Limit Enable (AMD)
-        Ffxsr= 1ull << 14,  ///< Fast FXSAVE/FXRSTOR (AMD)
-        Tce  = 1ull << 15,  ///< Translation Cache Extension (AMD)
-    };
-
-    /// @brief Reads an arbitrary MSR.
-    /// @param msr  MSR address.
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadMsr(u32 msr) noexcept {
-        u32 lo, hi;
-        __asm__ volatile("rdmsr" : "=a"(lo), "=d"(hi) : "c"(msr));
-        return (static_cast<u64>(hi) << 32) | lo;
-    }
-
-    /// @brief Writes an arbitrary MSR.
-    /// @param msr  MSR address.
-    /// @param val  64-bit value to write.
-    FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteMsr(u32 msr, u64 val) noexcept {
-        const u32 lo = static_cast<u32>(val);
-        const u32 hi = static_cast<u32>(val >> 32);
-        __asm__ volatile("wrmsr" :: "a"(lo), "d"(hi), "c"(msr) : "memory");
-    }
-
-    [[nodiscard]] FOUNDATIONKITCXXSTL_ALWAYS_INLINE u64 ReadEfer() noexcept {
-        return ReadMsr(kMsrEfer);
-    }
-
-    FOUNDATIONKITCXXSTL_ALWAYS_INLINE void WriteEfer(u64 val) noexcept {
-        // EFER.LMA (bit 10) is read-only — set by hardware when long mode activates.
-        // Writing it as if it were writable is a kernel bug.
-        FK_BUG_ON(
-            val & static_cast<u64>(EferFlags::Lma),
-            "WriteEfer: LMA (bit 10) is read-only and must not be written"
-        );
-        // EFER.LME (bit 8) must not be cleared while paging is active (CR0.PG=1),
-        // as that would cause an immediate #GP.
-        FK_BUG_ON(
-            !(val & static_cast<u64>(EferFlags::Lme)) &&
-            (ReadCr0() & static_cast<u64>(Cr0Flags::Pg)),
-            "WriteEfer: cannot clear LME while CR0.PG is set — would cause #GP"
-        );
-        WriteMsr(kMsrEfer, val);
     }
 
     FOUNDATIONKITCXXSTL_ALWAYS_INLINE void SetEferBits(u64 mask) noexcept {
