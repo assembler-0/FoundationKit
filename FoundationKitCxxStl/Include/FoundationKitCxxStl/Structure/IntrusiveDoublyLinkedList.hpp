@@ -90,6 +90,12 @@ namespace FoundationKitCxxStl::Structure {
         [[nodiscard]] bool Empty() const noexcept { return m_head.next == &m_head; }
         [[nodiscard]] usize Size() const noexcept { return m_size; }
 
+        void Reset() noexcept {
+            m_head.next = &m_head;
+            m_head.prev = &m_head;
+            m_size = 0;
+        }
+
         [[nodiscard]] IntrusiveDoublyLinkedListNode* Begin() const noexcept { return m_head.next; }
         [[nodiscard]] IntrusiveDoublyLinkedListNode* End() noexcept { return &m_head; }
 

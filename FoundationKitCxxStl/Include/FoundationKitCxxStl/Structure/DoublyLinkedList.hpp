@@ -187,7 +187,7 @@ namespace FoundationKitCxxStl::Structure {
 
         Iterator begin() { return Iterator(m_head); }
         Iterator end() { return Iterator(nullptr); }
-
+        
     private:
         Alloc m_allocator;
         Node* m_head;

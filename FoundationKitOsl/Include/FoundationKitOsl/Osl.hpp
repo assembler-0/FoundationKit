@@ -78,7 +78,7 @@ namespace FoundationKitOsl {
     bool OslIsInterruptEnabled();
 
     /// @brief Get host OS name
-    char* OslGetHostOsName();
+    const char* OslGetHostOsName();
 
     }
 

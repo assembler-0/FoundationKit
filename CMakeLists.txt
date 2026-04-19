@@ -7,6 +7,7 @@ add_subdirectory(FoundationKitPlatform)
 add_subdirectory(FoundationKitOsl)
 add_subdirectory(FoundationKitCxxStl)
 add_subdirectory(FoundationKitMemory)
+add_subdirectory(FoundationKitDevice)
 add_subdirectory(FoundationKitCxxAbi)
 
 option(FOUNDATIONKIT_BUILD_TESTS "Build test executable" ON)
@@ -44,9 +45,10 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/SkipListAndBTreeTests.cpp
         Test/IrqChipTests.cpp
         Test/RefCountedTests.cpp
+        Test/DeviceModelTests.cpp
     )
 
-    target_link_libraries(FoundationKitTester PRIVATE FoundationKitCxxAbi FoundationKitPlatform)
+    target_link_libraries(FoundationKitTester PRIVATE FoundationKitCxxAbi FoundationKitDevice)
     target_include_directories(FoundationKitTester PRIVATE Test)
     target_compile_options(FoundationKitTester PRIVATE -ffreestanding -nostdlib -fno-stack-protector)
 endif()

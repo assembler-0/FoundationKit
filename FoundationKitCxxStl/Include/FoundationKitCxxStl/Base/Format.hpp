@@ -266,8 +266,8 @@ namespace FoundationKitCxxStl {
         template <typename Sink>
         void Format(Sink& sb, const char* const& value, const FormatSpec& spec = {}) {
             if (!value) {
-                Detail::WriteWithPadding(sb, 6, spec, [&] {
-                    sb.Append("(null)", 6);
+                Detail::WriteWithPadding(sb, 9, spec, [&] {
+                    sb.Append("<nullptr>", 9);
                 });
                 return;
             }

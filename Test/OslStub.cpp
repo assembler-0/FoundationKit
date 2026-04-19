@@ -107,8 +107,7 @@ extern "C" {
         (void)microseconds;
     }
 
-    static char hostos_name[16] = "WhateverOS12345";
-    char* OslGetHostOsName() {
-        return hostos_name;
+    const char* OslGetHostOsName() {
+        return "WhateverOS12345";
     }
 }

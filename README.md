@@ -15,6 +15,7 @@ FoundationKit is a modular C++23 systems framework designed specifically for ope
 | **FoundationKitOsl**      | Operating System Layer for fundamental system abstractions. |
 | **FoundationKitCxxAbi**   | Low-level C++ ABI support.                                  |
 | **FoundationKitPlatform** | Low-level architecture specific helpers                     |
+| **FoundationKitDevice**   | Device model and driver framework                           |
 
 ## Testing
 

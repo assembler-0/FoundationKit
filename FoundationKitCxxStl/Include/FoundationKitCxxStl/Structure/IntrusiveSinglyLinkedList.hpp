@@ -56,6 +56,10 @@ namespace FoundationKitCxxStl::Structure {
             m_size = 0;
         }
 
+        void Reset() noexcept {
+            Clear();
+        }
+
     private:
         Node* m_head;
         usize m_size;
