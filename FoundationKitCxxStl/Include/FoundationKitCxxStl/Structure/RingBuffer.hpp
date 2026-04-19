@@ -129,7 +129,7 @@ namespace FoundationKitCxxStl::Structure {
         /// @brief Construct with a runtime capacity and an allocator instance.
         /// @param capacity Number of slots. Must be a non-zero power of two.
         /// @param alloc    Allocator to use
-        explicit DynamicRingBuffer(usize capacity, Alloc alloc = {}) noexcept
+        explicit DynamicRingBuffer(usize capacity, Alloc alloc = FoundationKitMemory::AnyAllocator::FromGlobal()) noexcept
             : m_alloc(Move(alloc)), m_capacity(capacity), m_head(0), m_tail(0), m_slots(nullptr)
         {
             FK_BUG_ON(capacity == 0, "DynamicRingBuffer: capacity must be > 0");

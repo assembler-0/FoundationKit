@@ -2,6 +2,7 @@
 
 #include <FoundationKitMemory/Core/MemoryOperations.hpp>
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
+#include <FoundationKitMemory/Allocators/AnyAllocator.hpp>
 
 namespace FoundationKitMemory {
 
@@ -556,6 +557,15 @@ namespace FoundationKitMemory {
         return SharedPtr<T>(cb->Get(), cb);
     }
 
+    /// @brief Convenience function to create a SharedPtr using the global AnyAllocator.
+    /// @desc Asserts on out-of-memory. For safe allocation that returns an Expected, use TryAllocateShared.
+    template <typename T, typename... Args>
+    [[nodiscard]] SharedPtr<T> MakeShared(Args&&... args) noexcept {
+        auto res = TryAllocateShared<T>(AnyAllocator::FromGlobal(), FoundationKitCxxStl::Forward<Args>(args)...);
+        FK_BUG_ON(!res.HasValue(), "MakeShared: Out of memory");
+        return res.Value();
+    }
+
     /// @brief Create a SharedPtr<T[]> for a heap-allocated array.
     template <typename T, IAllocator Alloc>
     [[nodiscard]] Expected<SharedPtr<T[]>, MemoryError>
@@ -589,7 +599,7 @@ namespace FoundationKitMemory {
     // ControlBlock must be standard-layout (no implicit vptr, no virtual bases).
     // This is the freestanding-safe invariant: if ControlBlock had any virtual member,
     // it would not be standard-layout and this assert would fire.
-    static_assert(__is_standard_layout(ControlBlock),
+    static_assert(StandardLayout<ControlBlock>,
         "ControlBlock must be standard-layout (no vptr, no virtual dispatch)");
 
 } // namespace FoundationKitMemory

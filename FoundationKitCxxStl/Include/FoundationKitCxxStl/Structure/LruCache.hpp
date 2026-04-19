@@ -114,7 +114,7 @@ namespace FoundationKitCxxStl::Structure {
     public:
         /// @param capacity  Maximum number of entries. Must be > 0.
         /// @param alloc     Allocator instance.
-        explicit LruCache(usize capacity, Alloc alloc = {}) noexcept
+        explicit LruCache(usize capacity, Alloc alloc = FoundationKitMemory::AnyAllocator::FromGlobal()) noexcept
             : m_alloc(alloc)
             , m_slots(nullptr)
             , m_capacity(capacity)

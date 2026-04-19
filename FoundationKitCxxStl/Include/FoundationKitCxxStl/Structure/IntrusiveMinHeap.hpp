@@ -288,7 +288,7 @@ namespace FoundationKitCxxStl::Structure {
         static constexpr usize kInitialCapacity = 16;
 
     public:
-        explicit DynamicIntrusiveMinHeap(Compare cmp = {}, Alloc alloc = {}) noexcept
+        explicit DynamicIntrusiveMinHeap(Compare cmp = {}, Alloc alloc = FoundationKitMemory::AnyAllocator::FromGlobal()) noexcept
             : m_alloc(alloc), m_cmp(cmp), m_arr(nullptr), m_size(0), m_capacity(0)
         {
             Grow(kInitialCapacity);

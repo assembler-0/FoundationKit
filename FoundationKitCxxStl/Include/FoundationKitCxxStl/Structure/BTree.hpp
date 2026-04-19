@@ -137,7 +137,7 @@ namespace FoundationKitCxxStl::Structure {
         static constexpr usize kMaxChildren = 2 * Order;
 
     public:
-        explicit BTree(Alloc alloc = {}) noexcept
+        explicit BTree(Alloc alloc = FoundationKitMemory::AnyAllocator::FromGlobal()) noexcept
             : m_alloc(alloc), m_root(nullptr), m_first_leaf(nullptr), m_size(0) {}
 
         ~BTree() noexcept { Clear(); }

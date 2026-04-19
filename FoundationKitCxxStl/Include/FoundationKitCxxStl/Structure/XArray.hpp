@@ -100,7 +100,7 @@ namespace FoundationKitCxxStl::Structure {
         static constexpr usize kMask   = detail::kXArrayMask;
 
     public:
-        explicit XArray(Alloc alloc = {}) noexcept
+        explicit XArray(Alloc alloc = FoundationKitMemory::AnyAllocator::FromGlobal()) noexcept
             : m_alloc(alloc), m_root(nullptr), m_height(0), m_size(0) {}
 
         ~XArray() noexcept { Clear(); }
