@@ -73,24 +73,50 @@ namespace FoundationKitCxxStl::Structure {
             return (word >> (pos % kWordBits)) & usize{1};
         }
 
-        /// @brief Atomically find the first unset bit and set it (allocate).
-        /// @returns The allocated bit index, or N if all bits are set.
-        [[nodiscard]] usize FindFirstUnsetAndSet() noexcept {
-            for (usize w = 0; w < kWordCount; ++w) {
-                const usize valid_mask = (w == kWordCount - 1 && (N % kWordBits) != 0)
-                    ? (static_cast<usize>(1) << (N % kWordBits)) - 1
-                    : static_cast<usize>(-1);
+        /// @brief Atomically set bit `pos` and return its previous value.
+        /// @return true if the bit was already set, false if it was newly set.
+        bool TestAndSet(usize pos) noexcept {
+            FK_BUG_ON(pos >= N, "AtomicBitmap::TestAndSet: bit ({}) out of range ({})", pos, N);
+            const usize mask = static_cast<usize>(1) << (pos % kWordBits);
+            const usize old  = m_words[pos / kWordBits].FetchOr(mask, MemoryOrder::AcqRel);
+            return (old & mask) != 0;
+        }
+
+        /// @brief Atomically clear bit `pos` and return its previous value.
+        /// @return true if the bit was set, false if it was already clear.
+        bool TestAndReset(usize pos) noexcept {
+            FK_BUG_ON(pos >= N, "AtomicBitmap::TestAndReset: bit ({}) out of range ({})", pos, N);
+            const usize mask = static_cast<usize>(1) << (pos % kWordBits);
+            const usize old  = m_words[pos / kWordBits].FetchAnd(~mask, MemoryOrder::AcqRel);
+            return (old & mask) != 0;
+        }
+
+        /// @brief Atomically find the first unset bit in range [start, end] and set it.
+        /// @returns The allocated bit index, or N if no bits in range are free.
+        [[nodiscard]] usize FindFirstUnsetAndSetInRange(usize start, usize end) noexcept {
+            if (start > end || start >= N) return N;
+            if (end >= N) end = N - 1;
+
+            for (usize w = start / kWordBits; w <= end / kWordBits; ++w) {
+                const usize word_min = (w == start / kWordBits) ? (start % kWordBits) : 0;
+                const usize word_max = (w == end / kWordBits) ? (end % kWordBits) : (kWordBits - 1);
+
+                const usize range_len = word_max - word_min + 1;
+                usize valid_mask = (range_len == kWordBits) ? static_cast<usize>(-1) : ((static_cast<usize>(1) << range_len) - 1);
+                valid_mask <<= word_min;
+
+                if (w == kWordCount - 1 && (N % kWordBits) != 0) {
+                    valid_mask &= (static_cast<usize>(1) << (N % kWordBits)) - 1;
+                }
 
                 usize current = m_words[w].Load(MemoryOrder::Acquire);
                 while (true) {
                     const usize free_bits = ~current & valid_mask;
-                    if (free_bits == 0) break; // word fully allocated, try next
+                    if (free_bits == 0) break; // no free bits in this word's sub-range
 
-                    const auto bit_in_word = static_cast<usize>(
-                        CountTrailingZeros(free_bits));
+                    const auto bit_in_word = static_cast<usize>(CountTrailingZeros(free_bits));
                     const usize desired = current | (static_cast<usize>(1) << bit_in_word);
 
-                    // Weak CAS: on failure `current` is refreshed automatically.
                     if (m_words[w].CompareExchange(current, desired,
                             true,
                             MemoryOrder::AcqRel,
@@ -99,7 +125,13 @@ namespace FoundationKitCxxStl::Structure {
                     }
                 }
             }
-            return N; // all bits set
+            return N;
+        }
+
+        /// @brief Atomically find the first unset bit and set it (allocate).
+        /// @returns The allocated bit index, or N if all bits are set.
+        [[nodiscard]] usize FindFirstUnsetAndSet() noexcept {
+            return FindFirstUnsetAndSetInRange(0, N - 1);
         }
 
         /// @brief Returns the number of set bits (non-atomic snapshot).

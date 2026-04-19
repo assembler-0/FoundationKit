@@ -136,7 +136,7 @@ namespace FoundationKitCxxStl::Structure {
             FK_BUG_ON((capacity & (capacity - 1)) != 0,
                 "DynamicRingBuffer: capacity ({}) must be a power of two", capacity);
 
-            const auto res = m_alloc.Allocate(capacity * sizeof(T));
+            const auto res = m_alloc.Allocate(capacity * sizeof(T), alignof(T));
             FK_BUG_ON(!res.ok(), "DynamicRingBuffer: allocation of {} slots failed", capacity);
             m_slots = static_cast<T*>(res.ptr);
         }
@@ -171,6 +171,11 @@ namespace FoundationKitCxxStl::Structure {
         [[nodiscard]] bool Empty() const noexcept {
             LockGuard guard(m_lock);
             return m_head == m_tail;
+        }
+
+        [[nodiscard]] usize Size() const noexcept {
+            LockGuard guard(m_lock);
+            return (m_head - m_tail + m_capacity) & (m_capacity - 1);
         }
 
         [[nodiscard]] usize Capacity() const noexcept { return m_capacity - 1; }

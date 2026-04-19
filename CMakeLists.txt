@@ -46,6 +46,7 @@ if(FOUNDATIONKIT_BUILD_TESTS)
         Test/IrqChipTests.cpp
         Test/RefCountedTests.cpp
         Test/DeviceModelTests.cpp
+        Test/IdAllocatorTests.cpp
     )
 
     target_link_libraries(FoundationKitTester PRIVATE FoundationKitCxxAbi FoundationKitDevice)
