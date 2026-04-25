@@ -3,7 +3,7 @@
 #include <FoundationKitCxxStl/Base/Bug.hpp>
 #include <FoundationKitCxxStl/Base/Types.hpp>
 #include <FoundationKitCxxStl/Sync/Atomic.hpp>
-#include "FoundationKitCxxStl/Base/Safety.hpp"
+#include <FoundationKitCxxStl/Base/Safety.hpp>
 
 namespace FoundationKitCxxStl {
 

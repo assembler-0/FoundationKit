@@ -4,3 +4,5 @@ cmake-build*
 build/
 .cache
 .DS_Store
+.kiro
+.vscode

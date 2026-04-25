@@ -239,6 +239,7 @@ namespace FoundationKitMemory {
                 if (!alloc_res) return Unexpected(MemoryError::OutOfMemory);
                 ctx.vma->backing = alloc_res.Value();
                 ctx.backing = ctx.vma->backing.Get();
+                ctx.backing->AddRef();
             }
 
             // Allocate a physical page.
@@ -409,38 +410,43 @@ namespace FoundationKitMemory {
 
             const PhysicalAddress pa = pa_opt.Value();
 
-            // Increment map count.
-            if (m_pd_array.Contains(PhysicalToPfn(pa))) {
-                PageDescriptor& desc = m_pd_array.GetByPhysical(pa);
-                desc.MapCountInc();
-                desc.SetFlag(PageFlags::Referenced);
-            }
-
             // Determine protection flags.
             RegionFlags map_flags = VmaProtToRegionFlags(ctx.vma->prot, ctx.vma->vma_flags);
 
-            // If writeToPage but it's a shared (not private) page, map read-only for CoW.
+            // If the page is shared (not private to this VmObject), map read-only
+            // so that a subsequent write triggers a CoW fault.
             if (!ctx.backing->IsPagePrivate(ctx.fault_offset) &&
                 HasRegionFlag(map_flags, RegionFlags::Writable)) {
-                // Remove Writable — will CoW on next write.
                 map_flags = static_cast<RegionFlags>(
                     static_cast<u8>(map_flags) & ~static_cast<u8>(RegionFlags::Writable));
             }
 
             const bool mapped = m_ptm.Map(ctx.aligned_va, pa, kPageSize, map_flags);
             if (!mapped) {
-                // Roll back the spurious MapCountInc.
-                if (m_pd_array.Contains(PhysicalToPfn(pa))) {
-                    PageDescriptor& desc = m_pd_array.GetByPhysical(pa);
-                    desc.MapCountDec();
-                }
-                // The page is already mapped by the concurrent path — verify.
                 auto existing_pa = m_ptm.Translate(ctx.aligned_va);
                 FK_BUG_ON(!existing_pa.HasValue(),
-                    "VmFault::ResolvePageIn: Map() returned false (concurrent fault) but "
+                    "VmFault::ResolvePageIn: Map() returned false but "
                     "Translate() also finds no mapping for VA={:#x} — inconsistent PTM state",
                     ctx.aligned_va.value);
+                    
+                if (!m_ptm.Protect(ctx.aligned_va, map_flags)) {
+                    return Unexpected(MemoryError::OutOfMemory);
+                }
+                m_ptm.FlushTlb(ctx.aligned_va);
+
+                // Increment map count now that the PTE is properly installed.
+                if (m_pd_array.Contains(PhysicalToPfn(pa))) {
+                    PageDescriptor& desc = m_pd_array.GetByPhysical(pa);
+                    desc.MapCountInc();
+                    desc.SetFlag(PageFlags::Referenced);
+                }
             } else {
+                // Fresh mapping — increment map count.
+                if (m_pd_array.Contains(PhysicalToPfn(pa))) {
+                    PageDescriptor& desc = m_pd_array.GetByPhysical(pa);
+                    desc.MapCountInc();
+                    desc.SetFlag(PageFlags::Referenced);
+                }
                 m_ptm.FlushTlb(ctx.aligned_va);
             }
 

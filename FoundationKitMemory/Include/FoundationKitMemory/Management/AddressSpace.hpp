@@ -218,19 +218,9 @@ namespace FoundationKitMemory {
 
             const VirtualAddress end = va + size;
 
-            // Find all overlapping VMAs and process them.
-            VmaDescriptor* vma = m_vas.FindOverlap(va, size);
-            while (vma && vma->base.value < end.value) {
-                VmaDescriptor* next_vma = nullptr;
-
-                // Save next before potential removal.
-                {
-                    // Find the next VMA after this one.
-                    VmaDescriptor* candidate = m_vas.Find(vma->End());
-                    if (candidate && candidate->base.value < end.value) {
-                        next_vma = candidate;
-                    }
-                }
+            while (true) {
+                VmaDescriptor* vma = m_vas.FindOverlap(va, size);
+                if (!vma || vma->base.value >= end.value) break;
 
                 const VirtualAddress vma_start = vma->base;
                 const VirtualAddress vma_end   = vma->End();
@@ -248,16 +238,13 @@ namespace FoundationKitMemory {
                     m_vma_pool.Deallocate(vma);
                 } else if (va.value > vma_start.value && end.value < vma_end.value) {
                     // Punch a hole — split into left and right, unmap the middle.
-                    // Split at `va` to create left portion.
                     auto right_res = SplitVmaInternal(vma, va);
                     if (!right_res) return Unexpected(right_res.Error());
                     VmaDescriptor* right = right_res.Value();
 
-                    // Split right at `end` to isolate the middle.
                     auto tail_res = SplitVmaInternal(right, end);
                     if (!tail_res) return Unexpected(tail_res.Error());
 
-                    // Now `right` covers [va, end) — remove it.
                     m_ptm.Unmap(right->base, right->size);
                     m_ptm.FlushTlbRange(right->base, right->size);
 
@@ -267,7 +254,7 @@ namespace FoundationKitMemory {
 
                     m_vas.Remove(right);
                     m_vma_pool.Deallocate(right);
-                    break; // Hole punch is a single operation.
+                    break; // Hole punch covers exactly [va, end) — done.
                 } else if (va.value > vma_start.value) {
                     // Unmap the tail of this VMA.
                     auto right_res = SplitVmaInternal(vma, va);
@@ -288,7 +275,6 @@ namespace FoundationKitMemory {
                     auto right_res = SplitVmaInternal(vma, end);
                     if (!right_res) return Unexpected(right_res.Error());
 
-                    // `vma` now covers [vma_start, end) — remove it.
                     m_ptm.Unmap(vma->base, vma->size);
                     m_ptm.FlushTlbRange(vma->base, vma->size);
 
@@ -299,8 +285,6 @@ namespace FoundationKitMemory {
                     m_vas.Remove(vma);
                     m_vma_pool.Deallocate(vma);
                 }
-
-                vma = next_vma;
             }
 
             return {};
